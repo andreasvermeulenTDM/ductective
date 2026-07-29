@@ -62,8 +62,11 @@ the worktree/PR stages have something to branch from.
 **Owner:** Backend · **Depends on:** — · **Priority:** Critical
 **DoD:** A clean clone reproduces the layout; no PDF has ever been in history.
 
-> Partially done by the planner outside the pipeline — the layout exists but the
-> working tree is not yet a git repo. Verify rather than redo.
+> **Already done by the planner outside the pipeline** (28 Jul 2026). The repo is
+> initialized, the §5 layout exists, `HVAC Data/` and `.env` are gitignored, and
+> `main` is pushed to `andreasvermeulenTDM/ductective`. **Verify, don't redo** —
+> all four criteria are believed to pass already. Re-running the checks is cheap;
+> re-initializing would discard history.
 
 ---
 
@@ -625,6 +628,6 @@ respectively. Both are cheap and are called out here rather than smuggled in.
 Flagged because Stage 1 hasn't run, so none of these are verified against code:
 
 - **`app/` and `ingest/` do not exist yet.** Every Epic 0 and 1 story assumes greenfield. If the planner scaffolds either before Run A, Stage 2 must re-derive against what's actually there.
-- **The repo is not yet initialized locally.** `Ductective-Plan-v3.md` §5 says the repo exists and is pushed; the working tree has no `.git`. E0.1 is written as verify-then-complete for that reason.
+- ~~**The repo is not yet initialized locally.**~~ **Resolved 28 Jul 2026** — the repo is initialized and pushed to `andreasvermeulenTDM/ductective`, so E0.1 is verify-only. This map was drafted before that landed; if you find other statements about repo state that contradict the working tree, **trust the working tree** and correct the map.
 - **No lint/build/test toolchain exists**, so E0.7 establishes the baseline rather than reporting against one.
 - **Nothing here is a feasibility judgment on the brief's criteria.** The one criterion I'd watch is AC 7's 10-of-12 bar: it depends entirely on E1.4/E1.5 outcomes, and if the scan-heavy documents turn out to include Precedent or 48/50 IOMs, the bar and the OCR decision have to be revisited together rather than the bar being quietly missed.
