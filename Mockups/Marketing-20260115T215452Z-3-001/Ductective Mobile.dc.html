@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+body{margin:0;background:#e8ecf1;font-family:Outfit,system-ui,sans-serif}
+a{color:#1354BE;text-decoration:none}a:hover{color:#2F93F2}
+.dv-turn{padding:44px 48px 40px;border-bottom:1px solid rgba(12,24,38,.09)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+.dv-tid{font:700 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#0C1826;color:#5CD0F5;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 14px/1.2 Outfit,sans-serif;color:#0C1826;letter-spacing:-.01em}
+.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start;margin-top:26px}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:11px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(12,24,38,.09);color:#0C1826;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.35 Outfit,sans-serif;color:rgba(12,24,38,.58);max-width:402px}
+.dv-opt:target .dv-oid{background:#1354BE;color:#fff}
+.dv-next{margin:30px 0 0;font:13px/1.6 Outfit,sans-serif;color:rgba(12,24,38,.5)}
+.rowlbl{font:700 10.5px ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(12,24,38,.42);margin:34px 0 -8px;text-transform:uppercase}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Ductective, Run C mobile app (Epic 6), resolved</span></div>
+<p style="margin:0;max-width:74ch;font:14.5px/1.65 Outfit,sans-serif;color:rgba(12,24,38,.62)">Reading this as: a field diagnostic instrument for commercial RTU techs, read at arm's length in sunlight with gloves on, leaning dark-first high-contrast on the locked <code style="font:12.5px ui-monospace,monospace">brand/README.txt</code> tokens and Outfit. Not a chat app that happens to be dark. Every colour below is a brand token; the cyan accent is not recoloured; alert red <code style="font:12.5px ui-monospace,monospace">#C0453C</code> appears only on refusals. Nav is three tabs (Ask · History · Settings) with the camera as the composer's primary action rather than a fourth tab: the plan treats nameplate capture as the way you start a question, not a destination.</p>
+
+<p class="rowlbl">Core loop: symptom in, cited guidance out</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="s1">
+<div class="dv-olabel"><a class="dv-oid" href="#s1">s1</a>Ask, first run. Coverage is stated up front so a tech learns the edge of the KB before hitting it (E3.6).</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:9px;padding:58px 18px 14px">
+<svg viewBox="0 0 64 64" width="26" height="26" style="flex:none"><defs><linearGradient id="h1b" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2F93F2"></stop><stop offset="1" stop-color="#1354BE"></stop></linearGradient></defs><path fill="url(#h1b)" fill-rule="evenodd" clip-rule="evenodd" d="M12 8 h19 a24 24 0 0 1 0 48 h-19 z M24 21 h7 a11 11 0 0 1 0 22 h-7 z"></path><path fill="#5CD0F5" d="M24 21 h7 a11 11 0 0 1 0 22 h-7 z"></path></svg>
+<span style="font-size:17px;font-weight:600;letter-spacing:-.015em;color:#EFF4F9">Ductective</span>
+<div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(92,208,245,.10);border:1px solid rgba(92,208,245,.22)">
+<span style="width:6px;height:6px;border-radius:999px;background:#5CD0F5"></span>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:.06em;color:#5CD0F5">LTE</span>
+</div>
+</div>
+
+<div style="flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:0 18px 8px;gap:20px">
+<div>
+<h1 style="margin:0 0 8px;font-size:31px;line-height:1.12;font-weight:600;letter-spacing:-.025em;color:#EFF4F9;text-wrap:pretty">What's the unit doing?</h1>
+<p style="margin:0;font-size:15.5px;line-height:1.5;color:#7D93AB;max-width:30ch">Describe the symptom in your own words, or shoot the data plate.</p>
+</div>
+
+<div style="background:rgba(198,211,224,.05);border:1px solid rgba(198,211,224,.10);border-radius:22px;padding:6px">
+<div style="background:#16283D;border-radius:17px;padding:16px 16px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)">
+<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+<i class="ph-fill ph-seal-check" style="font-size:15px;color:#5CD0F5"></i>
+<span style="font-size:12px;font-weight:600;letter-spacing:.11em;color:#5CD0F5">COVERED RIGHT NOW</span>
+</div>
+<p style="margin:0 0 14px;font-size:14.5px;line-height:1.5;color:#C6D3E0">Trane Precedent and Carrier 48/50 packaged rooftops, from 21 OEM documents. Anything else, I'll say so instead of guessing.</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<span style="padding:9px 14px;border-radius:999px;background:rgba(47,147,242,.13);border:1px solid rgba(47,147,242,.3);color:#EFF4F9;font-size:14px;font-weight:500">No cooling</span>
+<span style="padding:9px 14px;border-radius:999px;background:rgba(47,147,242,.13);border:1px solid rgba(47,147,242,.3);color:#EFF4F9;font-size:14px;font-weight:500">High head pressure</span>
+<span style="padding:9px 14px;border-radius:999px;background:rgba(47,147,242,.13);border:1px solid rgba(47,147,242,.3);color:#EFF4F9;font-size:14px;font-weight:500">Economizer stuck</span>
+</div>
+</div>
+</div>
+</div>
+
+<div style="flex:none;padding:10px 14px 12px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:56px;height:56px;border-radius:999px;background:linear-gradient(160deg,#2F93F2,#1354BE);display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 6px 18px rgba(19,84,190,.45),inset 0 1px 0 rgba(255,255,255,.22)">
+<i class="ph-bold ph-camera" style="font-size:26px;color:#fff"></i>
+</div>
+<div style="flex:1;min-height:56px;border-radius:28px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 18px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Describe the symptom…</span>
+<div style="width:40px;height:40px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:19px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+<div style="flex:none;display:flex;padding:8px 12px 30px;border-top:1px solid rgba(198,211,224,.09)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0"><i class="ph-fill ph-chat-teardrop-dots" style="font-size:24px;color:#5CD0F5"></i><span style="font-size:11.5px;font-weight:600;color:#5CD0F5">Ask</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0"><i class="ph ph-clock-counter-clockwise" style="font-size:24px;color:#7D93AB"></i><span style="font-size:11.5px;font-weight:500;color:#7D93AB">History</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0"><i class="ph ph-sliders-horizontal" style="font-size:24px;color:#7D93AB"></i><span style="font-size:11.5px;font-weight:500;color:#7D93AB">Settings</span></div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s2">
+<div class="dv-olabel"><a class="dv-oid" href="#s2">s2</a>Nameplate capture. Manual entry is always one tap away, so a denied camera permission is never a dead end (E6.3).</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#050b12;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0;position:relative">
+
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:58px 18px 14px;position:relative;z-index:3">
+<div style="width:44px;height:44px;border-radius:999px;background:rgba(12,24,38,.66);border:1px solid rgba(198,211,224,.16);display:flex;align-items:center;justify-content:center"><i class="ph-bold ph-x" style="font-size:20px;color:#EFF4F9"></i></div>
+<span style="font-size:16px;font-weight:600;color:#EFF4F9;letter-spacing:-.01em">Nameplate</span>
+<div style="margin-left:auto;width:44px;height:44px;border-radius:999px;background:rgba(12,24,38,.66);border:1px solid rgba(198,211,224,.16);display:flex;align-items:center;justify-content:center"><i class="ph ph-lightning" style="font-size:20px;color:#EFF4F9"></i></div>
+</div>
+
+<div style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;padding:0 22px">
+<svg width="100%" height="300" viewBox="0 0 320 300" preserveAspectRatio="none" style="position:absolute;inset:auto 22px;opacity:.5"><defs><pattern id="np" width="9" height="9" patternTransform="rotate(38)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="#16283D"></rect><rect width="3.4" height="9" fill="#1d3450"></rect></pattern></defs><rect width="320" height="300" fill="url(#np)"></rect></svg>
+<div style="position:relative;width:100%;aspect-ratio:4/3;border-radius:6px;display:flex;align-items:center;justify-content:center">
+<div style="position:absolute;top:0;left:0;width:42px;height:42px;border-top:3px solid #5CD0F5;border-left:3px solid #5CD0F5;border-radius:6px 0 0 0"></div>
+<div style="position:absolute;top:0;right:0;width:42px;height:42px;border-top:3px solid #5CD0F5;border-right:3px solid #5CD0F5;border-radius:0 6px 0 0"></div>
+<div style="position:absolute;bottom:0;left:0;width:42px;height:42px;border-bottom:3px solid #5CD0F5;border-left:3px solid #5CD0F5;border-radius:0 0 0 6px"></div>
+<div style="position:absolute;bottom:0;right:0;width:42px;height:42px;border-bottom:3px solid #5CD0F5;border-right:3px solid #5CD0F5;border-radius:0 0 6px 0"></div>
+<span style="font:11.5px/1.5 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:#7D93AB;text-align:center">RTU DATA PLATE<br>drop photo here</span>
+</div>
+</div>
+
+<div style="flex:none;padding:18px 22px 6px;text-align:center">
+<p style="margin:0;font-size:15px;line-height:1.5;color:#C6D3E0">Fill the frame with the plate. Glare is fine, I'll ask if I can't read it.</p>
+</div>
+
+<div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:16px 26px 8px">
+<div style="width:52px;height:52px;border-radius:12px;background:#16283D;border:1px solid rgba(198,211,224,.16);display:flex;align-items:center;justify-content:center"><i class="ph ph-images-square" style="font-size:23px;color:#C6D3E0"></i></div>
+<div style="width:76px;height:76px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.4)">
+<div style="width:60px;height:60px;border-radius:999px;background:#EFF4F9"></div>
+</div>
+<div style="width:52px;height:52px;border-radius:12px;background:#16283D;border:1px solid rgba(198,211,224,.16);display:flex;align-items:center;justify-content:center"><i class="ph ph-arrows-clockwise" style="font-size:23px;color:#C6D3E0"></i></div>
+</div>
+
+<div style="flex:none;padding:6px 22px 40px;text-align:center">
+<span style="font-size:15px;font-weight:600;color:#2F93F2">Type the model instead</span>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s3">
+<div class="dv-olabel"><a class="dv-oid" href="#s3">s3</a>Model confirmation. "Wrong unit" is one tap from here whether the read was right or not: the two-tap correction floor in E6.3.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:12px;padding:58px 18px 14px">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<span style="font-size:16px;font-weight:600;color:#EFF4F9;letter-spacing:-.01em">Confirm the unit</span>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:6px 18px 0;display:flex;flex-direction:column;gap:16px">
+
+<div style="display:flex;gap:14px;align-items:center">
+<div style="width:88px;height:66px;border-radius:12px;overflow:hidden;flex:none;border:1px solid rgba(198,211,224,.14)">
+<svg width="88" height="66" viewBox="0 0 88 66" style="display:block"><defs><pattern id="np2" width="8" height="8" patternTransform="rotate(38)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#16283D"></rect><rect width="3" height="8" fill="#1d3450"></rect></pattern></defs><rect width="88" height="66" fill="url(#np2)"></rect></svg>
+</div>
+<div style="flex:1">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">READ FROM THE PLATE</p>
+<p style="margin:0;font-size:13.5px;line-height:1.45;color:#7D93AB">Retake if the model line is cut off.</p>
+</div>
+</div>
+
+<div style="background:rgba(198,211,224,.05);border:1px solid rgba(198,211,224,.10);border-radius:24px;padding:6px">
+<div style="background:#16283D;border-radius:19px;padding:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)">
+<p style="margin:0 0 6px;font-size:14px;font-weight:500;color:#7D93AB">Carrier</p>
+<h2 style="margin:0 0 14px;font-size:32px;line-height:1.05;font-weight:600;letter-spacing:-.02em;color:#EFF4F9;font-variant-numeric:tabular-nums">50HC-D12</h2>
+<div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px">
+<span style="padding:6px 11px;border-radius:8px;background:rgba(198,211,224,.07);font-size:13px;font-weight:500;color:#C6D3E0">Packaged rooftop</span>
+<span style="padding:6px 11px;border-radius:8px;background:rgba(198,211,224,.07);font-size:13px;font-weight:500;color:#C6D3E0;font-variant-numeric:tabular-nums">10 ton</span>
+<span style="padding:6px 11px;border-radius:8px;background:rgba(198,211,224,.07);font-size:13px;font-weight:500;color:#C6D3E0">R-410A</span>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding-top:14px;border-top:1px solid rgba(198,211,224,.10)">
+<i class="ph-fill ph-check-circle" style="font-size:17px;color:#5CD0F5"></i>
+<span style="font-size:13.5px;color:#C6D3E0">High confidence · <span style="font-variant-numeric:tabular-nums;font-weight:600;color:#EFF4F9">0.94</span></span>
+<span style="margin-left:auto;font-size:13.5px;font-weight:500;color:#7D93AB;font-variant-numeric:tabular-nums">3 documents</span>
+</div>
+</div>
+</div>
+
+<div>
+<p style="margin:0 0 9px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">I'LL ANSWER FROM</p>
+<div style="display:flex;flex-direction:column;gap:1px;border-radius:14px;overflow:hidden;background:rgba(198,211,224,.06)">
+<div style="padding:13px 14px;display:flex;gap:10px;align-items:center"><i class="ph ph-file-text" style="font-size:18px;color:#5CD0F5;flex:none"></i><span style="font-size:14px;line-height:1.35;color:#C6D3E0">50HC-07-12 Install Instructions</span></div>
+<div style="padding:13px 14px;display:flex;gap:10px;align-items:center"><i class="ph ph-file-text" style="font-size:18px;color:#5CD0F5;flex:none"></i><span style="font-size:14px;line-height:1.35;color:#C6D3E0">48/50HC Product Data</span></div>
+<div style="padding:13px 14px;display:flex;gap:10px;align-items:center"><i class="ph ph-table" style="font-size:18px;color:#5CD0F5;flex:none"></i><span style="font-size:14px;line-height:1.35;color:#C6D3E0">R-410A pressure-temperature chart</span></div>
+</div>
+</div>
+
+</div>
+
+<div style="flex:none;padding:14px 18px 40px;display:flex;flex-direction:column;gap:10px">
+<div style="height:58px;border-radius:16px;background:linear-gradient(170deg,#2F93F2,#1354BE);display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 18px rgba(19,84,190,.4),inset 0 1px 0 rgba(255,255,255,.2)">
+<span style="font-size:17px;font-weight:600;color:#fff">That's the unit</span>
+<i class="ph-bold ph-arrow-right" style="font-size:19px;color:#fff"></i>
+</div>
+<div style="height:52px;border-radius:16px;border:1px solid rgba(198,211,224,.2);display:flex;align-items:center;justify-content:center">
+<span style="font-size:16px;font-weight:500;color:#C6D3E0">Wrong unit, let me pick</span>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s4">
+<div class="dv-olabel"><a class="dv-oid" href="#s4">s4</a>Clarifying turn (E6.2). Cyan-ringed and labelled so it never reads as an answer, and it asks for one reading a tech can take standing there.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:11px;padding:58px 18px 12px;border-bottom:1px solid rgba(198,211,224,.09)">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;letter-spacing:-.01em;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(92,208,245,.10);border:1px solid rgba(92,208,245,.22)">
+<span style="width:6px;height:6px;border-radius:999px;background:#5CD0F5"></span><span style="font-size:11.5px;font-weight:600;letter-spacing:.06em;color:#5CD0F5">LTE</span>
+</div>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:18px 18px 0;display:flex;flex-direction:column;gap:16px">
+
+<div style="align-self:flex-end;max-width:84%;background:#1354BE;border-radius:20px 20px 6px 20px;padding:13px 16px">
+<p style="margin:0;font-size:15.5px;line-height:1.45;color:#fff">Head pressure's way up on the Carrier, keeps tripping out on the high-pressure switch.</p>
+</div>
+
+<div style="background:rgba(92,208,245,.05);border:1px solid rgba(92,208,245,.3);border-radius:20px;padding:18px">
+<div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">
+<i class="ph-bold ph-question" style="font-size:16px;color:#5CD0F5"></i>
+<span style="font-size:12px;font-weight:600;letter-spacing:.11em;color:#5CD0F5">ONE THING FIRST</span>
+</div>
+<p style="margin:0 0 16px;font-size:17px;line-height:1.42;font-weight:500;color:#EFF4F9;text-wrap:pretty">Are both condenser fans running, and what's the outdoor ambient right now?</p>
+<p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:#7D93AB">A single dead fan and a genuinely overloaded coil look identical on the gauge, and they send you to different places.</p>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="min-height:50px;border-radius:14px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;padding:0 15px"><span style="font-size:15px;font-weight:500;color:#EFF4F9">Both running</span></div>
+<div style="min-height:50px;border-radius:14px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;padding:0 15px"><span style="font-size:15px;font-weight:500;color:#EFF4F9">One is dead</span></div>
+<div style="min-height:50px;border-radius:14px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;padding:0 15px"><span style="font-size:15px;font-weight:500;color:#EFF4F9">Haven't looked yet</span></div>
+</div>
+</div>
+
+</div>
+
+<div style="flex:none;padding:12px 14px 34px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Or type an answer…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s5">
+<div class="dv-olabel"><a class="dv-oid" href="#s5">s5</a>Mid-stream. Sources resolve before prose starts, so the first thing a tech sees is what the answer is grounded in. Time-to-first-token is on screen, per E6.1.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:11px;padding:58px 18px 12px;border-bottom:1px solid rgba(198,211,224,.09)">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;letter-spacing:-.01em;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(92,208,245,.10);border:1px solid rgba(92,208,245,.22)">
+<span style="width:6px;height:6px;border-radius:999px;background:#5CD0F5"></span><span style="font-size:11.5px;font-weight:600;letter-spacing:.06em;color:#5CD0F5">LTE</span>
+</div>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:18px 18px 0;display:flex;flex-direction:column;gap:14px">
+
+<div style="align-self:flex-end;max-width:80%;background:#1354BE;border-radius:20px 20px 6px 20px;padding:12px 16px">
+<p style="margin:0;font-size:15.5px;line-height:1.45;color:#fff">Both running. Ambient's 96.</p>
+</div>
+
+<div style="display:flex;align-items:center;gap:9px">
+<div style="display:flex;align-items:center;gap:7px;padding:6px 11px 6px 9px;border-radius:999px;background:rgba(92,208,245,.09);border:1px solid rgba(92,208,245,.24)">
+<i class="ph-fill ph-books" style="font-size:14px;color:#5CD0F5"></i>
+<span style="font-size:12.5px;font-weight:600;color:#5CD0F5;font-variant-numeric:tabular-nums">3 sources</span>
+</div>
+<span style="font-size:12.5px;color:#7D93AB;font-variant-numeric:tabular-nums">first token 1.2s</span>
+</div>
+
+<div>
+<p style="margin:0 0 14px;font-size:16.5px;line-height:1.58;color:#C6D3E0;text-wrap:pretty">At 96&nbsp;°F ambient with both fans turning, a genuine high-pressure trip on this unit means heat isn't leaving the condenser coil: the switch opens at 630&nbsp;psig and won't reset until it drops to 505. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.34</span></p>
+<p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">CHECK IN THIS ORDER</p>
+<p style="margin:0;font-size:16.5px;line-height:1.58;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">1 &nbsp;Condenser coil face.</span> Pull the guard and look at the entering side, not the leaving side. A coil that looks clean from outside can be packed<span style="display:inline-block;width:9px;height:19px;margin-left:2px;background:#5CD0F5;vertical-align:-4px;border-radius:1px"></span></p>
+</div>
+
+</div>
+
+<div style="flex:none;padding:12px 14px 34px;display:flex;align-items:center;gap:10px">
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Answering…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(192,69,60,.16);border:1px solid rgba(192,69,60,.4);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-fill ph-stop" style="font-size:15px;color:#C0453C"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s6">
+<div class="dv-olabel"><a class="dv-oid" href="#s6">s6</a>Resolved answer. Prose with inline citation chips: every claim carries its document and page, and a sentence without one can't render as a claim (E6.4).</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:11px;padding:58px 18px 12px;border-bottom:1px solid rgba(198,211,224,.09)">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;letter-spacing:-.01em;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+<i class="ph ph-dots-three-vertical" style="font-size:22px;color:#7D93AB"></i>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:16px 18px 0;display:flex;flex-direction:column;gap:14px">
+
+<p style="margin:0;font-size:16.5px;line-height:1.56;color:#C6D3E0;text-wrap:pretty">Heat isn't leaving the condenser. The switch opens at 630&nbsp;psig and holds out until 505, so it's tripping on real pressure, not a bad switch. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.34</span></p>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+
+<div style="display:flex;gap:13px">
+<div style="width:28px;height:28px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:14px;font-weight:700;color:#5CD0F5;font-variant-numeric:tabular-nums">1</span></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0 0 7px;font-size:16.5px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Coil face, entering side.</span> Debris packs the inlet and leaves the outside looking clean. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.41</span></p>
+<div style="display:flex;gap:9px;padding:9px 12px;border-radius:11px;background:rgba(198,211,224,.055);align-items:flex-start">
+<i class="ph-bold ph-gauge" style="font-size:16px;color:#7D93AB;flex:none;margin-top:2px"></i>
+<p style="margin:0;font-size:14px;line-height:1.45;color:#7D93AB">Take the condensing temperature. More than <span style="color:#C6D3E0;font-weight:600;font-variant-numeric:tabular-nums">30&nbsp;°F</span> over ambient points here and rules out charge.</p>
+</div>
+</div>
+</div>
+
+<div style="display:flex;gap:13px">
+<div style="width:28px;height:28px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:14px;font-weight:700;color:#5CD0F5;font-variant-numeric:tabular-nums">2</span></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:16.5px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Fan rotation and blade pitch.</span> Both turning isn't both working. A reversed fan after a motor swap moves almost no air. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.36</span></p>
+</div>
+</div>
+
+<div style="display:flex;gap:13px">
+<div style="width:28px;height:28px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:14px;font-weight:700;color:#5CD0F5;font-variant-numeric:tabular-nums">3</span></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:16.5px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Subcooling against the chart.</span> Read liquid line pressure and temperature, then compare. High subcooling with a clean coil means overcharge. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">R-410A PT chart · p.1</span></p>
+</div>
+</div>
+
+</div>
+
+<div style="display:flex;gap:9px;padding:12px 14px;border-radius:14px;background:rgba(198,211,224,.05);border:1px solid rgba(198,211,224,.11);align-items:flex-start">
+<i class="ph ph-info" style="font-size:17px;color:#7D93AB;flex:none;margin-top:1px"></i>
+<p style="margin:0;font-size:13.5px;line-height:1.5;color:#7D93AB">Advice only. Verify against the pages above before you act, and follow your own procedure for anything on the refrigerant side.</p>
+</div>
+
+</div>
+
+<div style="flex:none;padding:10px 14px 34px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Reply…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s7">
+<div class="dv-olabel"><a class="dv-oid" href="#s7">s7</a>Tapped citation. Sheet, not a page jump: the tech verifies the exact retrieved passage without losing the answer behind it.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0;position:relative">
+
+<div style="flex:1;opacity:.3;padding:58px 18px 0;overflow:hidden;display:flex;flex-direction:column;gap:14px">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:16.5px;line-height:1.56;color:#C6D3E0">Heat isn't leaving the condenser. The switch opens at 630&nbsp;psig and holds out until 505, so it's tripping on real pressure, not a bad switch.</p>
+<p style="margin:0;font-size:16.5px;line-height:1.5;color:#C6D3E0">Coil face, entering side. Debris packs the inlet and leaves the outside looking clean.</p>
+</div>
+
+<div style="position:absolute;inset:0;background:rgba(5,11,18,.62)"></div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;background:#16283D;border-radius:28px 28px 0 0;border-top:1px solid rgba(198,211,224,.16);padding:12px 18px 38px;box-shadow:0 -20px 50px rgba(0,0,0,.5)">
+<div style="width:40px;height:4px;border-radius:999px;background:rgba(198,211,224,.28);margin:0 auto 18px"></div>
+
+<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+<div style="width:42px;height:42px;border-radius:11px;background:rgba(92,208,245,.12);border:1px solid rgba(92,208,245,.28);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-fill ph-file-text" style="font-size:21px;color:#5CD0F5"></i></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0 0 3px;font-size:16px;line-height:1.35;font-weight:600;color:#EFF4F9;text-wrap:pretty">Carrier 50HC 7-12 Ton, Installation Instructions</p>
+<p style="margin:0;font-size:13px;color:#7D93AB;font-variant-numeric:tabular-nums">Page 34 · freely published OEM</p>
+</div>
+</div>
+
+<div style="border-radius:16px;background:#0C1826;border:1px solid rgba(198,211,224,.12);padding:16px;margin-bottom:16px">
+<p style="margin:0;font-size:15.5px;line-height:1.6;color:#C6D3E0;font-style:normal">"The high-pressure switch is a manual-reset device located in the compressor discharge line. Cutout is <span style="font-weight:600;color:#EFF4F9;background:rgba(92,208,245,.18);padding:1px 4px;border-radius:4px;font-variant-numeric:tabular-nums">630 psig</span> and reset is <span style="font-weight:600;color:#EFF4F9;background:rgba(92,208,245,.18);padding:1px 4px;border-radius:4px;font-variant-numeric:tabular-nums">505 psig</span>. Repeated trips indicate a condenser airflow or charge problem rather than switch failure."</p>
+</div>
+
+<div style="display:flex;gap:10px">
+<div style="flex:1;height:54px;border-radius:15px;background:linear-gradient(170deg,#2F93F2,#1354BE);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)">
+<i class="ph-bold ph-book-open-text" style="font-size:19px;color:#fff"></i><span style="font-size:16px;font-weight:600;color:#fff">Open page 34</span>
+</div>
+<div style="width:54px;height:54px;border-radius:15px;border:1px solid rgba(198,211,224,.2);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph ph-copy" style="font-size:21px;color:#C6D3E0"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+</div>
+
+<p class="rowlbl">Guardrail and the states a roof actually produces</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="s8">
+<div class="dv-olabel"><a class="dv-oid" href="#s8">s8</a>Hard refusal (E5.2). Alert red fill and ring, no dismiss, no retry, no "show me anyway". It redirects to work that stays in scope rather than ending the session.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:11px;padding:58px 18px 12px;border-bottom:1px solid rgba(198,211,224,.09)">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:18px 18px 0;display:flex;flex-direction:column;gap:16px">
+
+<div style="align-self:flex-end;max-width:86%;background:#1354BE;border-radius:20px 20px 6px 20px;padding:13px 16px">
+<p style="margin:0;font-size:15.5px;line-height:1.45;color:#fff">Fine, walk me through recovering the charge so I can weigh it back in.</p>
+</div>
+
+<div style="background:rgba(192,69,60,.13);border:1.5px solid #C0453C;border-radius:20px;padding:18px">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+<i class="ph-fill ph-hand-palm" style="font-size:20px;color:#C0453C"></i>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:.1em;color:#C0453C">I WON'T GUIDE THIS</span>
+</div>
+<p style="margin:0 0 12px;font-size:17.5px;line-height:1.4;font-weight:600;color:#EFF4F9;text-wrap:pretty">Refrigerant recovery is certified work and I don't talk anyone through it.</p>
+<p style="margin:0 0 16px;font-size:15.5px;line-height:1.55;color:#C6D3E0">Use your company's EPA 608 recovery procedure and the operating manual for your recovery machine. That's the authority here, not me.</p>
+<div style="height:1px;background:rgba(192,69,60,.42);margin-bottom:15px"></div>
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">WHAT I CAN STILL DO</p>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="min-height:50px;border-radius:13px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.15);display:flex;align-items:center;padding:0 15px;gap:9px"><i class="ph ph-table" style="font-size:18px;color:#5CD0F5"></i><span style="font-size:15px;font-weight:500;color:#EFF4F9">Read target subcooling off the chart</span></div>
+<div style="min-height:50px;border-radius:13px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.15);display:flex;align-items:center;padding:0 15px;gap:9px"><i class="ph ph-gauge" style="font-size:18px;color:#5CD0F5"></i><span style="font-size:15px;font-weight:500;color:#EFF4F9">Interpret the readings you took</span></div>
+</div>
+</div>
+
+</div>
+
+<div style="flex:none;padding:12px 14px 34px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Ask something else…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s9">
+<div class="dv-olabel"><a class="dv-oid" href="#s9">s9</a>Offline. The header chip is always live and flips red; a queued question is explicitly held rather than silently failing. Answers already received stay readable.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:11px;padding:58px 18px 12px">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(192,69,60,.16);border:1px solid rgba(192,69,60,.45)">
+<i class="ph-bold ph-wifi-slash" style="font-size:13px;color:#C0453C"></i>
+<span style="font-size:11.5px;font-weight:600;letter-spacing:.04em;color:#C0453C">NO SIGNAL</span>
+</div>
+</div>
+
+<div style="flex:none;margin:0 18px 6px;padding:13px 15px;border-radius:15px;background:rgba(192,69,60,.10);border:1px solid rgba(192,69,60,.32);display:flex;gap:11px;align-items:flex-start">
+<i class="ph-fill ph-cloud-slash" style="font-size:19px;color:#C0453C;flex:none;margin-top:1px"></i>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">You're offline.</span> Everything already answered stays here. New questions send themselves when you get signal back.</p>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:12px 18px 0;display:flex;flex-direction:column;gap:14px">
+<p style="margin:0;font-size:16.5px;line-height:1.56;color:#C6D3E0">Heat isn't leaving the condenser. The switch opens at 630&nbsp;psig and holds out until 505, so it's tripping on real pressure, not a bad switch. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.34</span></p>
+
+<div style="align-self:flex-end;max-width:86%;background:rgba(19,84,190,.34);border:1px dashed rgba(198,211,224,.32);border-radius:20px 20px 6px 20px;padding:13px 16px">
+<p style="margin:0 0 8px;font-size:15.5px;line-height:1.45;color:#C6D3E0">What's the target subcooling at 96 ambient?</p>
+<div style="display:flex;align-items:center;gap:6px">
+<i class="ph ph-clock" style="font-size:14px;color:#7D93AB"></i>
+<span style="font-size:12.5px;font-weight:600;letter-spacing:.03em;color:#7D93AB">QUEUED · SENDS ON SIGNAL</span>
+</div>
+</div>
+</div>
+
+<div style="flex:none;padding:12px 14px 34px;display:flex;align-items:flex-end;gap:10px;opacity:.55">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Type now, sends later…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s10">
+<div class="dv-olabel"><a class="dv-oid" href="#s10">s10</a>History (E6.5). Rows carry the unit and the citation count, so a session is identifiable by the job rather than by its first sentence.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;padding:58px 18px 12px">
+<h1 style="margin:0 0 14px;font-size:28px;font-weight:600;letter-spacing:-.022em;color:#EFF4F9">History</h1>
+<div style="min-height:48px;border-radius:14px;background:#16283D;border:1px solid rgba(198,211,224,.12);display:flex;align-items:center;padding:0 15px;gap:10px">
+<i class="ph ph-magnifying-glass" style="font-size:19px;color:#7D93AB"></i>
+<span style="font-size:15.5px;color:#7D93AB">Search unit or symptom</span>
+</div>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:6px 18px 0">
+
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">TODAY</p>
+<div style="display:flex;flex-direction:column;gap:9px;margin-bottom:22px">
+
+<div style="background:#16283D;border:1px solid rgba(198,211,224,.11);border-radius:17px;padding:15px 16px">
+<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+<p style="margin:0;flex:1;font-size:16.5px;line-height:1.35;font-weight:600;color:#EFF4F9;letter-spacing:-.012em">High head pressure, tripping the HP switch</p>
+<span style="font-size:12.5px;color:#7D93AB;flex:none;margin-top:3px;font-variant-numeric:tabular-nums">14:22</span>
+</div>
+<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+<span style="padding:5px 10px;border-radius:8px;background:rgba(198,211,224,.08);font-size:12.5px;font-weight:600;color:#C6D3E0;font-variant-numeric:tabular-nums">Carrier 50HC-D12</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#5CD0F5;font-weight:600"><i class="ph-fill ph-quotes" style="font-size:13px"></i>4 cited</span>
+</div>
+</div>
+
+<div style="background:#16283D;border:1px solid rgba(198,211,224,.11);border-radius:17px;padding:15px 16px">
+<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+<p style="margin:0;flex:1;font-size:16.5px;line-height:1.35;font-weight:600;color:#EFF4F9;letter-spacing:-.012em">Economizer stays at minimum position</p>
+<span style="font-size:12.5px;color:#7D93AB;flex:none;margin-top:3px;font-variant-numeric:tabular-nums">10:07</span>
+</div>
+<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+<span style="padding:5px 10px;border-radius:8px;background:rgba(198,211,224,.08);font-size:12.5px;font-weight:600;color:#C6D3E0">Trane Precedent</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#5CD0F5;font-weight:600"><i class="ph-fill ph-quotes" style="font-size:13px"></i>6 cited</span>
+</div>
+</div>
+
+</div>
+
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">YESTERDAY</p>
+<div style="display:flex;flex-direction:column;gap:9px">
+
+<div style="background:#16283D;border:1px solid rgba(198,211,224,.11);border-radius:17px;padding:15px 16px">
+<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+<p style="margin:0;flex:1;font-size:16.5px;line-height:1.35;font-weight:600;color:#EFF4F9;letter-spacing:-.012em">Supply fan won't start, no VFD fault</p>
+<span style="font-size:12.5px;color:#7D93AB;flex:none;margin-top:3px;font-variant-numeric:tabular-nums">16:48</span>
+</div>
+<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+<span style="padding:5px 10px;border-radius:8px;background:rgba(198,211,224,.08);font-size:12.5px;font-weight:600;color:#C6D3E0">Trane Precedent eFlex</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#5CD0F5;font-weight:600"><i class="ph-fill ph-quotes" style="font-size:13px"></i>3 cited</span>
+</div>
+</div>
+
+<div style="background:#16283D;border:1px solid rgba(198,211,224,.11);border-radius:17px;padding:15px 16px;opacity:.72">
+<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+<p style="margin:0;flex:1;font-size:16.5px;line-height:1.35;font-weight:600;color:#EFF4F9;letter-spacing:-.012em">Charge weigh-in on a 48HJ</p>
+<span style="font-size:12.5px;color:#7D93AB;flex:none;margin-top:3px;font-variant-numeric:tabular-nums">09:15</span>
+</div>
+<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+<span style="padding:5px 10px;border-radius:8px;background:rgba(198,211,224,.08);font-size:12.5px;font-weight:600;color:#C6D3E0">Carrier 48HJ</span>
+<span style="display:flex;align-items:center;gap:5px;font-size:12.5px;color:#C0453C;font-weight:600"><i class="ph-fill ph-hand-palm" style="font-size:13px"></i>refused</span>
+</div>
+</div>
+
+</div>
+</div>
+
+<div style="flex:none;display:flex;padding:8px 12px 30px;border-top:1px solid rgba(198,211,224,.09)">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0"><i class="ph ph-chat-teardrop-dots" style="font-size:24px;color:#7D93AB"></i><span style="font-size:11.5px;font-weight:500;color:#7D93AB">Ask</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0"><i class="ph-fill ph-clock-counter-clockwise" style="font-size:24px;color:#5CD0F5"></i><span style="font-size:11.5px;font-weight:600;color:#5CD0F5">History</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0"><i class="ph ph-sliders-horizontal" style="font-size:24px;color:#7D93AB"></i><span style="font-size:11.5px;font-weight:500;color:#7D93AB">Settings</span></div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s11">
+<div class="dv-olabel"><a class="dv-oid" href="#s11">s11</a>Transport failure, deliberately unlike <a class="dv-oid" href="#s8">s8</a>: steel surface, one red glyph, and a retry. A refusal is red all over and has no action, so you can tell them apart at arm's length.</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="1" hint-size="402px,874px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:11px;padding:58px 18px 12px;border-bottom:1px solid rgba(198,211,224,.09)">
+<i class="ph-bold ph-arrow-left" style="font-size:22px;color:#C6D3E0"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:15px;font-weight:600;color:#EFF4F9;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(125,147,171,.14);border:1px solid rgba(125,147,171,.3)">
+<span style="width:6px;height:6px;border-radius:999px;background:#7D93AB"></span><span style="font-size:11.5px;font-weight:600;letter-spacing:.06em;color:#7D93AB">1 BAR</span>
+</div>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:18px 18px 0;display:flex;flex-direction:column;gap:16px">
+
+<div style="align-self:flex-end;max-width:86%;background:#1354BE;border-radius:20px 20px 6px 20px;padding:13px 16px">
+<p style="margin:0;font-size:15.5px;line-height:1.45;color:#fff">What's the target subcooling at 96 ambient?</p>
+</div>
+
+<div style="background:#16283D;border:1px solid rgba(198,211,224,.13);border-radius:20px;padding:18px">
+<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+<i class="ph-fill ph-warning-circle" style="font-size:20px;color:#C0453C"></i>
+<span style="font-size:16.5px;font-weight:600;color:#EFF4F9;letter-spacing:-.012em">The answer didn't come back</span>
+</div>
+<p style="margin:0 0 8px;font-size:15px;line-height:1.55;color:#C6D3E0">The stream dropped partway through. Nothing partial has been kept. A half answer isn't worth acting on.</p>
+<p style="margin:0 0 16px;font-size:13px;color:#7D93AB;font-variant-numeric:tabular-nums">Timed out after 30s · your question is still typed below</p>
+<div style="display:flex;gap:10px">
+<div style="flex:1;height:52px;border-radius:14px;background:linear-gradient(170deg,#2F93F2,#1354BE);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)">
+<i class="ph-bold ph-arrow-clockwise" style="font-size:19px;color:#fff"></i><span style="font-size:16px;font-weight:600;color:#fff">Try again</span>
+</div>
+</div>
+</div>
+
+</div>
+
+<div style="flex:none;padding:12px 14px 34px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(92,208,245,.4);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#EFF4F9">What's the target subcooling at 96…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(47,147,242,.9);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#fff"></i></div>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+</div>
+
+<p class="rowlbl">Where Android genuinely diverges</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="s12">
+<div class="dv-olabel"><a class="dv-oid" href="#s12">s12</a>Android answer. Same tokens and same content; what changes is the app bar, the M3 tab indicator, and back living in the system gesture bar rather than in the header.</div>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="1" hint-size="412px,892px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:48px 16px 14px">
+<i class="ph-bold ph-arrow-left" style="font-size:23px;color:#EFF4F9"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:16px;font-weight:600;color:#EFF4F9;letter-spacing:-.01em;font-variant-numeric:tabular-nums">Carrier 50HC-D12</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">High head pressure</p>
+</div>
+<div style="display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(92,208,245,.10);border:1px solid rgba(92,208,245,.22)">
+<span style="width:6px;height:6px;border-radius:999px;background:#5CD0F5"></span><span style="font-size:11.5px;font-weight:600;letter-spacing:.06em;color:#5CD0F5">LTE</span>
+</div>
+<i class="ph ph-dots-three-vertical" style="font-size:22px;color:#7D93AB"></i>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:6px 16px 0;display:flex;flex-direction:column;gap:14px">
+
+<p style="margin:0;font-size:16.5px;line-height:1.56;color:#C6D3E0;text-wrap:pretty">Heat isn't leaving the condenser. The switch opens at 630&nbsp;psig and holds out until 505, so it's tripping on real pressure, not a bad switch. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.34</span></p>
+
+<div style="display:flex;gap:13px">
+<div style="width:28px;height:28px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:14px;font-weight:700;color:#5CD0F5;font-variant-numeric:tabular-nums">1</span></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0 0 7px;font-size:16.5px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Coil face, entering side.</span> Debris packs the inlet and leaves the outside looking clean. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.41</span></p>
+<div style="display:flex;gap:9px;padding:9px 12px;border-radius:11px;background:rgba(198,211,224,.055);align-items:flex-start">
+<i class="ph-bold ph-gauge" style="font-size:16px;color:#7D93AB;flex:none;margin-top:2px"></i>
+<p style="margin:0;font-size:14px;line-height:1.45;color:#7D93AB">Take the condensing temperature. More than <span style="color:#C6D3E0;font-weight:600;font-variant-numeric:tabular-nums">30&nbsp;°F</span> over ambient points here and rules out charge.</p>
+</div>
+</div>
+</div>
+
+<div style="display:flex;gap:13px">
+<div style="width:28px;height:28px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:14px;font-weight:700;color:#5CD0F5;font-variant-numeric:tabular-nums">2</span></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:16.5px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Fan rotation and blade pitch.</span> Both turning isn't both working. A reversed fan after a motor swap moves almost no air. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.36</span></p>
+</div>
+</div>
+
+<div style="display:flex;gap:9px;padding:12px 14px;border-radius:14px;background:rgba(198,211,224,.05);border:1px solid rgba(198,211,224,.11);align-items:flex-start">
+<i class="ph ph-info" style="font-size:17px;color:#7D93AB;flex:none;margin-top:1px"></i>
+<p style="margin:0;font-size:13.5px;line-height:1.5;color:#7D93AB">Advice only. Verify against the pages above before you act.</p>
+</div>
+
+</div>
+
+<div style="flex:none;padding:10px 12px 10px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Reply…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+<div style="flex:none;display:flex;padding:8px 8px 26px;background:#101f31">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0">
+<div style="padding:5px 20px;border-radius:999px;background:rgba(92,208,245,.16)"><i class="ph-fill ph-chat-teardrop-dots" style="font-size:23px;color:#5CD0F5"></i></div>
+<span style="font-size:12px;font-weight:600;color:#5CD0F5">Ask</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0">
+<div style="padding:5px 20px"><i class="ph ph-clock-counter-clockwise" style="font-size:23px;color:#7D93AB"></i></div>
+<span style="font-size:12px;font-weight:500;color:#7D93AB">History</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0">
+<div style="padding:5px 20px"><i class="ph ph-sliders-horizontal" style="font-size:23px;color:#7D93AB"></i></div>
+<span style="font-size:12px;font-weight:500;color:#7D93AB">Settings</span>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="s13">
+<div class="dv-olabel"><a class="dv-oid" href="#s13">s13</a>Android refusal. Deliberately identical in weight to <a class="dv-oid" href="#s8">s8</a>: the guardrail must not read softer on either platform, and system back is the only way past it.</div>
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="1" hint-size="412px,892px">
+<div style="height:100%;display:flex;flex-direction:column;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0">
+
+<div style="flex:none;display:flex;align-items:center;gap:14px;padding:48px 16px 14px">
+<i class="ph-bold ph-arrow-left" style="font-size:23px;color:#EFF4F9"></i>
+<div style="flex:1;min-width:0">
+<p style="margin:0;font-size:16px;font-weight:600;color:#EFF4F9;font-variant-numeric:tabular-nums">Carrier 48HJ</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB">Charge weigh-in</p>
+</div>
+<i class="ph ph-dots-three-vertical" style="font-size:22px;color:#7D93AB"></i>
+</div>
+
+<div style="flex:1;overflow:hidden;padding:6px 16px 0;display:flex;flex-direction:column;gap:16px">
+
+<div style="align-self:flex-end;max-width:86%;background:#1354BE;border-radius:20px 20px 6px 20px;padding:13px 16px">
+<p style="margin:0;font-size:15.5px;line-height:1.45;color:#fff">Just give me the recovery steps, I've done it a hundred times.</p>
+</div>
+
+<div style="background:rgba(192,69,60,.13);border:1.5px solid #C0453C;border-radius:20px;padding:18px">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+<i class="ph-fill ph-hand-palm" style="font-size:20px;color:#C0453C"></i>
+<span style="font-size:12.5px;font-weight:700;letter-spacing:.1em;color:#C0453C">I WON'T GUIDE THIS</span>
+</div>
+<p style="margin:0 0 12px;font-size:17.5px;line-height:1.4;font-weight:600;color:#EFF4F9;text-wrap:pretty">Still no. Experience doesn't change what I'm willing to talk you through.</p>
+<p style="margin:0 0 16px;font-size:15.5px;line-height:1.55;color:#C6D3E0">Refrigerant recovery stays with your EPA 608 procedure and your recovery machine's manual.</p>
+<div style="height:1px;background:rgba(192,69,60,.42);margin-bottom:15px"></div>
+<p style="margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.11em;color:#7D93AB">WHAT I CAN STILL DO</p>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="min-height:50px;border-radius:13px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.15);display:flex;align-items:center;padding:0 15px;gap:9px"><i class="ph ph-table" style="font-size:18px;color:#5CD0F5"></i><span style="font-size:15px;font-weight:500;color:#EFF4F9">Find the factory charge for this unit</span></div>
+<div style="min-height:50px;border-radius:13px;background:rgba(198,211,224,.07);border:1px solid rgba(198,211,224,.15);display:flex;align-items:center;padding:0 15px;gap:9px"><i class="ph ph-gauge" style="font-size:18px;color:#5CD0F5"></i><span style="font-size:15px;font-weight:500;color:#EFF4F9">Check the charge you already have</span></div>
+</div>
+</div>
+
+</div>
+
+<div style="flex:none;padding:10px 12px 10px;display:flex;align-items:flex-end;gap:10px">
+<div style="width:52px;height:52px;border-radius:999px;background:#16283D;border:1px solid rgba(198,211,224,.14);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-camera" style="font-size:23px;color:#7D93AB"></i></div>
+<div style="flex:1;min-height:52px;border-radius:26px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 17px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Ask something else…</span>
+<div style="width:38px;height:38px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+<div style="flex:none;display:flex;padding:8px 8px 26px;background:#101f31">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0">
+<div style="padding:5px 20px;border-radius:999px;background:rgba(92,208,245,.16)"><i class="ph-fill ph-chat-teardrop-dots" style="font-size:23px;color:#5CD0F5"></i></div>
+<span style="font-size:12px;font-weight:600;color:#5CD0F5">Ask</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0">
+<div style="padding:5px 20px"><i class="ph ph-clock-counter-clockwise" style="font-size:23px;color:#7D93AB"></i></div>
+<span style="font-size:12px;font-weight:500;color:#7D93AB">History</span>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0">
+<div style="padding:5px 20px"><i class="ph ph-sliders-horizontal" style="font-size:23px;color:#7D93AB"></i></div>
+<span style="font-size:12px;font-weight:500;color:#7D93AB">Settings</span>
+</div>
+</div>
+
+</div>
+</x-import>
+</div>
+
+</div>
+
+<p class="rowlbl">Tablet, not a stretched phone (E6.9)</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="s14">
+<div class="dv-olabel"><a class="dv-oid" href="#s14">s14</a>Landscape tablet, two panes: sessions stay visible while the answer reads, and the cited passage opens beside the claim instead of over it.</div>
+<div style="width:1024px;height:768px;border-radius:26px;overflow:hidden;background:#0C1826;font-family:Outfit,system-ui,sans-serif;color:#C6D3E0;display:flex;box-shadow:0 40px 80px rgba(12,24,38,.22),0 0 0 1px rgba(12,24,38,.14)">
+
+<div style="width:96px;flex:none;background:#0a1421;border-right:1px solid rgba(198,211,224,.09);display:flex;flex-direction:column;align-items:center;padding:26px 0 22px;gap:26px">
+<svg viewBox="0 0 64 64" width="34" height="34"><defs><linearGradient id="tb1" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2F93F2"></stop><stop offset="1" stop-color="#1354BE"></stop></linearGradient></defs><path fill="url(#tb1)" fill-rule="evenodd" clip-rule="evenodd" d="M12 8 h19 a24 24 0 0 1 0 48 h-19 z M24 21 h7 a11 11 0 0 1 0 22 h-7 z"></path><path fill="#5CD0F5" d="M24 21 h7 a11 11 0 0 1 0 22 h-7 z"></path></svg>
+<div style="display:flex;flex-direction:column;gap:16px;align-items:center;width:100%">
+<div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;padding:10px 0;background:rgba(92,208,245,.10);border-right:2px solid #5CD0F5"><i class="ph-fill ph-chat-teardrop-dots" style="font-size:25px;color:#5CD0F5"></i><span style="font-size:11.5px;font-weight:600;color:#5CD0F5">Ask</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 0"><i class="ph ph-clock-counter-clockwise" style="font-size:25px;color:#7D93AB"></i><span style="font-size:11.5px;font-weight:500;color:#7D93AB">History</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 0"><i class="ph ph-sliders-horizontal" style="font-size:25px;color:#7D93AB"></i><span style="font-size:11.5px;font-weight:500;color:#7D93AB">Settings</span></div>
+</div>
+<div style="margin-top:auto;width:56px;height:56px;border-radius:999px;background:linear-gradient(160deg,#2F93F2,#1354BE);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(19,84,190,.42),inset 0 1px 0 rgba(255,255,255,.22)"><i class="ph-bold ph-camera" style="font-size:26px;color:#fff"></i></div>
+</div>
+
+<div style="width:296px;flex:none;border-right:1px solid rgba(198,211,224,.09);padding:26px 18px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+<div style="display:flex;align-items:baseline;gap:9px">
+<h2 style="margin:0;font-size:21px;font-weight:600;letter-spacing:-.02em;color:#EFF4F9">Sessions</h2>
+<div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:999px;background:rgba(92,208,245,.10);border:1px solid rgba(92,208,245,.22)"><span style="width:6px;height:6px;border-radius:999px;background:#5CD0F5"></span><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#5CD0F5">WI-FI</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="background:#16283D;border:1px solid rgba(92,208,245,.34);border-radius:15px;padding:13px 14px">
+<p style="margin:0 0 8px;font-size:15px;line-height:1.35;font-weight:600;color:#EFF4F9;letter-spacing:-.01em">High head pressure, tripping the HP switch</p>
+<div style="display:flex;align-items:center;gap:8px"><span style="padding:4px 9px;border-radius:7px;background:rgba(198,211,224,.08);font-size:11.5px;font-weight:600;color:#C6D3E0;font-variant-numeric:tabular-nums">50HC-D12</span><span style="font-size:11.5px;color:#5CD0F5;font-weight:600">4 cited</span></div>
+</div>
+<div style="border:1px solid rgba(198,211,224,.1);border-radius:15px;padding:13px 14px">
+<p style="margin:0 0 8px;font-size:15px;line-height:1.35;font-weight:600;color:#C6D3E0;letter-spacing:-.01em">Economizer stays at minimum position</p>
+<div style="display:flex;align-items:center;gap:8px"><span style="padding:4px 9px;border-radius:7px;background:rgba(198,211,224,.08);font-size:11.5px;font-weight:600;color:#7D93AB">Precedent</span><span style="font-size:11.5px;color:#7D93AB;font-weight:600">6 cited</span></div>
+</div>
+<div style="border:1px solid rgba(198,211,224,.1);border-radius:15px;padding:13px 14px">
+<p style="margin:0 0 8px;font-size:15px;line-height:1.35;font-weight:600;color:#C6D3E0;letter-spacing:-.01em">Supply fan won't start, no VFD fault</p>
+<div style="display:flex;align-items:center;gap:8px"><span style="padding:4px 9px;border-radius:7px;background:rgba(198,211,224,.08);font-size:11.5px;font-weight:600;color:#7D93AB">eFlex</span><span style="font-size:11.5px;color:#7D93AB;font-weight:600">3 cited</span></div>
+</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:26px 26px 22px;gap:18px;overflow:hidden">
+<div style="display:flex;align-items:baseline;gap:12px">
+<h2 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;color:#EFF4F9;font-variant-numeric:tabular-nums">Carrier 50HC-D12</h2>
+<span style="font-size:14px;color:#7D93AB">High head pressure</span>
+</div>
+
+<div style="flex:1;display:flex;gap:22px;min-height:0">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:15px">
+<p style="margin:0;font-size:17px;line-height:1.55;color:#C6D3E0;text-wrap:pretty">Heat isn't leaving the condenser. The switch opens at 630&nbsp;psig and holds out until 505, so it's tripping on real pressure, not a bad switch. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.2);border:1px solid #5CD0F5;color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.34</span></p>
+<div style="display:flex;gap:12px">
+<div style="width:27px;height:27px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:13.5px;font-weight:700;color:#5CD0F5">1</span></div>
+<p style="margin:0;flex:1;font-size:17px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Coil face, entering side.</span> Debris packs the inlet and leaves the outside looking clean. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.41</span></p>
+</div>
+<div style="display:flex;gap:12px">
+<div style="width:27px;height:27px;border-radius:999px;background:rgba(92,208,245,.14);border:1px solid rgba(92,208,245,.34);display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"><span style="font-size:13.5px;font-weight:700;color:#5CD0F5">2</span></div>
+<p style="margin:0;flex:1;font-size:17px;line-height:1.5;color:#C6D3E0"><span style="font-weight:600;color:#EFF4F9">Fan rotation and blade pitch.</span> Both turning isn't both working. <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px 4px;border-radius:999px;background:rgba(47,147,242,.14);border:1px solid rgba(92,208,245,.28);color:#5CD0F5;font-size:12px;font-weight:600;white-space:nowrap;vertical-align:1px">50HC-07-12 · p.36</span></p>
+</div>
+<div style="margin-top:auto;min-height:54px;border-radius:27px;background:#16283D;border:1px solid rgba(198,211,224,.13);display:flex;align-items:center;padding:0 8px 0 18px;gap:8px">
+<span style="flex:1;font-size:16px;color:#7D93AB">Reply…</span>
+<div style="width:40px;height:40px;border-radius:999px;background:rgba(198,211,224,.08);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-bold ph-arrow-up" style="font-size:18px;color:#7D93AB"></i></div>
+</div>
+</div>
+
+<div style="width:312px;flex:none;background:rgba(198,211,224,.05);border:1px solid rgba(198,211,224,.11);border-radius:22px;padding:6px">
+<div style="background:#16283D;border-radius:17px;padding:18px;height:100%;box-sizing:border-box;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)">
+<div style="display:flex;align-items:flex-start;gap:11px;margin-bottom:15px">
+<div style="width:38px;height:38px;border-radius:10px;background:rgba(92,208,245,.12);border:1px solid rgba(92,208,245,.28);display:flex;align-items:center;justify-content:center;flex:none"><i class="ph-fill ph-file-text" style="font-size:19px;color:#5CD0F5"></i></div>
+<div style="flex:1;min-width:0">
+<p style="margin:0 0 3px;font-size:14.5px;line-height:1.32;font-weight:600;color:#EFF4F9;text-wrap:pretty">Carrier 50HC 7-12 Ton, Installation Instructions</p>
+<p style="margin:0;font-size:12.5px;color:#7D93AB;font-variant-numeric:tabular-nums">Page 34</p>
+</div>
+</div>
+<div style="border-radius:14px;background:#0C1826;border:1px solid rgba(198,211,224,.12);padding:14px;margin-bottom:14px">
+<p style="margin:0;font-size:14.5px;line-height:1.6;color:#C6D3E0">"The high-pressure switch is a manual-reset device located in the compressor discharge line. Cutout is <span style="font-weight:600;color:#EFF4F9;background:rgba(92,208,245,.18);padding:1px 4px;border-radius:4px;font-variant-numeric:tabular-nums">630 psig</span> and reset is <span style="font-weight:600;color:#EFF4F9;background:rgba(92,208,245,.18);padding:1px 4px;border-radius:4px;font-variant-numeric:tabular-nums">505 psig</span>."</p>
+</div>
+<div style="height:50px;border-radius:14px;background:linear-gradient(170deg,#2F93F2,#1354BE);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)"><i class="ph-bold ph-book-open-text" style="font-size:18px;color:#fff"></i><span style="font-size:15.5px;font-weight:600;color:#fff">Open page 34</span></div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+
+</div>
+
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#s6">s6</a> a tickable checklist instead of prose" · "add the nine enumerated loading/empty/error states from E6.6" · "show <a class="dv-oid" href="#s2">s2</a> with the camera permission denied"</p>
+</section>
+
+</x-dc>
+</body>
+</html>
