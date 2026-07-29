@@ -30,6 +30,14 @@ backend to unblock yourself.
   project's existing test conventions. Stage 5 adds regression coverage — it does
   not write your first tests for you.
 - Handle loading, empty, and error states for anything data-driven.
+
+**Rendering the two domain rules.** Every diagnostic claim arrives with a citation
+payload (source document + page); render it visibly and make it inspectable — a
+claim shown without its source is a defect even when the backend sent one. A
+**refusal is not an error**: the backend distinguishes them, so present a refusal
+as a legitimate, calm answer pointing to standard safety procedure, styled with
+the brand's alert colour — never as a failure state or a retry prompt. Never
+soften, summarise away, or hide a refusal to make a screen read better.
 - Accessibility and responsiveness: hold the bar research captured. If research
   captured none, the floor is — interactive elements reachable and operable by
   keyboard, form controls labelled, focus visible, and layout correct at the
