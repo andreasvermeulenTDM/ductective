@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256"><defs>
+  <linearGradient id="a_blue" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#2F93F2"/><stop offset="1" stop-color="#1354BE"/>
+  </linearGradient>
+  <linearGradient id="a_steel" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#7D93AB"/><stop offset="1" stop-color="#16283D"/>
+  </linearGradient>
+</defs>
+<clipPath id="a_band"><rect x="0" y="25.5" width="64" height="13"/></clipPath>
+<mask id="a_slats">
+  <rect width="64" height="64" fill="black"/>
+  <rect x="0" y="8"    width="64" height="13" fill="white"/>
+  <rect x="0" y="25.5" width="64" height="13" fill="white"/>
+  <rect x="0" y="43"   width="64" height="13" fill="white"/>
+</mask>
+<g mask="url(#a_slats)">
+  <path fill-rule="evenodd" fill="url(#a_blue)" d="M12 8 h20 a24 24 0 0 1 0 48 h-20 z M24 20 h8 a12 12 0 0 1 0 24 h-8 z"/>
+  <g clip-path="url(#a_band)"><path fill-rule="evenodd" fill="#5CD0F5" d="M12 8 h20 a24 24 0 0 1 0 48 h-20 z M24 20 h8 a12 12 0 0 1 0 24 h-8 z"/></g>
+</g></svg>

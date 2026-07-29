@@ -1,0 +1,57 @@
+# Source corpus — 209 MB of OEM PDFs. Never track these.
+# data/manifest.csv is the tracked artifact; it carries the source URLs, so the
+# corpus is reproducible from a clean clone.
+HVAC Data/
+ingest/sources/
+
+# Belt and braces — no PDF anywhere in this repo is intended to be tracked.
+*.pdf
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Expo / React Native
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+
+# Supabase local stack
+supabase/.branches/
+supabase/.temp/
+
+# Build output
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Claude Code local settings
+.claude/settings.local.json

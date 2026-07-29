@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256"><defs>
+  <linearGradient id="f_blue" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#2F93F2"/><stop offset="1" stop-color="#1354BE"/>
+  </linearGradient>
+  <linearGradient id="f_steel" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#7D93AB"/><stop offset="1" stop-color="#16283D"/>
+  </linearGradient>
+</defs>
+<path d="M32 25 C32 25 26 18 28.5 11.5 C31 5 40 4.5 45 8 C41.5 13 41 20 39 25 Z" fill="url(#f_blue)" transform="rotate(0 32 32)"/><path d="M32 25 C32 25 26 18 28.5 11.5 C31 5 40 4.5 45 8 C41.5 13 41 20 39 25 Z" fill="url(#f_blue)" transform="rotate(90 32 32)"/><path d="M32 25 C32 25 26 18 28.5 11.5 C31 5 40 4.5 45 8 C41.5 13 41 20 39 25 Z" fill="url(#f_blue)" transform="rotate(180 32 32)"/><path d="M32 25 C32 25 26 18 28.5 11.5 C31 5 40 4.5 45 8 C41.5 13 41 20 39 25 Z" fill="url(#f_blue)" transform="rotate(270 32 32)"/>
+<circle cx="32" cy="32" r="9" fill="#5CD0F5"/></svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256"><defs>
+  <linearGradient id="ps_blue" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#2F93F2"/><stop offset="1" stop-color="#1354BE"/>
+  </linearGradient>
+  <linearGradient id="ps_steel" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#7D93AB"/><stop offset="1" stop-color="#16283D"/>
+  </linearGradient>
+</defs>
+<path fill="url(#ps_blue)" fill-rule="evenodd" clip-rule="evenodd"
+      d="M12 8 h19 a24 24 0 0 1 0 48 h-19 z M24 21 h7 a11 11 0 0 1 0 22 h-7 z"/>
+<path fill="#5CD0F5" d="M24 21 h7 a11 11 0 0 1 0 22 h-7 z"/></svg>
