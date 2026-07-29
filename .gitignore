@@ -55,3 +55,7 @@ yarn-error.log*
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# OneDrive keeps re-syncing the pre-restructure pipeline path; the live agents
+# are in .claude/agents/.
+agent-pipeline/
