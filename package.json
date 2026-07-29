@@ -1,0 +1,16 @@
+{
+  "name": "ductective",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI diagnostic assistant for HVAC technicians — Phase 1 rails",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "verify": "node --env-file=.env scripts/verify-connection.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.111.0"
+  }
+}
