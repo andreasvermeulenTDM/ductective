@@ -2,7 +2,9 @@
 
 Stage 2 output, written at planning time. Decomposes **all of Phase 1** (P1.0–P1.5
 of `Ductective-Plan-v3.md`) into epics and implementation-ready stories, tagged by
-the agent persona that owns each one.
+the agent persona that owns each one. Epics **E0–E8** are Phase 1 and are written
+to be built against. A final section outlines **E9–E16** (Phases 2–4, including
+both website surfaces) at intent level only — visible road, not commitment.
 
 **Status: draft, not the Stage 2 artifact.** `.pipeline/01-research.md` has not
 landed, so this is derived from the plan of record and `.pipeline/00-brief.md`
@@ -36,7 +38,7 @@ proves it), **human** (a person must observe it), or **eval** (Stage 5.5 scores 
 |---|---|---|---|
 | **A** | E0, E1, E2, E7.1, E8 | E0.1 → E0.2 → E0.6 → E1.1 → E1.4 → E1.6 → E1.8 → E1.9 → E2.1 → E2.3 | E0.3/E0.4/E0.5 (rails) run alongside E1; E7.1 and E8.1 any time |
 | **B** | E3, E4, E5, E7.2 | E3.1 → E3.2 → E3.4 → E3.5 → E5.1 → E7.2 | E4 parallel after E3.2; E5.2 parallel with E5.1 |
-| **C** | E6, E7.3 | E6.1 → E6.3 → E6.4 | E6.2, E6.5, E6.6 parallel after E6.1 |
+| **C** | E6, E7.3, E7.5 | E6.8 → E6.1 → E6.4 → E6.6 → E7.5 | E6.2/E6.3/E6.5/E6.9 parallel after E6.1; E6.7 follows E6.8; E6.10 last |
 
 Within Run A the hard serialization is **schema before ingestion before
 retrieval** (E0.6 → E1.* → E2.*). The Expo rails thread (E0.3–E0.5) touches none
@@ -430,14 +432,20 @@ work, **so that** it never becomes the reason someone gets hurt.
 
 ---
 
-### E5.2 — Refusals are visually unmistakable
+### E5.2 — Refusals are visually unmistakable and cannot be bypassed
 **As a** technician glancing at a phone in sunlight, **I want** a refusal to look
-different from advice, **so that** I don't skim past it.
+different from advice and to stay put, **so that** I can't skim past it or click
+through it.
 - Refusals render in alert red `#C0453C` from the brand board. *(machine)*
 - Refusal styling is distinct from normal answer styling at a glance. *(human)*
 - Contrast passes on the dark background. *(machine)*
+- A refusal is **not dismissible, not collapsible**, and is not styled as an error the user should retry past. *(machine)*
+- No "show me anyway", "continue", or equivalent bypass affordance exists anywhere in the flow. *(machine)*
+- The refusal body contains no step-by-step procedure — only the safety-procedure pointer. *(eval)*
+- All three categories are triggered **through the UI** and captured: 3 of 3, with screenshots. *(human)*
 
 **Owner:** Frontend · **Depends on:** E5.1 · **Priority:** Critical
+**DoD:** Run C AC 5 satisfied with screenshots; no bypass path exists in code or UI.
 
 ---
 
@@ -452,67 +460,153 @@ the guardrail can't be eroded story by story.
 ---
 
 # Epic 6 — Chat & camera experience
-*P1.4 · Run C*
+*P1.4 · Run C · the mobile application · rewritten against `.pipeline/00-brief-run-c.md`*
+
+> Frontend owns the weight of this run. Backend is thin and bounded: streaming
+> transport, session/message persistence, and the image-upload path to Run B's
+> vision endpoint. Run C **renders** the core's output — it does not tune reasoning,
+> retrieval, ranking, or guardrail logic. A wrong answer is a Run B defect: log it,
+> don't patch it in the UI. Frontend may not edit backend code; a contract gap is
+> filed as a `CONTRACT MISMATCH` against Stage 3.
 
 ### E6.1 — Chat screen with streaming responses
 **As a** technician, **I want** to see the answer as it arrives, **so that** the app
 doesn't feel dead while I'm standing on a roof.
-- Text input submits and the response streams token by token. *(human)*
-- Interrupted or failed streams show a readable error and allow retry. *(machine)*
+- Text input submits and the response **streams** into the message list rather than appearing all at once. *(human)*
+- Time-to-first-token is measured on a real device over normal cellular and the actual number reported; target ≤ 3s. *(human)*
+- Killing the network mid-stream produces a recoverable error state — never a blank screen, and never a half-rendered answer presented as complete. *(human)*
+- The streaming transport contract is published by Stage 3 precisely enough that Frontend never guesses a field name. *(machine)*
 
 **Owner:** Frontend (screen), Backend (streaming transport) · **Depends on:** E3.4 · **Priority:** Critical
+**DoD:** Run C AC 2 and the mid-stream half of AC 6 satisfied on a physical device.
 
 ---
 
-### E6.2 — Nameplate capture from the camera
-**As a** technician, **I want** to shoot the nameplate in-app, **so that** I'm not
-switching between apps with gloves on.
-- Camera capture feeds the photo to E4.1. *(human)*
-- Permission denial is handled with a clear path to manual model entry. *(machine)*
+### E6.2 — Clarifying-question turns render in the same session
+**As a** technician, **I want** to answer the app's question and keep going,
+**so that** a clarification doesn't cost me my place.
+- A clarifying question from the Run B core (E3.3) renders as its own turn, visually distinct from a diagnostic answer. *(machine)*
+- Answering it continues the **same** session — no new conversation, no lost context. *(machine)*
+- The message list makes clear what was asked and what the tech answered when the session is reopened later. *(machine)*
 
-**Owner:** Frontend · **Depends on:** E4.1, E6.1 · **Priority:** High
+**Owner:** Frontend · **Depends on:** E3.3, E6.1 · **Priority:** Critical
+**DoD:** A multi-turn clarify → answer flow survives a reopen from history with both turns intact.
+
+> New. The old map had E3.3 producing clarifying questions with nothing rendering
+> them — a backend behavior with no UI is not a feature.
 
 ---
 
-### E6.3 — Tappable citations
+### E6.3 — Nameplate capture, with a correction path that always works
+**As a** technician, **I want** to shoot the nameplate and fix a misread fast,
+**so that** a faded label doesn't send me down the wrong unit's diagnostics.
+- Both **camera capture and photo-library** selection feed the image to the Run B vision endpoint. *(human)*
+- The identified manufacturer + model renders back for confirmation before diagnostics proceed. *(human)*
+- Across **10 real nameplate photos** (Trane Precedent and Carrier 48/50, mixed lighting and angles), ≥ 8 identify correctly; per-photo results are tabulated. *(human)*
+- **Every one of the 10** can be corrected by the user in ≤ 2 taps — including the ones that were right. *(human)*
+- Camera-permission denial routes to manual model entry rather than a dead end. *(machine)*
+
+**Owner:** Frontend (capture + correction UI), Backend (upload path) · **Depends on:** E4.1, E4.2, E6.1 · **Priority:** Critical
+**DoD:** Run C AC 3 satisfied with the per-photo table.
+
+> The 10 photos are a **human collection task that gates this criterion** — start
+> collecting during Run A, not at Run C kickoff.
+
+---
+
+### E6.4 — Citations are first-class UI
 **As a** technician, **I want** to tap a citation and see the source, **so that** I
-can verify a claim in seconds.
-- Every citation in a response is tappable and opens the source document at the cited page. *(human)*
-- A citation that cannot resolve is surfaced as an error, never rendered as plain text. *(machine)*
+can verify a claim before I act on it.
+- Every diagnostic claim renders with a visible, tappable citation resolving to source document name + page number. *(human)*
+- Walking the **top-15 fault list** through the UI produces **zero uncited diagnostic claims**. *(human)*
+- A statement with no citation must not render as a claim at all — this is a rendering contract, not a nicety. *(machine)*
+- A citation that cannot resolve surfaces as an error, never as plain text. *(machine)*
+- Component tests cover citation rendering and tap-through. *(machine)*
 
 **Owner:** Frontend · **Depends on:** E3.5, E6.1 · **Priority:** Critical
+**DoD:** Run C AC 4 satisfied; uncited-claim rendering is impossible by construction.
 
 ---
 
-### E6.4 — Session history
+### E6.5 — Session history
 **As a** technician, **I want** past diagnostics to persist, **so that** I can pick a
 job back up after driving to the next site.
-- Conversations persist across app restarts. *(machine)*
-- History is listable and a past session reopens with its citations intact. *(machine)*
+- History lists past sessions. *(machine)*
+- Opening one resumes it with its **full message and citation state** intact. *(machine)*
+- Sessions survive a full app restart. *(human)*
 
 **Owner:** Backend (persistence), Frontend (list UI) · **Depends on:** E6.1 · **Priority:** High
+**DoD:** Run C AC 8 satisfied, including citation state after restart.
 
 ---
 
-### E6.5 — Rooftop ergonomics on phone and tablet
-**As a** technician in sunlight with gloves on, **I want** big targets and high
-contrast, **so that** the app is usable where I actually work.
-- Touch targets meet the plan's large-target bias. *(machine)*
-- Layout works on phone and tablet from one codebase. *(human)*
-- Readable in direct sunlight on a real device. *(human)*
+### E6.6 — Full state coverage, including offline
+**As a** technician on a roof with one bar, **I want** the app to tell me what's
+happening, **so that** I'm not staring at a blank screen deciding whether to climb down.
+- Loading, empty, error, and **offline/no-signal** states exist and are reachable for **chat, camera, and history** — nine states, enumerated. *(machine)*
+- Each is captured with a screenshot in the stage artifact. *(human)*
+- No state is a blank screen or an indefinite spinner. *(human)*
 
-**Owner:** Frontend · **Depends on:** E6.1 · **Priority:** High
+**Owner:** Frontend · **Depends on:** E6.1, E6.3, E6.5 · **Priority:** Critical
+**DoD:** Run C AC 6 satisfied with the enumerated screenshot set.
+
+> New. Signal loss on a commercial roof is the normal case, not the edge case.
 
 ---
 
-### E6.6 — Brand compliance from the shipped assets
-**As the** brand owner, **I want** the app to use the real tokens and lockups,
-**so that** no parallel style gets invented.
-- Colors and type come from `brand/README.txt` tokens; no hardcoded hex outside the token file. *(machine)*
-- Lockup selection follows the README's size rules rather than being picked by eye. *(machine)*
-- Outfit is the UI typeface throughout. *(machine)*
+### E6.7 — Accessibility floor
+**As a** technician with the OS font cranked up and gloves on, **I want** the app to
+stay usable, **so that** it works for how I actually hold a phone at work.
+- Every interactive element has a VoiceOver/TalkBack label. *(machine)*
+- Touch targets ≥ **48dp**. *(machine)*
+- Body text contrast ≥ **4.5:1** against its token background. *(machine)*
+- Focus and pressed states are visible. *(machine)*
+- Text respects OS font-size settings up to **200%** without clipping. *(human)*
 
-**Owner:** Frontend · **Depends on:** E0.3 · **Priority:** Medium
+**Owner:** Frontend · **Depends on:** E6.8 · **Priority:** Critical
+**DoD:** Run C AC 7 satisfied and evidenced.
+
+> New. This was buried inside the old "rooftop ergonomics" story as a vague
+> large-targets bullet; the Run C brief makes it a measured floor.
+
+---
+
+### E6.8 — A design system, not per-screen styling
+**As the** builder of Phase 2, **I want** reusable components and one token module,
+**so that** later screens inherit the brand instead of re-implementing it.
+- Colour and type come from a **single token module** sourced from `brand/README.txt`, using the pack's own token names verbatim. *(machine)*
+- **No hardcoded hex outside it** — greppable, and the grep result is reported. *(machine)*
+- Components (message, citation, refusal, input, empty/error state) are reusable by Phase 2 screens rather than one-off per screen. *(machine)*
+- Lockups are chosen by `README.txt`'s size rules, not by eye. Outfit is loaded and is the UI typeface. The cyan accent is not recoloured. *(machine)*
+
+**Owner:** Frontend · **Depends on:** E0.3 · **Priority:** Critical
+**DoD:** Run C AC 9 satisfied; the grep for stray hex returns nothing.
+
+> Upgraded from Medium. It was brand compliance; the Run C brief makes it the
+> foundation Phase 2 builds on, which changes both its priority and its shape.
+
+---
+
+### E6.9 — One codebase, correct on phone and tablet
+**As a** technician, **I want** the app right on whatever I'm carrying, **so that**
+the tablet isn't a stretched phone.
+- Runs from one codebase on a physical iOS device, a physical Android device, and a tablet. *(human)*
+- Tablet layout is **correct**, not phone layout stretched to width. *(human)*
+- Readable at arm's length in direct sunlight; where elegance trades against legibility, legibility wins. *(human)*
+
+**Owner:** Frontend · **Depends on:** E6.1 · **Priority:** Critical
+**DoD:** Run C AC 1 satisfied on all three form factors.
+
+---
+
+### E6.10 — Component tests over the things that must not silently break
+**As a** builder, **I want** the rendering contracts under test, **so that** a refactor
+can't quietly reintroduce an uncited claim or a dismissible refusal.
+- Component tests cover message rendering, citation rendering and tap-through, and refusal rendering. *(machine)*
+- Lint, build, and test run with exact status reported and **no new warnings** (before/after counts against the baseline). *(machine)*
+
+**Owner:** Frontend (tests), Test (verification) · **Depends on:** E6.4, E5.2 · **Priority:** High
+**DoD:** Run C AC 10 satisfied.
 
 ---
 
@@ -551,6 +645,22 @@ doesn't mask a scenario that used to pass.
 - Any previously-passing scenario that now fails is called out as a regression regardless of overall movement. *(eval)*
 
 **Owner:** Eval · **Depends on:** E7.2 · **Priority:** High
+
+---
+
+### E7.5 — UI-driven guardrail-leak check
+**As a** builder, **I want** the interface probed for leaks the core would refuse,
+**so that** a rendering path can't undo a guardrail the reasoning layer honors.
+- Guardrail probes run **through the UI**, not against the core directly — the question Run C uniquely answers is whether the interface can be made to leak what the core correctly refused. *(eval)*
+- The top-15 scenario set is rerun as a **regression** against Run B's scores. *(eval)*
+- Any leak is a **Critical** and blocks Phase 1 exit. *(eval)*
+
+**Owner:** Eval · **Depends on:** E7.2, E6.1, E5.2 · **Priority:** Critical
+**DoD:** Run C's eval section complete; zero leaks, or Phase 1 does not exit.
+
+> New. Stage 5.5's genuinely new work in Run C — the rest of its Run C job is
+> regression. A core that refuses correctly can still leak through a UI that
+> renders a refused draft, retries around it, or exposes it in history.
 
 ---
 
@@ -613,13 +723,39 @@ respectively. Both are cheap and are called out here rather than smuggled in.
 
 ---
 
+# Run C coverage map
+
+Against `.pipeline/00-brief-run-c.md`. Run B has no brief yet, so Epics 3–5 stay a
+forward map until it lands.
+
+| Brief AC | Stories | Verification |
+|---|---|---|
+| 1 — one codebase, iOS + Android + tablet, tablet not stretched | E6.9 | human |
+| 2 — streaming, TTFT ≤ 3s measured on device | E6.1 | human |
+| 3 — 10 nameplate photos, ≥ 8 correct, all correctable in ≤ 2 taps | E6.3 | human |
+| 4 — top-15 through the UI, zero uncited claims | E6.4 | human + machine |
+| 5 — 3 of 3 refusals, alert red, no bypass, screenshots | E5.2 | human + eval |
+| 6 — loading/empty/error/offline across chat, camera, history | E6.6, E6.1 | human |
+| 7 — accessibility floor (labels, 48dp, 4.5:1, focus, 200%) | E6.7 | machine + human |
+| 8 — history lists, resumes with citations, survives restart | E6.5 | machine + human |
+| 9 — single token module, no stray hex | E6.8 | machine |
+| 10 — component tests, lint/build/test, no new warnings | E6.10 | machine |
+| §Verification — UI-driven guardrail-leak check + top-15 regression | E7.5 | eval |
+
+Criterion 3 depends on a **human collection task** — 10 real nameplate photos.
+It gates an acceptance criterion and has a lead time measured in site visits, so
+it belongs in `SETUP-BLOCKERS.md` now rather than at Run C kickoff. Same for H7:
+the brief notes that nearly half of Run C is unverifiable without a phone in hand.
+
+---
+
 # Open questions, with the default I'd build on
 
 1. **The two orphan manifest rows.** *Default:* attempt one re-download; drop the row if the URL is dead. Neither document is in Phase 1 answer scope. → E1.2
 2. **OCR or exclude.** *Default:* exclude scan-blocked documents from Phase 1 rather than building an OCR path, **unless** the blocked set includes any of the 18 rooftop docs or 3 PT charts — in which case OCR becomes Critical, because the brief's 10-of-12 retrieval bar depends on those documents. → E1.5
 3. **Chunk size for dense IOM text.** *Default:* Stage 2.5 picks and justifies it against the smoke set rather than us guessing here. Fault tables and wiring diagrams argue for structure-aware chunking over fixed windows. → E1.6
 4. **Where the serverless function runs.** The brief says "serverless function" without naming a host. *Default:* Supabase Edge Functions, since Supabase is already a hard-constraint dependency and this adds no new vendor. → E0.4
-5. **Session persistence location.** *Default:* Supabase, same reasoning — but this is Run C's decision and shouldn't be locked now. → E6.4
+5. **Session persistence location.** *Default:* Supabase, same reasoning — but this is Run C's decision and shouldn't be locked now. → E6.5
 
 ---
 
@@ -631,3 +767,156 @@ Flagged because Stage 1 hasn't run, so none of these are verified against code:
 - ~~**The repo is not yet initialized locally.**~~ **Resolved 28 Jul 2026** — the repo is initialized and pushed to `andreasvermeulenTDM/ductective`, so E0.1 is verify-only. This map was drafted before that landed; if you find other statements about repo state that contradict the working tree, **trust the working tree** and correct the map.
 - **No lint/build/test toolchain exists**, so E0.7 establishes the baseline rather than reporting against one.
 - **Nothing here is a feasibility judgment on the brief's criteria.** The one criterion I'd watch is AC 7's 10-of-12 bar: it depends entirely on E1.4/E1.5 outcomes, and if the scan-heavy documents turn out to include Precedent or 48/50 IOMs, the bar and the OCR decision have to be revisited together rather than the bar being quietly missed.
+
+---
+---
+
+# Beyond Phase 1 — Epics E9–E16
+
+**Not a commitment, and not pipeline-ready.** Phase 1 exits on a self-testable
+build validated by one commercial tech. Everything below is Phases 2–4 from
+`docs/plan-v2-superseded.md` §Phase 2–4, which `Ductective-Plan-v3.md` leaves
+"deferred, not discarded." It exists so the shape of the road is visible and so
+Phase 1 decisions don't accidentally foreclose it.
+
+These epics are deliberately written as **intent + candidate stories + what must
+be decided first**, not as acceptance-criteria checklists. Each depends on choices
+you haven't made yet (pricing enforcement model, hosting, org data model). Writing
+testable criteria against undecided choices would be false precision — the Stage 2
+pass for each phase writes those, against that phase's own brief.
+
+**The website lives here, in two separate surfaces:** the Phase 3 marketing site
+(E14) and the Phase 4 company admin console (E16). Neither exists in Phase 1, and
+the Run C brief explicitly puts "marketing site, app-store listing assets" out of
+scope.
+
+---
+
+## Phase 2 — Private beta
+
+### E9 — Accounts & identity
+Ductective is a single-user prototype through Phase 1. The beta needs to know who
+someone is before it can gate anything later.
+- Supabase auth: sign-up, sign-in, session persistence · **Backend**
+- Sign in with Apple (App Store requires it wherever third-party sign-in is offered) · **Backend/Frontend**
+- Per-user data isolation on sessions and history — retrofitting row-level security onto E6.5's schema · **Backend**
+- Account deletion, in-app (App Store requirement, not optional) · **Backend/Frontend**
+
+**Decide first:** whether beta testers get accounts or a shared build. **Watch:**
+E6.5's session schema is written in Run C with no user column — adding one later
+is a migration, so it's worth a five-minute conversation during Run C.
+
+### E10 — Build & store distribution
+Phase 1 ships over Expo Go. Nothing in the map produces an installable artifact.
+- EAS build pipeline for iOS and Android · **Backend**
+- Apple Developer ($99/yr) and Google Play ($25 one-time) enrollment · **Human**
+- Signing, provisioning, certificates · **Human/Backend**
+- App icon and splash from `brand/png/app-icon-*.png` (already in the pack, unused) · **Frontend**
+- TestFlight and Play internal testing distribution · **Human**
+- OTA update channel · **Backend**
+
+**Decide first:** nothing blocking — but the Apple enrollment has a lead time and
+Human-owned identity verification, so start it before you need it.
+
+### E11 — Beta instrumentation & feedback
+The beta's purpose is learning what techs actually ask, which is invisible without
+instrumentation.
+- Usage analytics: queries asked, faults hit, abandonment points · **Backend**
+- In-app feedback capture per answer — thumbs plus a reason · **Frontend**
+- Wrong-answer reports route into the Stage 5.5 scenario set, which only ever grows · **Eval**
+- Cost per active user tracked against the subscription price you plan to charge · **Backend**
+
+**Decide first:** what's collected and how it's disclosed — this is the first point
+where a privacy policy stops being theoretical.
+
+### E12 — Knowledge base widening
+Phase 1 answer scope is 18 rooftop docs + 3 PT charts. Phase 2 widens toward
+general HVAC.
+- Un-scope the already-ingested Daikin, Mitsubishi, chiller, and EPA documents (E1.7 tagged them, didn't discard them) · **Knowledge**
+- Source and ingest new OEM corpora · **Knowledge**
+- Re-measure retrieval precision after each widening — precision degrades as the corpus grows, which is exactly why E1.7 scoped it in the first place · **Knowledge/Eval**
+- Grow the scenario set alongside the corpus · **Eval**
+
+**Decide first:** residential or wider commercial. v3 pivoted to commercial because
+the corpus was already there; the same logic should drive the next widening.
+
+---
+
+## Phase 3 — Monetize (individuals)
+
+### E13 — Subscriptions & paywall
+$29/mo with a 7-day trial, via RevenueCat across both stores.
+- RevenueCat integration and entitlement checks · **Backend**
+- 7-day trial → $29/mo conversion flow · **Backend/Frontend**
+- Paywall gating: what a non-subscriber can still do · **Frontend**
+- Restore purchases, and entitlement state that survives reinstall · **Backend**
+
+**Decide first:** what the free tier is, if any. Also whether per-answer Claude cost
+at real usage actually clears $29/mo — E8.2 and E11's cost tracking exist to answer
+this before you're contractually committed to a price.
+
+### E14 — Marketing website ← *the website*
+Next.js, per `docs/plan-v2-superseded.md:92`. The first non-app surface in the
+whole plan, and the first use for `brand/favicon/` (16–512px) and
+`brand/brand-board.html`, which ship in the repo today with nothing to attach to.
+- Landing page: what Ductective is, who it's for, what equipment it covers · **Frontend**
+- Pricing page — individual, $39/seat, $199/shop · **Frontend**
+- **Privacy policy and terms** — App Store submission requires reachable URLs, so this is a launch blocker, not marketing polish · **Human/Frontend**
+- Support and contact page — also an App Store requirement · **Frontend**
+- Account-deletion information page (Apple wants the path documented publicly) · **Frontend**
+- Store badges and screenshots, once E10 produces builds · **Frontend**
+- Analytics and basic SEO · **Frontend**
+
+**Decide first:** Next.js in this repo or its own. **Recommendation:** its own repo.
+It shares only brand tokens with the app, deploys on a different cadence, and
+dragging a web build into a pipeline whose seven agents all assume one Expo
+codebase would cost more than the duplication saves. Extract the tokens from E6.8
+into a shared package if the duplication starts to hurt — not before.
+
+### E15 — Store & platform compliance
+The work that turns a working app into a shippable one, and the usual source of
+rejection.
+- App Review submission, metadata, age rating · **Human**
+- Privacy nutrition labels / Play data-safety declarations · **Human**
+- Sign in with Apple compliance (pairs with E9) · **Backend**
+- **A safety-critical question worth early legal input:** an app giving HVAC
+  diagnostic guidance carries liability the advise-only guardrail is designed to
+  bound. Whether that framing survives contact with App Review — and with a lawyer
+  — is worth asking before launch week · **Human**
+
+**Decide first:** the liability framing above. It's the one item in Phases 2–4 that
+could reshape the product rather than just delay it.
+
+---
+
+## Phase 4 — Company plans
+
+### E16 — Company seats & admin console ← *the second web surface*
+$39/seat or $199/shop up to 6 techs, billed through Stripe rather than the app
+stores — which is precisely why it needs a web surface.
+- Stripe B2B subscriptions, seats, and invoicing · **Backend**
+- Organization data model: org, membership, role, seat assignment · **Backend**
+- Entitlement sync between Stripe (company) and RevenueCat (individual) — two billing systems, one entitlement truth, and the likeliest source of subtle bugs in the whole plan · **Backend**
+- **Company admin dashboard (web):** invite and remove techs, assign seats, view billing · **Frontend**
+- App Review compliance for the B2B billing model — Apple's rules on external purchase for business accounts are specific and have changed more than once · **Human**
+
+**Decide first:** whether the admin console is a section of E14's Next.js site or a
+separate authenticated app. **Recommendation:** same codebase as E14, separate
+authenticated route — one web deploy, not two.
+
+---
+
+## What Phase 1 should do about all this
+
+Almost nothing. Three exceptions, each cheap now and expensive later:
+
+1. **E6.5's session schema** (Run C) — decide whether a user/org column goes in from
+   the start. A nullable column costs nothing today; a migration over real beta
+   data costs a weekend. → E9
+2. **E6.8's token module** (Run C) — keep it importable and free of React Native
+   specifics, so E14's website can consume it without a rewrite. → E14
+3. **E8.2's cost tracking** (Run A) — it's already in the map for budget reasons,
+   but its more important job is telling you whether $29/mo is profitable before
+   you've published a price. → E13
+
+Everything else waits for its phase and its own brief.
