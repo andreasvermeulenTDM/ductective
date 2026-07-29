@@ -127,7 +127,22 @@ Three pipeline runs, each with its own `00-brief.md`, run start to finish before
 | **B** | P1.3 diagnostic core | research → stories → backend → test → **eval** (first scored run against the top-15) |
 | **C** | P1.4 chat + camera UI | research → stories → backend (streaming/session) → frontend → test → **eval** (regression) |
 
-Run A's brief is written at `.pipeline/00-brief.md`.
+All three briefs are written:
+
+| Run | Brief | Eval's role |
+|---|---|---|
+| A | `.pipeline/00-brief.md` *(active)* | Nothing to score — stands up the scenario set |
+| B | `.pipeline/00-brief-run-b.md` | **First scored run** — sets the baseline |
+| C | `.pipeline/00-brief-run-c.md` | Regression, plus a UI-driven guardrail-leak probe |
+
+Every agent reads `.pipeline/00-brief.md`, so at each kickoff the incoming run's
+brief is moved to that path and the outgoing one archived to
+`.pipeline/runs/<run>-00-brief.md`.
+
+**Two collection tasks gate later runs and neither can be done by an agent — start
+both now.** Ten real nameplate photos (Trane Precedent and Carrier 48/50, mixed
+lighting and angles) gate Run B criterion 7 and Run C criterion 3. Recruiting a
+commercial RTU tech gates P1.5, whose verdict overrides eval's score.
 
 ---
 

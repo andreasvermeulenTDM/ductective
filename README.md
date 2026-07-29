@@ -17,7 +17,9 @@ Carrier 48/50 — the equipment the knowledge base actually covers.
 | [Ductective-Plan-v3.md](Ductective-Plan-v3.md) | **Plan of record.** Scope, brand, corpus, phases, budget, sequencing. |
 | [SETUP-BLOCKERS.md](SETUP-BLOCKERS.md) | The human-only critical path. Eight items, none doable by an agent. Read before any pipeline run. |
 | [CLAUDE.md](CLAUDE.md) | Pipeline conventions and the two domain rules that bind every stage. |
-| [.pipeline/00-brief.md](.pipeline/00-brief.md) | Brief for Run A (rails + knowledge base). |
+| [.pipeline/00-brief.md](.pipeline/00-brief.md) | Brief for **Run A** (rails + knowledge base) — the active run. |
+| [.pipeline/00-brief-run-b.md](.pipeline/00-brief-run-b.md) | **Run B** (diagnostic core). Where the two rules below become code. |
+| [.pipeline/00-brief-run-c.md](.pipeline/00-brief-run-c.md) | **Run C** (chat + camera UI). Produces the Phase 1 exit artifact. |
 
 ## Stack
 
@@ -59,9 +61,14 @@ works, `eval` verifies the answers are right, correctly cited, and correctly
 refused. A round isn't done until both pass.
 
 Phase 1 runs the pipeline three times: **Run A** rails + knowledge base, **Run B**
-diagnostic core, **Run C** chat + camera UI. Recruiting a technician to validate
-accuracy runs in parallel and is human-owned — it's the longest pole in the
-project and depends on nothing else.
+diagnostic core, **Run C** chat + camera UI. Each has its own brief; at kickoff the
+incoming brief moves to `.pipeline/00-brief.md` and the outgoing one is archived to
+`.pipeline/runs/`.
+
+Recruiting a technician to validate accuracy runs in parallel and is human-owned —
+it's the longest pole in the project, depends on nothing else, and its verdict
+**overrides** eval's score. If the tech disagrees with an answer eval marked
+correct, the tech is right and the scenario set is wrong.
 
 ## Corpus
 
