@@ -40,8 +40,11 @@ and the Expo app can complete a round trip to Claude on a real phone.
 - **No secrets committed.** Keys via environment; `.env` gitignored from commit one.
 - **`HVAC Data/` is gitignored** — 215 MB of PDFs must never enter git history.
   The manifest is the tracked, reproducible artifact.
-- **Brand assets are source of truth** (`Ductective-Logo-Pack.zip`,
-  `Ductective-Brand-Board.html`): Inter, dark-first, `#5CD0F5` cyan on `#0C1826`.
+- **Brand assets are source of truth** (`brand/README.txt`, `brand/svg/`,
+  `brand/brand-board.html`): **Outfit** (SIL OFL), dark-first, `#5CD0F5` cyan on
+  `#0C1826`. Corrected 30 Jul 2026 — this line previously said Inter and pointed
+  at the pre-restructure zip paths. `brand/README.txt` is authoritative per
+  `CLAUDE.md`; if any other document says Inter, that document is stale.
 
 ## Corpus facts the knowledge stage must handle
 
@@ -89,7 +92,21 @@ set file from the top-15 fault list in `Ductective-Plan-v3.md` §3, ready for Ru
 
 ## Notes for downstream stages
 
-- Frontend: expect "nothing to do" beyond the throwaway hello-world screen.
+- Frontend: still **"nothing to do"** in Run A — but not because the app is empty.
+  A design prototype already exists (`app/`, branch `design/app-prototype`) with a
+  working chat/history UI on real Supabase persistence and **mock** answers. It is
+  **not** Run C's deliverable and does not discharge any Run C criterion. Do not
+  extend it, and do not treat it as Stage 4 output. The one durable piece is
+  `app/theme/tokens.ts` (E6.8) — reuse it rather than defining a second palette.
+- **The repo is further along than this brief's earlier drafts assume.** Already
+  live and verified: the Supabase rail (pgvector 0.8.2), `sql/001_bootstrap.sql`,
+  `sql/002_prototype_sessions.sql`, `npm run verify`, and `npm run verify:sessions`.
+  Run those before assuming anything about the current state, and trust the working
+  tree over any prose here that contradicts it.
+- **Anthropic and Voyage keys are deliberately unobtained.** `lib/clients.mjs`
+  stubs both, fails closed on a missing key, and records use in `usedMocks()`.
+  Criterion 7 (retrieval smoke set) and criterion 8 (real cost) **cannot pass** on
+  stub embeddings — do not mark them green. See `SETUP-BLOCKERS.md` H2/H3.
 - Backend is thin in Run A — the function, the schema, and key handling. The
   weight of this run is on Knowledge.
 - Record any `OPEN QUESTION` with a proposed default and proceed on the default.
