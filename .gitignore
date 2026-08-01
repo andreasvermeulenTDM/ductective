@@ -59,3 +59,6 @@ yarn-error.log*
 # OneDrive keeps re-syncing the pre-restructure pipeline path; the live agents
 # are in .claude/agents/.
 agent-pipeline/
+
+# Generated from the root .env by scripts/sync-app-env.mjs — never commit.
+app/.env

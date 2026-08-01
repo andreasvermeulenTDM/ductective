@@ -8,7 +8,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "verify": "node --env-file=.env scripts/verify-connection.mjs"
+    "verify": "node --env-file=.env scripts/verify-connection.mjs",
+    "sync-env": "node scripts/sync-app-env.mjs",
+    "app": "npm run sync-env && npm --prefix app run web",
+    "verify:sessions": "node --env-file=.env scripts/verify-sessions.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0"
