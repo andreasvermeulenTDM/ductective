@@ -48,4 +48,11 @@ export type Session = {
   equipment: string | null;
   created_at: string;
   updated_at: string;
+
+  /**
+   * Derived in `listSessions`, not stored. Absent when the enriched read falls
+   * back — history renders without the badges rather than guessing at zero.
+   */
+  citationCount?: number;
+  refused?: boolean;
 };

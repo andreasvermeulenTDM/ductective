@@ -16,10 +16,44 @@ function db() {
   return supabase;
 }
 
+const SESSION_COLUMNS = 'id, title, equipment, created_at, updated_at';
+
+/**
+ * Sessions for the history list.
+ *
+ * The mockup's history rows carry a citation count and a "refused" marker so a job
+ * is identifiable by what happened in it rather than by its first sentence. Neither
+ * is a column on `sessions`, so this embeds the message kinds and their citation
+ * ids and derives both client-side.
+ *
+ * This is a read-shaping adapter at the data-access boundary, not a schema change —
+ * nothing in `sql/` moves. If the embed fails for any reason (an older PostgREST,
+ * a policy that blocks the nested read), it falls back to the plain select and the
+ * list renders without the two badges rather than erroring out.
+ */
 export async function listSessions(): Promise<Session[]> {
+  const enriched = await db()
+    .from('sessions')
+    .select(`${SESSION_COLUMNS}, messages(kind, citations(id))`)
+    .is('user_id', null)
+    .order('updated_at', { ascending: false });
+
+  if (!enriched.error) {
+    type Row = Session & { messages?: { kind: string; citations?: { id: string }[] }[] };
+    return (enriched.data ?? []).map((row: Row) => {
+      const messages = row.messages ?? [];
+      const { messages: _drop, ...session } = row;
+      return {
+        ...session,
+        citationCount: messages.reduce((n, m) => n + (m.citations?.length ?? 0), 0),
+        refused: messages.some((m) => m.kind === 'refusal'),
+      };
+    });
+  }
+
   const { data, error } = await db()
     .from('sessions')
-    .select('id, title, equipment, created_at, updated_at')
+    .select(SESSION_COLUMNS)
     .is('user_id', null)
     .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);

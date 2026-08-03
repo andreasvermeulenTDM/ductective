@@ -9,10 +9,22 @@
  *     to make that true is for the component to refuse to draw one.
  *  2. A refusal has no dismiss, collapse, or "show me anyway" affordance — not
  *     because none is wired up, but because none exists. E5.2.
+ *
+ * Visual language follows the Run C mockup (`Mockups/…/Ductective Mobile.dc.html`),
+ * with two deliberate departures, both recorded in
+ * `.pipeline/04-frontend-design-pass.md`:
+ *
+ *  - Refusal *text* uses `color.refusalText`, not `color.refusal`. The mockup's
+ *    #C0453C label measures 3.23:1 on its own card, under E6.7's 4.5:1 floor.
+ *  - The mockup's quick-answer options (s4) and safe-alternative rows (s8) are not
+ *    rendered. The persisted message contract has no field to carry them, and
+ *    inventing options that vanish when a session is reopened from history is
+ *    worse than not drawing them. Filed as CONTRACT MISMATCH against Stage 3.
  */
 
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
+import { View, Text, StyleSheet } from 'react-native';
+import { color, type, space, radius } from '../theme/tokens';
+import { CitationChip } from './Citation';
 import type { Citation, MessageKind } from '../lib/supabase';
 
 type Props = {
@@ -29,30 +41,10 @@ export function Message({ kind, body, citations = [], onCitationPress }: Props) 
 
   if (citations.length === 0) return <UncitedDefect body={body} />;
 
-  return (
-    <View style={s.assistant}>
-      <Text style={s.body} accessibilityRole="text">
-        {body}
-      </Text>
-      <View style={s.citationRow}>
-        {citations.map((c) => (
-          <Pressable
-            key={c.id}
-            onPress={() => onCitationPress?.(c)}
-            style={({ pressed }) => [s.citation, pressed && s.citationPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Source: ${c.source_document}, page ${c.page}`}
-            accessibilityHint="Opens the cited source at that page"
-          >
-            <Text style={s.citationText} numberOfLines={1}>
-              {shortDoc(c.source_document)} · p.{c.page}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
+  return <AnswerTurn body={body} citations={citations} onCitationPress={onCitationPress} />;
 }
+
+/* -------------------------------------------------------------------------- */
 
 function UserTurn({ body }: { body: string }) {
   return (
@@ -62,26 +54,98 @@ function UserTurn({ body }: { body: string }) {
   );
 }
 
+/**
+ * A diagnostic answer: lead, ordered checks, and the reading to take.
+ *
+ * The structure is *parsed out of prose* — `parseAnswer` finds "1. ", "2. " lines
+ * in the body. That is a prototype accommodation, not a design: the mockup's
+ * numbered checks and per-step citations imply Run B emits a structured answer
+ * (lead / steps / reading / citation anchored per claim). Until it does, chips
+ * render in a row under the answer rather than inline after the claim they
+ * support, because the contract carries no positional anchor to place them by.
+ */
+function AnswerTurn({
+  body,
+  citations,
+  onCitationPress,
+}: {
+  body: string;
+  citations: Citation[];
+  onCitationPress?: (c: Citation) => void;
+}) {
+  const { lead, steps, reading } = parseAnswer(body);
+
+  return (
+    <View style={s.assistant}>
+      {lead ? <Text style={s.body}>{lead}</Text> : null}
+
+      {steps.length > 0 && (
+        <>
+          <Text style={s.overline}>CHECK IN THIS ORDER</Text>
+          <View style={s.steps}>
+            {steps.map((step, i) => (
+              <View key={i} style={s.step}>
+                <View style={s.stepNumber}>
+                  <Text style={s.stepNumberText}>{i + 1}</Text>
+                </View>
+                <Text style={s.stepBody}>
+                  {step.headline ? <Text style={s.stepHeadline}>{step.headline} </Text> : null}
+                  {step.rest}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      {reading ? (
+        <View style={s.reading}>
+          <Text style={s.readingGlyph}>◎</Text>
+          <Text style={s.readingText}>{reading}</Text>
+        </View>
+      ) : null}
+
+      <View style={s.citationRow}>
+        {citations.map((c) => (
+          <CitationChip key={c.id} citation={c} onPress={(x) => onCitationPress?.(x)} />
+        ))}
+      </View>
+
+      <View style={s.adviseOnly}>
+        <Text style={s.adviseOnlyText}>
+          Advice only. Verify against the pages above before you act, and follow your
+          own procedure for anything on the refrigerant side.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** Cyan-ringed and labelled, so a question can never be mistaken for an answer. */
 function ClarifyTurn({ body }: { body: string }) {
   return (
     <View style={s.clarify}>
-      <Text style={s.clarifyLabel}>NEEDS ONE MORE DETAIL</Text>
+      <Text style={s.clarifyLabel}>ONE THING FIRST</Text>
       <Text style={s.body}>{body}</Text>
     </View>
   );
 }
 
 /**
- * Safety refusal. Alert red per plan v3 §1.
+ * Safety refusal. Alert red per plan v3 §1, ring and fill per mockup s8.
  *
  * Deliberately absent: any close button, any collapse toggle, any retry, any
  * "continue anyway". A refusal a technician can click past is not a refusal, and
  * this is the component where that guarantee either holds or doesn't.
+ *
+ * It is also deliberately unlike a transport error (see `ErrorState`), which is a
+ * steel card with one red glyph and a Try again. At arm's length in sunlight the
+ * difference has to be obvious: red all over and no action means stop.
  */
 function RefusalCard({ body }: { body: string }) {
   return (
     <View style={s.refusal} accessibilityRole="alert">
-      <Text style={s.refusalLabel}>SAFETY — I WON'T ADVISE ON THIS</Text>
+      <Text style={s.refusalLabel}>I WON'T GUIDE THIS</Text>
       <Text style={s.refusalBody}>{body}</Text>
     </View>
   );
@@ -103,17 +167,62 @@ function UncitedDefect({ body }: { body: string }) {
   );
 }
 
-/** `RT-SVX23R-EN — Precedent Rooftop IOM` → `RT-SVX23R-EN`, for a chip. */
-function shortDoc(name: string) {
-  return name.split('—')[0].trim();
+/* -------------------------------------------------------------------------- */
+
+type ParsedStep = { headline: string | null; rest: string };
+
+/**
+ * Split "lead … 1. step 2. step … tail" into its parts.
+ *
+ * Presentation-only: it reformats text the answer already contains and invents
+ * nothing. If no numbered lines are found, the whole body renders as the lead,
+ * which is the correct degradation for a free-prose answer.
+ */
+export function parseAnswer(body: string): {
+  lead: string;
+  steps: ParsedStep[];
+  reading: string;
+} {
+  const lines = body.split('\n');
+  const stepAt = (l: string) => /^\s*\d+[.)]\s+/.test(l);
+
+  const first = lines.findIndex(stepAt);
+  if (first === -1) return { lead: body.trim(), steps: [], reading: '' };
+
+  let last = first;
+  for (let i = first; i < lines.length; i++) if (stepAt(lines[i])) last = i;
+
+  const lead = lines.slice(0, first).join('\n').trim();
+  const reading = lines.slice(last + 1).join('\n').trim();
+
+  const steps: ParsedStep[] = [];
+  for (let i = first; i <= last; i++) {
+    const line = lines[i];
+    if (!stepAt(line)) {
+      // A wrapped continuation line belongs to the step above it.
+      if (steps.length && line.trim()) steps[steps.length - 1].rest += ' ' + line.trim();
+      continue;
+    }
+    const text = line.replace(/^\s*\d+[.)]\s+/, '').trim();
+    // The mockup bolds the first clause of each step; split on the first period
+    // only when it reads like a short label rather than a whole sentence.
+    const dot = text.indexOf('.');
+    if (dot > 0 && dot <= 42) {
+      steps.push({ headline: text.slice(0, dot + 1), rest: text.slice(dot + 1).trim() });
+    } else {
+      steps.push({ headline: null, rest: text });
+    }
+  }
+
+  return { lead, steps, reading };
 }
 
 const s = StyleSheet.create({
   user: {
     alignSelf: 'flex-end',
     maxWidth: '85%',
-    backgroundColor: color.interactive,
-    borderRadius: radius.lg,
+    backgroundColor: color.pressed,
+    borderRadius: space.xl,
     borderBottomRightRadius: radius.sm,
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
@@ -121,55 +230,81 @@ const s = StyleSheet.create({
   },
   userText: { ...type.body, color: color.textOnInteractive },
 
-  assistant: { marginBottom: space.xl },
+  assistant: { marginBottom: space.xl, gap: space.md },
   body: { ...type.body, color: color.textPrimary },
 
-  citationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.md },
-  citation: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
+  overline: { ...type.overline, color: color.textSecondary },
+  steps: { gap: space.lg },
+  step: { flexDirection: 'row', gap: space.md },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    backgroundColor: color.accentSurface,
     borderWidth: 1,
-    borderColor: color.accent,
+    borderColor: color.accentBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  stepNumberText: { ...type.chip, color: color.accent },
+  stepBody: { ...type.body, color: color.textPrimary, flex: 1 },
+  stepHeadline: { fontFamily: type.bodyStrong.fontFamily, color: color.textPrimary },
+
+  reading: {
+    flexDirection: 'row',
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
     backgroundColor: color.surface,
   },
-  citationPressed: { backgroundColor: color.surfaceRaised },
-  citationText: { ...type.label, color: color.accent },
+  readingGlyph: { ...type.body, color: color.textSecondary },
+  readingText: { ...type.caption, color: color.textSecondary, flex: 1 },
+
+  citationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+
+  adviseOnly: {
+    flexDirection: 'row',
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  adviseOnlyText: { ...type.caption, color: color.textSecondary, flex: 1 },
 
   clarify: {
     marginBottom: space.xl,
-    borderLeftWidth: 3,
-    borderLeftColor: color.accent,
-    paddingLeft: space.lg,
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: space.xl,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
   },
-  clarifyLabel: { ...type.caption, color: color.accent, letterSpacing: 1, marginBottom: space.sm },
+  clarifyLabel: { ...type.overline, color: color.accent },
 
   refusal: {
     marginBottom: space.xl,
+    gap: space.md,
     backgroundColor: color.refusalSurface,
     borderWidth: 2,
-    borderColor: color.refusalBorder,
-    borderRadius: radius.lg,
+    borderColor: color.refusal,
+    borderRadius: space.xl,
     padding: space.lg,
   },
-  refusalLabel: {
-    ...type.label,
-    color: color.refusal,
-    letterSpacing: 0.5,
-    marginBottom: space.sm,
-  },
+  refusalLabel: { ...type.overline, color: color.refusalText },
   refusalBody: { ...type.body, color: color.textPrimary },
 
   defect: {
     marginBottom: space.xl,
+    gap: space.sm,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: color.refusalBorder,
     borderRadius: radius.lg,
     padding: space.lg,
   },
-  defectLabel: { ...type.label, color: color.refusal, marginBottom: space.sm },
-  defectBody: { ...type.body, color: color.textPrimary, marginBottom: space.md },
+  defectLabel: { ...type.overline, color: color.refusalText },
+  defectBody: { ...type.body, color: color.textPrimary },
   defectRaw: { ...type.caption, color: color.textSecondary, fontStyle: 'italic' },
 });
