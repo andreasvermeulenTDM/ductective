@@ -62,3 +62,9 @@ agent-pipeline/
 
 # Generated from the root .env by scripts/sync-app-env.mjs — never commit.
 app/.env
+
+# Stage 5 run output. The report is a deliverable only once it is copied into
+# .pipeline/05-test-report.md; last-run.json is local state for round-over-round
+# regression comparison. Neither belongs in a diff.
+tests/last-run.md
+tests/last-run.json
