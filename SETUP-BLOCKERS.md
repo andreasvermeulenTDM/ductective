@@ -21,7 +21,7 @@ top of them.**
 |---|---|---|---|
 | H1 | Supabase account + project, pgvector enabled | Any storage or retrieval | ✅ **Verified 29 Jul 2026** |
 | H2 | Anthropic API key | Claude round trip, diagnostic core | ⬜ Not done — **stubbed** |
-| H3 | Voyage API key | Embedding the corpus | ⬜ Not done — **stubbed** |
+| H3 | Voyage API key | Embedding the corpus | ✅ **Verified 3 Aug 2026** |
 | H4 | Supabase CLI available | Migrations, deploying Edge Functions | ✅ **Resolved via `npx`** |
 | H5 | Deno CLI installed | Running Edge Functions locally | ⏸️ **Deferred by decision** |
 | H6 | Docker Desktop installed | `supabase start` (local stack) | ⏸️ **Deferred by decision** |
@@ -81,9 +81,30 @@ Editor. Two things to remember:
 the account before you use it; the plan budgets $50–150/mo and an unbounded key
 plus a loop is how that becomes $800.
 
-**H3 — Voyage.** Get a key at voyageai.com. Embedding the whole corpus should land
-under $20 — if a run projects materially above that, stop and re-check the
-chunking rather than paying it.
+**H3 — Voyage. ✅ Done.** Key is in `.env`. `npm run verify` embeds live and
+reports the model, dimensions, and tokens billed.
+
+**Model: `voyage-4-large`, and the choice is a budget decision as much as a quality
+one.** Verified live — voyage-3-large/3.5/3.5-lite and voyage-4/4-lite/4-large all
+return **1024 dimensions**, so `EMBED_DIM` holds across any of them. But the
+voyage-3 family carries **no free tokens** ($0.18/1M for 3-large) while the
+voyage-4 family includes **200M free**. The whole corpus embeds inside that
+allowance, so the newer and better model is also the free one.
+
+Override with `VOYAGE_MODEL` to compare. **Re-embed everything when you switch** —
+vectors from different models are not comparable, and a mixed index degrades
+silently rather than erroring.
+
+Two things the client enforces so they cannot go wrong quietly:
+
+- **`input_type` is not cosmetic.** Voyage embeds asymmetrically. Corpus chunks go
+  in as `document`, searches as `query`; mismatching them costs recall measurably.
+  Ingestion must pass `document`, the retrieval smoke set `query`.
+- **A returned vector of the wrong width throws.** Storing it would corrupt the
+  index silently, which is worse than a failed ingest.
+
+`embedTokensUsed()` accumulates tokens billed per process, so Stage 2.5 can report
+real cost for brief criterion 8 rather than estimating it.
 
 **H4 — Supabase CLI. ✅ Resolved without installing anything.**
 
