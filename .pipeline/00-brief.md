@@ -8,15 +8,15 @@ Plan of record: `Ductective-Plan-v3.md` (root). This brief covers P1.1 + P1.2 on
 Stand up the app's rails and turn the 25-document HVAC corpus into a queryable,
 citable knowledge base. At the end of Run A, a query about a light-commercial
 rooftop unit returns the correct manual sections with page-accurate provenance,
-and the Expo app can complete a round trip to Claude on a real phone.
+and the Expo app can complete a round trip to the model on a real phone.
 
 ## In scope
 
 - Git repo init and the layout in `Ductective-Plan-v3.md` §5.
 - Expo / React Native app scaffold (iOS + Android + tablet, one codebase).
 - Supabase project with pgvector; schema for KB chunks + provenance.
-- Anthropic and Voyage API wiring through a serverless function.
-- A hello-world round trip: app → function → Claude → response rendered on device.
+- Model and Voyage API wiring through a serverless function.
+- A hello-world round trip: app → function → model → response rendered on device.
 - Full ingestion pipeline: manifest reconciliation → parse → chunk → tag → embed
   → store, idempotent and re-runnable.
 - A retrieval smoke set proving the right sections come back for real queries.
@@ -32,9 +32,10 @@ and the Expo app can complete a round trip to Claude on a real phone.
 ## Hard constraints
 
 - **Stack is decided** — Expo + React Native, Supabase (Postgres + pgvector),
-  Claude API, Voyage embeddings. Do not re-litigate; if one is genuinely
-  unworkable, record it as an `OPEN QUESTION` rather than substituting silently.
-- **Budget:** the whole prototype lives inside ~$1,000, essentially all Claude API.
+  **Gemini Flash for answer generation** (amended 4 Aug 2026 — see Amendment 1
+  below), Voyage embeddings. Do not re-litigate; if one is genuinely unworkable,
+  record it as an `OPEN QUESTION` rather than substituting silently.
+- **Budget:** the whole prototype lives inside ~$1,000, essentially all model API.
   Report ingestion and embedding cost; a full re-ingest must stay under $20.
 - **Solo builder, <10h/week.** Prefer boring, working, few dependencies.
 - **No secrets committed.** Keys via environment; `.env` gitignored from commit one.
@@ -63,8 +64,10 @@ and the Expo app can complete a round trip to Claude on a real phone.
 1. `git log` shows the repo initialized with the §5 layout; `HVAC Data/` and
    `.env` are gitignored and absent from history.
 2. `npx expo start` runs; the app loads on a physical iOS or Android device.
-3. From the device, submitting text returns a Claude response rendered on screen,
-   round trip through the serverless function — no API key present in the client.
+3. From the device, submitting text returns **a model response** rendered on
+   screen, round trip through the serverless function — no API key present in the
+   client. *(Provider-neutral by amendment: the criterion is the round trip and the
+   key staying server-side, neither of which depends on the vendor.)*
 4. Supabase has a chunks table with pgvector and, per chunk: source document,
    page number, manufacturer, model/coverage, doc type, and `license_status`.
 5. Ingestion runs end to end from a single documented command, and running it
@@ -103,10 +106,58 @@ set file from the top-15 fault list in `Ductective-Plan-v3.md` §3, ready for Ru
   `sql/002_prototype_sessions.sql`, `npm run verify`, and `npm run verify:sessions`.
   Run those before assuming anything about the current state, and trust the working
   tree over any prose here that contradicts it.
-- **Anthropic and Voyage keys are deliberately unobtained.** `lib/clients.mjs`
-  stubs both, fails closed on a missing key, and records use in `usedMocks()`.
-  Criterion 7 (retrieval smoke set) and criterion 8 (real cost) **cannot pass** on
-  stub embeddings — do not mark them green. See `SETUP-BLOCKERS.md` H2/H3.
+- **Voyage is live; the model key is not.** Corrected 4 Aug 2026 — an earlier
+  draft of this line said both were unobtained and that criteria 7 and 8 could not
+  pass. That is no longer true and would stop Knowledge doing its main job.
+  - **H3 is cleared.** `embed()` calls Voyage live (`voyage-4-large`, 1024 dims,
+    verified). **Criterion 7 (the 12-query retrieval smoke set) and criterion 8
+    (real re-ingest cost) are both achievable now** — `embedTokensUsed()` reports
+    actual tokens billed. Pass `inputType: 'document'` when ingesting and
+    `'query'` when searching; mismatching them costs recall silently.
+  - **H2 is open.** `complete()` is still a fail-closed stub, so criteria 2 and 3
+    (the device round trip) remain blocked — and they need H7 regardless.
+  - Stubs still record use in `usedMocks()`; a scored run must assert it is empty.
 - Backend is thin in Run A — the function, the schema, and key handling. The
   weight of this run is on Knowledge.
 - Record any `OPEN QUESTION` with a proposed default and proceed on the default.
+
+---
+
+## Amendment 1 — answer generation moves to Gemini Flash
+
+*Dated 4 August 2026. Stage 0 amendment by the project owner. Appended, not edited
+in place, so the artifact stays an audit trail.*
+
+**What changes.** Answer generation moves from the Claude API to **Gemini Flash**
+via Google AI Studio. **Voyage keeps embeddings. Supabase and pgvector are
+unchanged. Retrieval is entirely unaffected** — the model only ever sees chunk
+*text*, and vectors never leave Postgres.
+
+**Why this is an amendment and not an `OPEN QUESTION`.** The hard constraint above
+prescribes `OPEN QUESTION` for a stack element that is *genuinely unworkable*.
+Claude is not unworkable — `docs/retrieval-architecture.md` §3.3 argues it is the
+better technical fit, and that argument still stands and is preserved rather than
+rewritten. This is an **owner's cost decision taken with the trade understood**, so
+it is recorded as a dated amendment. Downstream agents should treat the stack line
+above as amended, not contradicted.
+
+**Why it was cheap to do now.** `complete()` in `lib/clients.mjs` was still a stub,
+the repo had no `@anthropic-ai/sdk`, and `ANTHROPIC_API_KEY` was never set. **No
+Anthropic code was ever written, so none had to be undone.**
+
+**A control regressed, and it is written down rather than assumed.** H2 previously
+required an Anthropic account spend limit. Google has no equivalent hard stop —
+Cloud Billing budgets alert, they do not cut off. See `SETUP-BLOCKERS.md` H2 for
+the per-key quota cap that replaces it and the free-tier ordering question.
+
+**Criterion 3 is now provider-neutral** — "a model response", not a vendor name.
+That is the durable fix: the next provider question should cost nothing here.
+
+**Migration stories** are Addendum B of `.pipeline/02-user-stories.md` (M1–M17).
+Landed so far: **M1** (secret scanning covers Google credentials) and **M2** (the
+atomic key swap). **M3 is human and blocking** — no Google key exists yet, so
+`complete()` remains a fail-closed stub and `npm run verify`'s `gemini` probe
+correctly reports SKIP rather than a false green.
+
+**Not affected, and should not wait:** S8–S18 and A1–A4 are blocked by none of
+this. That is the critical path.

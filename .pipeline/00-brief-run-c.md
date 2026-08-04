@@ -75,7 +75,7 @@ real commercial tech can hold on a roof.
 - **Stack is decided** — Expo + React Native, one codebase for iOS + Android +
   tablet. New dependencies need justification in the stage artifact; prefer what
   Expo ships. No native-module ejection.
-- **No secrets in the client.** Anthropic and Voyage keys stay server-side; the app
+- **No secrets in the client.** Model and Voyage keys stay server-side; the app
   talks only to the serverless function.
 - **Solo builder, <10h/week.** Boring and working beats clever and unfinished.
 
@@ -147,7 +147,7 @@ real commercial tech can hold on a roof.
 ## Prerequisites
 
 - Runs A and B complete and merged.
-- `SETUP-BLOCKERS.md` H1–H3 (Supabase, Anthropic, Voyage) and **H7** (physical
+- `SETUP-BLOCKERS.md` H1–H3 (Supabase, Google AI Studio, Voyage) and **H7** (physical
   device + Expo Go) cleared. H7 gates criteria 1, 2, 3, 6, and 8 — nearly half this
   brief is unverifiable without a phone in hand.
 - 10 real nameplate photos collected for criterion 3.

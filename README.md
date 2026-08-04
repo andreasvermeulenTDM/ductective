@@ -25,8 +25,10 @@ Carrier 48/50 — the equipment the knowledge base actually covers.
 ## Stack
 
 Expo + React Native (iOS · Android · tablet, one codebase) · Supabase
-(Postgres + pgvector) · Claude API for reasoning and nameplate vision · Voyage
-for embeddings. Decided and locked — see the plan before proposing changes.
+(Postgres + pgvector) · **Gemini Flash** for reasoning and nameplate vision · Voyage
+for embeddings. Answer generation moved from the Claude API on 4 Aug 2026 — see
+`.pipeline/00-brief.md` Amendment 1 and `docs/retrieval-architecture-v2-gemini.md`.
+Decided and locked — see the plan before proposing changes.
 
 ## Commands
 

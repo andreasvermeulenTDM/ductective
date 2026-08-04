@@ -20,7 +20,7 @@ top of them.**
 | # | Blocker | Needed for | Status |
 |---|---|---|---|
 | H1 | Supabase account + project, pgvector enabled | Any storage or retrieval | ✅ **Verified 29 Jul 2026** |
-| H2 | Anthropic API key | Claude round trip, diagnostic core | ⬜ Not done — **stubbed** |
+| H2 | **Google AI Studio key** | Model round trip, diagnostic core | ⬜ Not done — **stubbed** |
 | H3 | Voyage API key | Embedding the corpus | ✅ **Verified 3 Aug 2026** |
 | H4 | Supabase CLI available | Migrations, deploying Edge Functions | ✅ **Resolved via `npx`** |
 | H5 | Deno CLI installed | Running Edge Functions locally | ⏸️ **Deferred by decision** |
@@ -77,9 +77,30 @@ Editor. Two things to remember:
   will happen. It's one click to restore, but the first time it looks like an
   outage.
 
-**H2 — Anthropic.** Get a key at console.anthropic.com. Set a **spend limit** on
-the account before you use it; the plan budgets $50–150/mo and an unbounded key
-plus a loop is how that becomes $800.
+**H2 — Google AI Studio.** Get a key at aistudio.google.com and set it as
+`GEMINI_API_KEY` in `.env`. Answer generation moved to Gemini Flash on 4 Aug 2026
+(owner decision, cost-driven). Voyage keeps embeddings; Supabase is unchanged.
+
+**⚠ A control regressed here, and it is not a like-for-like swap.** This entry
+used to require an Anthropic spend limit, because *"an unbounded key plus a loop is
+how that becomes $800."* **Google has no equivalent hard stop.** Cloud Billing
+budgets send an *alert*; they do not cut anything off. The nearest real control is
+a per-key API quota cap.
+
+So, before running anything in a loop against this key:
+
+- Set a **per-key quota cap**, or write down that you accepted the risk without one.
+  Do not tick this off by "setting a budget" — a budget here is a notification.
+- If you plan around the **free tier**, verify its RPM/RPD limits survive a
+  30-scenario eval run first. If they don't, re-derive the cost case against paid
+  pricing before relying on it.
+
+On tier ordering, the risk runs opposite to intuition: the free tier is *safest
+now* — your own queries, no customers, throwaway data — and *riskiest later*, when
+traffic is real technician queries plus verbatim OEM content at volume, under terms
+permitting product-improvement use and human review. **Free now, paid at Phase 2**
+is the lower-risk ordering. Check the current Gemini API Additional Terms before
+committing either way.
 
 **H3 — Voyage. ✅ Done.** Key is in `.env`. `npm run verify` embeds live and
 reports the model, dimensions, and tokens billed.

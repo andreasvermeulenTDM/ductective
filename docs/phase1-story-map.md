@@ -72,9 +72,9 @@ the worktree/PR stages have something to branch from.
 
 ### E0.2 — Secrets never enter the repo or the client bundle
 **As a** solo builder, **I want** keys supplied by environment only, **so that** a
-public mistake can't leak my Anthropic billing.
+public mistake can't leak my model-provider billing.
 - `.env.example` lists every required variable name with no values. *(machine)*
-- No Anthropic or Voyage key appears in any tracked file or in the built client bundle. *(machine)*
+- No model-provider or Voyage key appears in any tracked file or in the built client bundle. *(machine)*
 - The Expo app reads no API key at runtime; all model calls route through the serverless function. *(machine)*
 
 **Owner:** Backend · **Depends on:** E0.1 · **Priority:** Critical
@@ -98,10 +98,10 @@ tablet, **so that** I can use it on a rooftop.
 
 ---
 
-### E0.4 — Serverless function proxies Claude
-**As a** developer, **I want** one server-side entry point to the Claude API,
+### E0.4 — Serverless function proxies the model
+**As a** developer, **I want** one server-side entry point to the model API,
 **so that** keys stay off the device and later runs have a place to add logic.
-- A deployed function accepts a text prompt and returns a Claude completion. *(machine)*
+- A deployed function accepts a text prompt and returns a model completion. *(machine)*
 - The key is read from the environment; a request with no key configured fails with a clear error rather than a stack trace. *(machine)*
 - Errors return a documented shape (status + message), not a raw provider error. *(machine)*
 - The request/response contract is written down for Runs B and C to build against. *(machine)*
@@ -114,8 +114,8 @@ tablet, **so that** I can use it on a rooftop.
 ### E0.5 — Hello-world round trip from a real device
 **As a** builder, **I want** to prove the whole path works end to end, **so that**
 Run B starts on rails that are known good.
-- Submitting text on a physical device renders a Claude response on screen. *(human)*
-- The round trip goes device → function → Claude; no direct client-to-Anthropic call appears in network logs. *(human)*
+- Submitting text on a physical device renders a model response on screen. *(human)*
+- The round trip goes device → function → provider; no direct client-to-provider call appears in network logs. *(human)*
 - A function failure renders a readable error state, not a blank screen. *(machine)*
 
 **Owner:** Frontend (screen), Backend (wiring) · **Depends on:** E0.3, E0.4 · **Priority:** Critical

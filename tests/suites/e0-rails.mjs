@@ -14,7 +14,12 @@ import { defineSuite, pass, fail, blocked } from '../harness.mjs';
  * definitions of "what a secret looks like" drift, and the half that drifts is
  * always the one nobody is running.
  */
-import { SECRET_PATTERNS } from '../../lib/secrets.mjs';
+import {
+  SECRET_PATTERNS,
+  SERVER_ONLY,
+  SHAPE_EXEMPT_PATHS,
+  isShapeExempt,
+} from '../../lib/secrets.mjs';
 
 /** §5 layout from Ductective-Plan-v3.md, as E0.1 enumerates it. */
 const LAYOUT = [
@@ -120,7 +125,7 @@ export default defineSuite({
           'EXPO_PUBLIC_SUPABASE_URL',
           'EXPO_PUBLIC_SUPABASE_ANON_KEY',
           'SUPABASE_SERVICE_ROLE_KEY',
-          'ANTHROPIC_API_KEY',
+          'GEMINI_API_KEY',
           'VOYAGE_API_KEY',
         ];
         const declared = [...src.matchAll(/^([A-Z0-9_]+)=/gm)].map((m) => m[1]);
@@ -145,17 +150,25 @@ export default defineSuite({
         const files = await c.tracked();
         const hits = [];
 
+        let exempted = 0;
         for (const f of files) {
           if (/\.(png|jpg|jpeg|zip|pdf|p8|p12|jks)$/i.test(f)) continue;
           const body = c.read(f);
           if (!body) continue;
+          // The scanner's own fixtures must look like keys. Suppressing the
+          // heuristics there is the whole point of SHAPE_EXEMPT_PATHS — and this
+          // check has to honour it too, or the permanent red simply moves here.
+          // Literal values are covered by `npm run verify:secrets`, which runs the
+          // strict rule over both tracked files and all history.
+          if (isShapeExempt(f)) { exempted++; continue; }
           for (const p of SECRET_PATTERNS) {
             if (p.re.test(body)) hits.push(`${f} — ${p.name}`);
           }
         }
 
         const ev = c.fromCheck(
-          `scanned ${files.length} tracked files for key prefixes`,
+          `scanned ${files.length} tracked files for key prefixes ` +
+            `(${exempted} shape-exempt: ${SHAPE_EXEMPT_PATHS.join(', ')})`,
           hits.length ? hits.join('\n') : '(no key-shaped string in any tracked file)'
         );
         return hits.length === 0 ? pass(ev) : fail(ev, `${hits.length} tracked file(s) contain a key-shaped string`);
@@ -172,7 +185,12 @@ export default defineSuite({
 
         // Expo inlines only EXPO_PUBLIC_*. Any other key read from app/ would
         // ship to the device, which is exactly what brief AC 3 forbids.
-        const serverOnly = ['ANTHROPIC_API_KEY', 'VOYAGE_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
+        //
+        // Imported, not restated. This file's own header says key shapes come from
+        // lib/secrets.mjs "because two definitions of what a secret looks like
+        // drift, and the half that drifts is always the one nobody is running" —
+        // and this list had already drifted, missing GEMINI_API_KEY.
+        const serverOnly = SERVER_ONLY;
         const appFiles = [];
         const walk = (dir) => {
           for (const entry of c.list(dir)) {

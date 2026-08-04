@@ -1,5 +1,19 @@
 # Retrieval architecture — decisions
 
+> ## ⚠️ SUPERSEDED — 4 August 2026
+>
+> Answer generation moved to Gemini Flash (`00-brief.md` Amendment 1). Read
+> **[retrieval-architecture-v2-gemini.md](retrieval-architecture-v2-gemini.md)**
+> first.
+>
+> **This file is kept unmodified on purpose.** §3.3 below is still *correct about
+> Anthropic* — it is the record of what `search_result` blocks gave for free and
+> therefore of what the migration traded away. It is not a description of what the
+> system now does.
+>
+> Everything except §3.3 and the §4 cost model still stands: parsing, chunking,
+> embedding, storage and ranking are unchanged by the provider switch.
+
 Status: **decision doc, not a pipeline artifact.** Written 3 Aug 2026. This sits
 outside `.pipeline/` deliberately — it does not satisfy the Stage 2 gate and it
 is not `01-research.md`. See [Open items](#open-items) for what that leaves

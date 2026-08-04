@@ -35,7 +35,8 @@ Everything after this renders what this run decides.
 - **The clarifying-question turn.** One targeted question when the symptom is
   underspecified, and the ability to continue the same diagnosis once answered.
 - **Nameplate vision.** An endpoint taking a photo and returning manufacturer +
-  model via Claude vision, plus how an identified model narrows retrieval.
+  model via the model's vision capability, plus how an identified model narrows
+  retrieval. On Gemini this is `inlineData` with server-side downscaling (M11).
 - **Citation propagation.** Source document and page survive intact from retrieved
   chunk to response field. This is plumbing, and it is acceptance-critical.
 - **The refusal guardrail, server-side.** The hard-refusal list enforced on the
@@ -69,6 +70,24 @@ Everything after this renders what this run decides.
   unlock it.
 - **Refusal ≠ error.** They are different response shapes. Run C renders a refusal
   as a legitimate answer, and it can only do that if this run distinguishes them.
+- **A provider safety block is an error, never a refusal.** *(Added 4 Aug 2026 with
+  the Gemini amendment — see `00-brief.md` Amendment 1.)* Gemini returns its own
+  safety verdicts, and HVAC work is exactly the vocabulary that trips a generic
+  safety filter: gas, ignition, high voltage, pressurised vessels. There are now
+  **three** distinct response shapes and none may be produced by another's code
+  path.
+  - *Ours* — a deliberate, cited refusal pointing to standard safety procedure.
+    Renders in alert red as a legitimate answer.
+  - *Theirs* — `finishReason: SAFETY` or a blocked prompt. The system failed to
+    answer. It renders as an error with a retry, never as safety advice.
+  - *Transport* — a 4xx/5xx or timeout.
+
+  Passing a provider block off as our refusal would put Google's content policy
+  behind Ductective's safety voice, and a technician would read a filter artifact
+  as considered guidance. The reverse — our refusal rendered as an error — invites
+  a retry past a guardrail. Report the block rate per category: if the filter fires
+  on ordinary rooftop diagnostics, that is a finding for the owner, not something
+  to tune away by softening the prompt.
 - **Edge Function wall-clock cap.** Supabase Edge Functions cap at 150s on the free
   tier with a 150s idle timeout. A retrieval-plus-reasoning call with vision can
   approach that. Design for it, measure against it, and report the margin — this is
@@ -76,8 +95,15 @@ Everything after this renders what this run decides.
 - **Don't foreclose streaming.** Run C adds streaming transport. Design the core's
   output so a token stream is a transport change, not a reasoning rewrite. Verify
   buffered in this run; leave the seam.
-- **Stack is decided** — Claude API for reasoning and vision, Voyage embeddings,
-  Supabase. New dependencies need justification in the stage artifact.
+- **Stack is decided** — **Gemini Flash** for reasoning and vision (amended
+  4 Aug 2026; see `00-brief.md` Amendment 1), Voyage embeddings, Supabase. New
+  dependencies need justification in the stage artifact.
+  **Citation plumbing is now yours to build.** Anthropic's `search_result` blocks
+  returned structured citations with a free `cited_text` span; Gemini has no
+  equivalent, so chunk-ID injection, prompt scaffolding, a parser and a validator
+  are in scope for this run. Gemini's grounding feature is not a substitute — it
+  grounds on Google Search, not our pgvector corpus. See
+  `docs/retrieval-architecture-v2-gemini.md` §1.
 - **No secrets in the client.** Keys stay server-side.
 - **Budget.** The whole prototype lives inside ~$1,000. Report per-diagnosis cost
   with and without prompt caching; if a full eval run projects above ~$25, stop and
@@ -170,9 +196,13 @@ Everything after this renders what this run decides.
   set that actually passed. **Building reasoning on retrieval that never met its
   bar is how a system becomes confidently wrong**, and it is not recoverable later
   by better prompting.
-- `SETUP-BLOCKERS.md` **H1–H3** cleared (Supabase, Anthropic, Voyage). All three
-  gate this run completely — unlike Run A, there is no meaningful offline portion.
-- A spend limit set on the Anthropic account before eval runs at volume.
+- `SETUP-BLOCKERS.md` **H1–H3** cleared (Supabase ✅, **Google AI Studio ⬜**,
+  Voyage ✅). All three gate this run completely — unlike Run A, there is no
+  meaningful offline portion. As of 4 Aug 2026 only H2 is outstanding.
+- **A per-key quota cap set before eval runs at volume.** Not a spend limit —
+  Google has no hard stop, and its billing budgets only alert. This is a weaker
+  control than the one Run B was originally written against; `SETUP-BLOCKERS.md`
+  H2 records the regression.
 - Ten nameplate photos collected (criterion 7).
 - Ideally: the commercial RTU tech recruited, since P1.5 validates this run's output
   and its verdict overrides eval's.

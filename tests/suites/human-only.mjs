@@ -41,9 +41,9 @@ export default defineSuite({
     ]),
 
     step('E0.5', 'brief AC 3', 'hello-world round trip from a real device', [
-      'With ANTHROPIC_API_KEY set as a server-side secret (H2), submit text from the device.',
-      'Confirm a Claude response renders on screen.',
-      'Open the network log and confirm the call goes device → function → Claude, with no direct client-to-Anthropic request.',
+      'With GEMINI_API_KEY set as a server-side secret (H2), submit text from the device.',
+      'Confirm a model response renders on screen.',
+      'Open the network log and confirm the call goes device → function → provider, with no direct client-to-provider request.',
       'Confirm no API key appears in the bundle or in any request from the device.',
       'Record the round-trip latency.',
     ]),
