@@ -49,18 +49,21 @@ if (db) {
   }
 }
 
-// --- stubs ----------------------------------------------------------------
-console.log('\nStubbed services');
+// --- embeddings & completion ----------------------------------------------
+console.log('\nEmbeddings & completion');
 for (const [name, fn] of [
-  ['voyage', () => embed(['rooftop unit short cycling'])],
+  ['voyage', () => embed(['rooftop unit short cycling'], { inputType: 'query' })],
   ['anthropic', () => complete({ messages: [{ role: 'user', content: 'test' }] })],
 ]) {
   try {
     const r = await fn();
-    const width = r.embeddings ? ` (${r.embeddings[0].length}/${EMBED_DIM} dims)` : '';
-    pass(`${name} stub responded${width}`);
+    const how = r.stub ? 'STUB' : 'live';
+    const detail = r.embeddings
+      ? ` — ${r.model}, ${r.embeddings[0].length}/${EMBED_DIM} dims, ${r.tokens} tokens`
+      : ` — ${r.model}`;
+    pass(`${name} (${how})${detail}`);
   } catch (e) {
-    e.message.includes('ALLOW_STUBS') ? skip(`${name} — stub not enabled`) : fail(name, e.message);
+    e.message.includes('ALLOW_STUBS') ? skip(`${name} — no key, stub not enabled`) : fail(name, e.message);
   }
 }
 
