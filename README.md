@@ -6,9 +6,10 @@ nameplate; get correct, cited, step-by-step guidance from OEM service literature
 Phase 1 targets **light-commercial packaged rooftop units** — Trane Precedent and
 Carrier 48/50 — the equipment the knowledge base actually covers.
 
-> **Status: pre-scaffold.** No application code exists yet. This repo currently
-> holds the plan, the agent pipeline, the brand system, and the corpus manifest.
-> See [SETUP-BLOCKERS.md](SETUP-BLOCKERS.md) before starting work.
+> **Status: rails in progress.** The Supabase rail is live, the Voyage client is
+> real, and an Expo **design prototype** renders mock answers — it discharges no
+> acceptance criterion. Ingestion, retrieval, and the diagnostic core do not exist
+> yet. See [SETUP-BLOCKERS.md](SETUP-BLOCKERS.md) before starting work.
 
 ## Start here
 
@@ -26,6 +27,37 @@ Carrier 48/50 — the equipment the knowledge base actually covers.
 Expo + React Native (iOS · Android · tablet, one codebase) · Supabase
 (Postgres + pgvector) · Claude API for reasoning and nameplate vision · Voyage
 for embeddings. Decided and locked — see the plan before proposing changes.
+
+## Commands
+
+From a clean clone, install both workspaces first — the app carries its own
+dependency tree:
+
+```bash
+npm install && npm --prefix app install
+```
+
+| Command | What it runs | Needs |
+|---|---|---|
+| `npm run lint` | ESLint 10 flat config over `scripts/`, `lib/`, `tests/`, and `app/` | install |
+| `npm run build` | `tsc --noEmit` against the Expo app — the only compiled surface | install |
+| `npm test` | Node's built-in runner over every `*.test.mts` / `*.test.mjs` | nothing |
+| `npm run verify` | Supabase rail probe — pgvector, privilege split, live Voyage embed | `.env` |
+| `npm run verify:secrets` | No key value or key-shaped string in any tracked file **or any commit** | install |
+| `npm run verify:bundle` | Exports the web bundle and greps the built artifact for secrets | install |
+| `npm run verify:stage5` | The Stage 5 acceptance run across every epic | `.env` |
+
+The first three are the gate every pipeline stage reports against, and all three
+must exit 0 with no new warnings. `npm test` deliberately needs no credentials and
+no install: it is Node's own runner with native type stripping, so a stage can
+always run it. `verify:stage5` is the acceptance suite, not the unit suite —
+without `.env` it reports BLOCKED rather than FAIL, which is the distinction that
+keeps a missing credential from being chased as a defect.
+
+The two `verify:secrets` / `verify:bundle` checks are kept out of `npm run lint`
+deliberately: exporting a web bundle takes about a minute, and a gate slow enough
+to skip is a gate that gets skipped. Run them before any push that touches env
+handling, and always before a release.
 
 ## The two rules
 

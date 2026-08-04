@@ -242,8 +242,39 @@ broken interaction.
 and don't unilaterally add `@testing-library/react-native` — picking the toolchain
 is E0.7's job and it belongs to Backend. Reverse it if you'd rather I choose one.
 
+## E6.7 — 200% font scale, simulated and fixed
+
+OS font scaling multiplies `fontSize`, so it can be reproduced in the browser by
+rewriting the font-size and line-height rules React Native Web emits. Doing that
+at 2× found a real defect on the app's most-tapped control.
+
+**The citation chip clipped its own label.** It carried a fixed `height: 26`, and
+a React Native `View` is `overflow: hidden` — so at 200% the pill stayed 24dp
+around 32dp of text and the document name was cut off. Same fixed-height pattern
+fixed in three places: the chip, the source icons, and the step number circle, all
+`height` → `minHeight` with padding. The step number becomes a rounded rect rather
+than a circle at large scale, which is the correct trade: the brief says legibility
+wins where it competes with elegance.
+
+Also added `maxWidth` on the chip's touch wrapper so a long document name ellipses
+inside the column instead of running off the screen edge.
+
+Measured at 375×667, on an answer with steps and citations:
+
+| scale | clipped | overflowing right | targets < 48dp |
+|---|---|---|---|
+| 100% | 0 | 0 | 0 |
+| **200%** | **0** | **0** | **0** |
+| 300% | 0 | 2 chips | 0 |
+
+300% is past what E6.7 asks for and is recorded, not fixed.
+
+**This does not discharge the criterion.** E6.7's check is human-only and means
+the OS setting on a physical device; this is a simulation of the same multiplier,
+and it is worth exactly as much as that. What it buys is that the obvious
+breakage is already gone before anyone picks up a phone.
+
 ## Still open for E6
 
-- 200% OS font scaling (E6.7) — needs a device. The scroll fix above is the
-  structural half; the visual check isn't claimable without hardware.
+- 200% font scale on real hardware (E6.7) — still human-only, still unclaimed.
 - Component tap-through tests — see the OPEN QUESTION above.
