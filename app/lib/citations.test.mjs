@@ -1,23 +1,26 @@
 /**
  * Unit tests for the E6.4 resolution rule.
  *
- *   node --test app/lib/
+ *   npm test
  *
- * Node's built-in runner, and Node ≥ 22.18 strips the types on import — so this
- * adds no dependency, which the brief's "boring, working, few dependencies"
- * constraint asks for and which E0.7 (still open, Backend-owned) has not settled.
+ * Plain `.mjs`, not `.mts`, so Node's default test discovery finds them — the
+ * root `test` script is `node --test`, and its built-in glob does not match
+ * `.mts`. A test the project's own gate cannot see is not a gate.
  *
- * These cover the half of E6.10 that needs no renderer. The other half —
- * component rendering and citation tap-through — still needs a test harness;
- * see the OPEN QUESTION in `.pipeline/04-frontend-design-pass.md`.
+ * The module under test is still TypeScript; Node strips its types on import.
+ * These assertions need no type annotations of their own, and dropping them also
+ * removes the tsconfig exclusion that Backend's OQ3 was asking about.
+ *
+ * Covers the half of E6.10 that needs no renderer. Component rendering and
+ * citation tap-through still need a harness — see the OPEN QUESTION in
+ * `.pipeline/04-frontend-design-pass.md`.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve, isResolvable, partition } from './citations.ts';
-import type { Citation } from './supabase.ts';
 
-const cite = (over: Partial<Citation> = {}): Citation => ({
+const cite = (over = {}) => ({
   id: 'c1',
   source_document: 'RT-SVX23R-EN — Precedent Rooftop IOM',
   page: 84,
@@ -39,14 +42,14 @@ test('a missing document does not resolve', () => {
   for (const doc of ['', '   ']) {
     const r = resolve(cite({ source_document: doc }));
     assert.equal(r.resolvable, false);
-    assert.match((r as { reason: string }).reason, /document/i);
+    assert.match(r.reason, /document/i);
   }
 });
 
 test('a missing page does not resolve, and the reason names the document', () => {
-  const r = resolve(cite({ page: null as unknown as number }));
+  const r = resolve(cite({ page: null }));
   assert.equal(r.resolvable, false);
-  assert.match((r as { reason: string }).reason, /RT-SVX23R-EN/);
+  assert.match(r.reason, /RT-SVX23R-EN/);
 });
 
 test('page 0 and negative pages do not resolve', () => {
