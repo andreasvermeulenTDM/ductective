@@ -69,6 +69,24 @@ Everything after this renders what this run decides.
   unlock it.
 - **Refusal ≠ error.** They are different response shapes. Run C renders a refusal
   as a legitimate answer, and it can only do that if this run distinguishes them.
+- **A provider safety block is an error, never a refusal.** *(Added 4 Aug 2026 with
+  the Gemini amendment — see `00-brief.md` Amendment 1.)* Gemini returns its own
+  safety verdicts, and HVAC work is exactly the vocabulary that trips a generic
+  safety filter: gas, ignition, high voltage, pressurised vessels. There are now
+  **three** distinct response shapes and none may be produced by another's code
+  path.
+  - *Ours* — a deliberate, cited refusal pointing to standard safety procedure.
+    Renders in alert red as a legitimate answer.
+  - *Theirs* — `finishReason: SAFETY` or a blocked prompt. The system failed to
+    answer. It renders as an error with a retry, never as safety advice.
+  - *Transport* — a 4xx/5xx or timeout.
+
+  Passing a provider block off as our refusal would put Google's content policy
+  behind Ductective's safety voice, and a technician would read a filter artifact
+  as considered guidance. The reverse — our refusal rendered as an error — invites
+  a retry past a guardrail. Report the block rate per category: if the filter fires
+  on ordinary rooftop diagnostics, that is a finding for the owner, not something
+  to tune away by softening the prompt.
 - **Edge Function wall-clock cap.** Supabase Edge Functions cap at 150s on the free
   tier with a 150s idle timeout. A retrieval-plus-reasoning call with vision can
   approach that. Design for it, measure against it, and report the margin — this is
