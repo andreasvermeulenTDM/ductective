@@ -20,10 +20,14 @@ anything that isn't presentation).
 
 **Precondition — check before writing any code.** Confirm `02-user-stories.md` is
 committed and assigns ownership per story. If it isn't, stop and report that
-Stage 2 hasn't landed rather than deriving the stories yourself. Then confirm
-`025-knowledge.md` is committed and the ingestion code it describes is actually
-present in your worktree. If it isn't, stop and report that Stage 2.5 hasn't
-merged. Do not reimplement ingestion, chunking, or embedding to unblock yourself.
+Stage 2 hasn't landed rather than deriving the stories yourself. Then, **for any
+story that consumes the retrieval contract**, confirm `025-knowledge.md` is
+committed and the ingestion code it describes is actually present in your
+worktree; if it isn't, stop and report that Stage 2.5 hasn't merged. Backend
+stories that *precede* retrieval — rails, schema application, secrets, toolchain,
+cost tracking — are exempt: start them without waiting, and name the exemption you
+claimed in your artifact. Never reimplement ingestion, chunking, or embedding to
+unblock yourself.
 
 - Follow the approach and conventions captured in the research artifact; reuse
   existing patterns, types, and libraries rather than introducing new ones.
