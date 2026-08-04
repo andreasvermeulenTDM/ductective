@@ -20,7 +20,13 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { envLiterals, scanText, SECRET_PATTERNS } from '../lib/secrets.mjs';
+import {
+  envLiterals,
+  scanText,
+  SECRET_PATTERNS,
+  SHAPE_EXEMPT_PATHS,
+  isShapeExempt,
+} from '../lib/secrets.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MB = 1024 * 1024;
@@ -48,7 +54,10 @@ for (const rel of tracked) {
   const full = join(ROOT, rel);
   if (!existsSync(full)) continue;
   scanned++;
-  for (const hit of scanText(readFileSync(full, 'utf8'), { forbidden })) {
+  for (const hit of scanText(readFileSync(full, 'utf8'), {
+    forbidden,
+    skipShape: isShapeExempt(rel),
+  })) {
     findings.push({ where: `tracked: ${rel}`, ...hit });
   }
 }
@@ -59,17 +68,40 @@ for (const rel of tracked) {
 // ---------------------------------------------------------------------------
 const commits = git('rev-list', '--all').stdout.split('\n').map((s) => s.trim()).filter(Boolean);
 
+/**
+ * Split a patch into per-file sections so the shape exemption can be applied to
+ * the fixture file alone. Scanning the whole patch as one blob would mean a commit
+ * that merely touches `lib/secrets.test.mjs` re-fires every shape rule — the same
+ * permanent-red problem the exemption exists to fix, moved into history.
+ *
+ * Anything before the first `diff --git` (the commit header and message) is kept
+ * and scanned normally: a key pasted into a commit message is still a leak.
+ */
+function sections(patch) {
+  const parts = patch.split(/^diff --git /m);
+  const out = [{ path: '', text: parts[0] }];
+  for (const part of parts.slice(1)) {
+    // `a/path b/path` — take the b-side, which is the post-change path.
+    const path = (part.match(/^a\/\S+ b\/(\S+)/) || [, ''])[1] || '';
+    out.push({ path, text: part });
+  }
+  return out;
+}
+
 for (const sha of commits) {
   const patch = git('show', '--no-color', '--format=%H %s', sha).stdout;
   if (!patch) continue;
-  for (const hit of scanText(patch, { forbidden })) {
-    findings.push({ where: `commit ${sha.slice(0, 8)}`, ...hit });
+  for (const { path, text } of sections(patch)) {
+    for (const hit of scanText(text, { forbidden, skipShape: isShapeExempt(path) })) {
+      findings.push({ where: `commit ${sha.slice(0, 8)}`, ...hit });
+    }
   }
 }
 
 console.log(`Scanned ${scanned} tracked file(s) and ${commits.length} commit(s).`);
 console.log(`  literal values checked: ${forbidden.map((l) => l.name).join(', ') || '(none set in .env)'}`);
 console.log(`  shape rules: ${SECRET_PATTERNS.map((p) => p.name).join(', ')}`);
+console.log(`  shape-exempt (literal rules still apply): ${SHAPE_EXEMPT_PATHS.join(', ')}`);
 
 if (!forbidden.length) {
   console.log('\n  NOTE: .env holds no real values, so only the shape rules ran.');

@@ -14,7 +14,7 @@ import { defineSuite, pass, fail, blocked } from '../harness.mjs';
  * definitions of "what a secret looks like" drift, and the half that drifts is
  * always the one nobody is running.
  */
-import { SECRET_PATTERNS } from '../../lib/secrets.mjs';
+import { SECRET_PATTERNS, SERVER_ONLY } from '../../lib/secrets.mjs';
 
 /** §5 layout from Ductective-Plan-v3.md, as E0.1 enumerates it. */
 const LAYOUT = [
@@ -172,7 +172,12 @@ export default defineSuite({
 
         // Expo inlines only EXPO_PUBLIC_*. Any other key read from app/ would
         // ship to the device, which is exactly what brief AC 3 forbids.
-        const serverOnly = ['ANTHROPIC_API_KEY', 'VOYAGE_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
+        //
+        // Imported, not restated. This file's own header says key shapes come from
+        // lib/secrets.mjs "because two definitions of what a secret looks like
+        // drift, and the half that drifts is always the one nobody is running" —
+        // and this list had already drifted, missing GEMINI_API_KEY.
+        const serverOnly = SERVER_ONLY;
         const appFiles = [];
         const walk = (dir) => {
           for (const entry of c.list(dir)) {
