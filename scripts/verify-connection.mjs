@@ -53,7 +53,7 @@ if (db) {
 console.log('\nEmbeddings & completion');
 for (const [name, fn] of [
   ['voyage', () => embed(['rooftop unit short cycling'], { inputType: 'query' })],
-  ['anthropic', () => complete({ messages: [{ role: 'user', content: 'test' }] })],
+  ['gemini', () => complete({ messages: [{ role: 'user', content: 'test' }] })],
 ]) {
   try {
     const r = await fn();

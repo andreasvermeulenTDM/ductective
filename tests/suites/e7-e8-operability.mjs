@@ -94,7 +94,10 @@ export default defineSuite({
 
         const required = [
           { label: 'Supabase project', re: /supabase.*(account|project)/i },
-          { label: 'Anthropic key', re: /anthropic/i },
+          // Provider-neutral on purpose: this asserts the model key is documented,
+          // not which vendor supplies it. Pinning the vendor name here is what made
+          // the last swap a coupled multi-file commit.
+          { label: 'model API key', re: /gemini|google ai studio|anthropic/i },
           { label: 'Voyage key', re: /voyage/i },
           { label: 'physical device', re: /(physical|real).*(ios|android|device)|expo go/i },
           { label: 'tech recruitment', re: /(recruit|technician|tech).*(validat|review)|commercial.*tech/i },
