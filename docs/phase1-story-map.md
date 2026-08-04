@@ -6,13 +6,11 @@ the agent persona that owns each one. Epics **E0–E8** are Phase 1 and are writ
 to be built against. A final section outlines **E9–E16** (Phases 2–4, including
 both website surfaces) at intent level only — visible road, not commitment.
 
-**Status: draft, not the Stage 2 artifact.** `.pipeline/01-research.md` has not
-landed, so this is derived from the plan of record and `.pipeline/00-brief.md`
-rather than from codebase research. Run A's stories (Epics 0–2, plus E7.1) are the
-ones that become `.pipeline/02-user-stories.md` once Stage 1 completes and the
-assumptions in the last section are confirmed or corrected. Runs B and C get their
-own briefs and their own Stage 2 passes; their stories here are a forward map, not
-a commitment.
+**Status: forward map. Run A has been promoted.** Run A's stories now live in
+`.pipeline/02-user-stories.md` as S1–S20 — **that file is operative for Run A, this
+one is not.** Where the two differ, the Stage 2 artifact wins; it was written
+against verified repo state and this map was not. Epics 3–6 (Runs B and C) remain
+a forward map pending each run's own Stage 2 pass.
 
 ---
 
@@ -134,8 +132,13 @@ Run B starts on rails that are known good.
 - A vector index exists and a similarity query returns in reasonable time over the full corpus. *(machine)*
 - The migration is committed and re-runnable from clean. *(machine)*
 
-**Owner:** Backend · **Depends on:** E0.1 · **Priority:** Critical
+**Owner:** ~~Backend~~ → **Knowledge designs, Backend applies** · **Depends on:** E0.1 · **Priority:** Critical
 **DoD:** Migration applied; constraints verified by attempting a page-less insert.
+
+> **Ownership corrected.** Commit 47ec84e stopped `sql/001_bootstrap.sql` at pgvector
+> plus a health probe, on the reasoning that the provenance columns are Stage 2.5's
+> to design under brief criterion 4. That's right. Split into S12 (Knowledge designs
+> the schema) and S6 (Backend applies the migration) in `.pipeline/02-user-stories.md`.
 
 ---
 
