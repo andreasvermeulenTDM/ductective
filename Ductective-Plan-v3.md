@@ -10,7 +10,7 @@ v3 changes exactly three things from v2. Everything else in v2 stands.
 | 2 | Narrow start = **residential** gas furnaces + split systems | Narrow start = **light-commercial packaged rooftop units (RTUs)** | The assembled corpus is 100% commercial. 17 of 25 PDFs are Trane Precedent/Foundation/IntelliPak and Carrier 48/50 rooftops — a dominant slice of the US light-commercial install base. A residential start would need 30+ new docs across 5 OEMs before ingestion could begin. Commercial techs also carry company tool budgets, which makes $29–39/mo an easier sell. |
 | 3 | 5-stage agent pipeline | **7 stages** — adds `knowledge` (2.5) and `eval` (5.5) | Nothing in the 5-stage pipeline owned the knowledge base, and nothing evaluated whether an answer was *correct* — which v2 itself names as the #1 risk. |
 
-Unchanged from v2: Expo + React Native, Supabase + pgvector, Claude API (reasoning + vision), Voyage embeddings, $29/mo individual · $39/seat · $199/shop, 7-day trial, RevenueCat + Stripe, ~$1k budget, <10h/week, self-testable prototype as the Phase 1 exit.
+Unchanged from v2: Expo + React Native, Supabase + pgvector, ~~Claude API (reasoning + vision)~~ **Gemini Flash — amended 4 Aug 2026, see §8**, Voyage embeddings, $29/mo individual · $39/seat · $199/shop, 7-day trial, RevenueCat + Stripe, ~$1k budget, <10h/week, self-testable prototype as the Phase 1 exit.
 
 ---
 
@@ -68,9 +68,9 @@ Goal unchanged in spirit, narrowed in equipment: **you can open Ductective, desc
 | Step | Work | Done when |
 |---|---|---|
 | **P1.0** | Repo + git init, scaffold Expo app, promote the agent pipeline to the repo root (see §5) | `git log` has a first commit; pipeline agents can run |
-| **P1.1** | Rails: Supabase project w/ pgvector, Anthropic + Voyage keys, hello-world round trip | You can chat with Claude from the app on your phone |
+| **P1.1** | Rails: Supabase project w/ pgvector, model + Voyage keys, hello-world round trip | You can chat with the model from the app on your phone |
 | **P1.2** | KB ingestion: normalize → parse → chunk → tag (brand/model/doc-type/`license_status`/page) → embed → store | A retrieval query returns the right manual sections with page-accurate sources |
-| **P1.3** | Diagnostic core: symptom (+ nameplate photo → model via Claude vision) → retrieve → clarify if needed → ranked steps **with citations** and readings to take | It correctly walks your top ~15 RTU faults |
+| **P1.3** | Diagnostic core: symptom (+ nameplate photo → model via vision) → retrieve → clarify if needed → ranked steps **with citations** and readings to take | It correctly walks your top ~15 RTU faults |
 | **P1.4** | Chat + camera screen: text input, nameplate capture, streaming response with tappable citations, history | Full loop works on phone and tablet |
 | **P1.5** | Accuracy validation with a real commercial tech (**parallel, starts now**) | A tech says "yeah, that's what I'd actually do" on most test cases |
 
@@ -88,7 +88,7 @@ Phases 2–4 (private beta, individual monetization, company plans) are unchange
 
 Timeline is roughly **8–10 weekends**, same as v2 — the RTU pivot doesn't shorten it much, because the time sink is accuracy and ingestion quality, not doc gathering. It does remove the 2–3 weekends of residential doc sourcing v2 implicitly assumed, which buys you slack for the OCR problem in §2.
 
-Budget is unchanged and comfortably within $1k: Claude API $50–150/mo is essentially the whole spend. Two additions worth noting — embedding ~215 MB of PDFs is still under $20 on Voyage, and prompt-caching the retrieved context matters more with dense IOM text than v2 assumed.
+Budget is unchanged and comfortably within $1k: model API spend is essentially the whole of it — and the 4 Aug 2026 move to Gemini Flash (§8) was taken to reduce exactly this line. Two additions worth noting — embedding ~215 MB of PDFs is still under $20 on Voyage, and prompt-caching the retrieved context matters more with dense IOM text than v2 assumed.
 
 ---
 
@@ -153,3 +153,32 @@ commercial RTU tech gates P1.5, whose verdict overrides eval's score.
 3. **Kick off pipeline Run A.**
 
 *Open decisions remaining: none blocking. The two manifest gaps in §2 are chores, not decisions.*
+
+---
+
+## 8. Amendment — answer generation moves to Gemini Flash
+
+*4 August 2026. Owner decision, cost-driven. Recorded here as an amendment; the
+rows above are struck rather than rewritten, so the plan stays an audit trail.*
+
+**Changed:** answer generation, Claude API → **Gemini Flash** via Google AI Studio.
+**Unchanged:** Voyage embeddings, Supabase + pgvector, and all of retrieval — the
+model sees chunk *text* only, and vectors never leave Postgres.
+
+It was cheap to do because it was done early: `complete()` was still a stub, there
+was no Anthropic SDK in the repo, and the key had never been set. **No Anthropic
+code existed to undo.**
+
+Two things this costs, recorded so they are not rediscovered as surprises:
+
+1. **Citation plumbing comes back.** Anthropic's `search_result` blocks returned
+   structured citations with a free, untokenised `cited_text` span. Gemini has no
+   equivalent, so chunk-ID injection, prompt scaffolding, a parser and a validator
+   must be built — the four things `docs/retrieval-architecture.md` §3.3 deleted as
+   unnecessary. **Gemini's grounding feature does not substitute: it grounds on
+   Google Search, not on a private pgvector corpus.**
+2. **The spend ceiling is softer.** Anthropic offered a hard account spend limit;
+   Google's budgets alert but do not cut off. See `SETUP-BLOCKERS.md` H2.
+
+Full analysis: `docs/retrieval-architecture-v2-gemini.md`. Migration stories:
+Addendum B of `.pipeline/02-user-stories.md` (M1–M17).
