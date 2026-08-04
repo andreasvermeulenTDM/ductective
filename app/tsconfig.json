@@ -2,5 +2,19 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  /*
+   * Unit tests are excluded from the app's typecheck on purpose.
+   *
+   * They run under Node (`node --test app/lib/*.test.mts`), which strips their
+   * types itself, and they import `node:test` and `node:assert`. Typechecking
+   * them would mean adding @types/node to an Expo app that has no other use for
+   * it — a dependency added to satisfy a build gate rather than to ship anything.
+   *
+   * The tests are executed on every run, which is a stronger guarantee than
+   * compiling them. Metro never sees them: nothing in the app imports them.
+   *
+   * If E0.7 later lands a real toolchain with @types/node present, drop this.
+   */
+  "exclude": ["**/*.test.mts"]
 }

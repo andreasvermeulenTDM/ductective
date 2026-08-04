@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { OfflineState, PermissionDenied } from '../components/Chrome';
 
@@ -98,7 +98,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
 
   if (state === 'manual') {
     return (
-      <View style={s.confirm}>
+      <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
         <Text style={s.overline}>TYPE THE MODEL</Text>
         <Text style={s.hint}>
           Off the data plate — manufacturer and model number. Partial is fine, I'll
@@ -147,13 +147,13 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
         <Text style={s.warn}>
           Prototype: the model you type isn't attached to the session yet.
         </Text>
-      </View>
+      </ScrollView>
     );
   }
 
   if (state === 'read') {
     return (
-      <View style={s.confirm}>
+      <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
         <Text style={s.overline}>READ FROM THE PLATE</Text>
 
         <View style={s.card}>
@@ -209,12 +209,12 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
         <Text style={s.warn}>
           Prototype: nothing was photographed and no model read this. Fixed text.
         </Text>
-      </View>
+      </ScrollView>
     );
   }
 
   return (
-    <View style={s.viewfinder}>
+    <ScrollView style={s.sunken} contentContainerStyle={s.viewfinder}>
       <View style={s.frame}>
         <View style={[s.corner, s.cornerTL]} />
         <View style={[s.corner, s.cornerTR]} />
@@ -247,7 +247,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
       </View>
 
       <StateSimulator onPick={setState} />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -293,13 +293,26 @@ function StateSimulator({ onPick }: { onPick: (s: CaptureState) => void }) {
 const CORNER = 42;
 
 const s = StyleSheet.create({
+  fill: { flex: 1 },
+  sunken: { flex: 1, backgroundColor: color.backgroundSunken },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: space.xl, gap: space.md },
+
+  /**
+   * These are `contentContainerStyle` on a ScrollView, not a View.
+   *
+   * The confirmation renders 713dp of content, which fits a 812dp phone and is
+   * silently cut off on a 667dp one — the warning line just wasn't there. Without
+   * a scroll container the overflow is unreachable rather than merely below the
+   * fold. `flexGrow` keeps the vertical centring when content is short.
+   *
+   * This is also what E6.7's 200% font-size requirement needs: at that scale
+   * every one of these screens overflows on every device.
+   */
   viewfinder: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     padding: space.xl,
     gap: space.lg,
-    backgroundColor: color.backgroundSunken,
   },
 
   frame: {
@@ -318,7 +331,7 @@ const s = StyleSheet.create({
 
   hint: { ...type.body, color: color.textPrimary, textAlign: 'center' },
 
-  confirm: { flex: 1, padding: space.lg, gap: space.md },
+  confirm: { flexGrow: 1, padding: space.lg, paddingBottom: space.xxl, gap: space.md },
   overline: { ...type.overline, color: color.textSecondary },
 
   card: {

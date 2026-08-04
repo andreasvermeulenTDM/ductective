@@ -26,6 +26,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { color, type, space, radius } from '../theme/tokens';
 import { CitationChip, UnresolvedCitationChip } from './Citation';
 import { partition } from '../lib/citations';
+import { parseAnswer } from '../lib/answerFormat';
 import type { Citation, MessageKind } from '../lib/supabase';
 
 type Props = {
@@ -209,54 +210,6 @@ function UncitedDefect({
 }
 
 /* -------------------------------------------------------------------------- */
-
-type ParsedStep = { headline: string | null; rest: string };
-
-/**
- * Split "lead … 1. step 2. step … tail" into its parts.
- *
- * Presentation-only: it reformats text the answer already contains and invents
- * nothing. If no numbered lines are found, the whole body renders as the lead,
- * which is the correct degradation for a free-prose answer.
- */
-export function parseAnswer(body: string): {
-  lead: string;
-  steps: ParsedStep[];
-  reading: string;
-} {
-  const lines = body.split('\n');
-  const stepAt = (l: string) => /^\s*\d+[.)]\s+/.test(l);
-
-  const first = lines.findIndex(stepAt);
-  if (first === -1) return { lead: body.trim(), steps: [], reading: '' };
-
-  let last = first;
-  for (let i = first; i < lines.length; i++) if (stepAt(lines[i])) last = i;
-
-  const lead = lines.slice(0, first).join('\n').trim();
-  const reading = lines.slice(last + 1).join('\n').trim();
-
-  const steps: ParsedStep[] = [];
-  for (let i = first; i <= last; i++) {
-    const line = lines[i];
-    if (!stepAt(line)) {
-      // A wrapped continuation line belongs to the step above it.
-      if (steps.length && line.trim()) steps[steps.length - 1].rest += ' ' + line.trim();
-      continue;
-    }
-    const text = line.replace(/^\s*\d+[.)]\s+/, '').trim();
-    // The mockup bolds the first clause of each step; split on the first period
-    // only when it reads like a short label rather than a whole sentence.
-    const dot = text.indexOf('.');
-    if (dot > 0 && dot <= 42) {
-      steps.push({ headline: text.slice(0, dot + 1), rest: text.slice(dot + 1).trim() });
-    } else {
-      steps.push({ headline: null, rest: text });
-    }
-  }
-
-  return { lead, steps, reading };
-}
 
 const s = StyleSheet.create({
   user: {

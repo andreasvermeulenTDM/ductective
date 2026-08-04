@@ -183,10 +183,67 @@ The guard covers citations arriving from Run B's core, which writes on a differe
 path. E6.4 marks this criterion *(machine)* rather than screenshot-based for
 exactly that reason — so no `__DEV__` backdoor was added to fake it.
 
+## E6.9 — a real defect found at 375×667
+
+Checking the narrowest common phone turned up something 375×812 hid. The capture
+confirmation renders **713dp of content into a 667dp viewport**, and the screen
+had no scroll container — so the overflow was not below the fold, it was
+*unreachable*. The prototype warning line simply wasn't there.
+
+All four capture layouts are `ScrollView`s now, with `flexGrow: 1` so short
+content still centres. Verified: before the fix the warning sat at 713 with no
+way to reach it; after, the container scrolls 78dp and the line lands at 635.
+
+This is also the fix E6.7's 200% font-scale criterion needs — at that scale every
+one of these screens overflows on every device, not just the small ones.
+
+Chat and history were already scroll-based and are clean at 375×667: no
+horizontal scroll, no clipping, no truncation, all controls reachable.
+
+## E6.10 — half done, and the half that isn't
+
+`parseAnswer()` moved out of `Message.tsx` into `lib/answerFormat.ts` so it can be
+tested without a renderer. With `lib/citations.ts`, the two pieces of real logic
+behind the citation contract are now pure, exported, and covered:
+
+```bash
+node --test app/lib/*.test.mts
+```
+
+**19 tests, all passing.** They cover the rule that `p.0` and `p.undefined` can
+never render as authoritative, that broken citations are kept rather than dropped,
+that an all-broken answer must be withheld, and that the prose parser doesn't
+mistake "630 psig" for a step number or a wrapped line for the reading callout.
+
+Zero new dependencies: Node's built-in runner, and Node ≥ 22.18 strips the types
+on import. Two consequences worth recording:
+
+- The tests are `.mts` because `app/package.json` is CommonJS. Adding
+  `"type": "module"` would change how Metro resolves the app, which is not a
+  change to make for a test file.
+- They're excluded from `tsc --noEmit` (see `app/tsconfig.json`). Typechecking
+  them would mean adding `@types/node` to an Expo app with no other use for it.
+  They are *executed* every run, which is the stronger guarantee.
+
+**No script was added.** `tests/README.md` names its own command `verify:stage5`
+specifically so that adding it doesn't partially satisfy E0.7, which is
+Backend-owned and which the suite grades. Same discipline here: E0.7 stays
+honestly FAIL until Backend wires a real toolchain.
+
+### OPEN QUESTION — the other half of E6.10
+
+E6.10 asks for component tests covering "message rendering, citation rendering and
+**tap-through**, and refusal rendering". Tap-through cannot be asserted without a
+renderer, and no renderer exists here. Today those contracts are held by static
+JSX analysis in `tests/suites/e6-app.mjs`, which catches a deleted guard but not a
+broken interaction.
+
+**Default taken:** ship the pure-logic tests, leave rendering to static analysis,
+and don't unilaterally add `@testing-library/react-native` — picking the toolchain
+is E0.7's job and it belongs to Backend. Reverse it if you'd rather I choose one.
+
 ## Still open for E6
 
-- 200% OS font scaling (E6.7) — needs a device.
-- E6.10 component tests — still BLOCKED. `resolve()` and `parseAnswer()` are now
-  pure and exported specifically so they can be unit-tested without a renderer,
-  but the repo still has no test runner (E0.7, Backend-owned, currently FAIL).
-- Nothing checked at 375×667 (iPhone SE), the narrowest common phone.
+- 200% OS font scaling (E6.7) — needs a device. The scroll fix above is the
+  structural half; the visual check isn't claimable without hardware.
+- Component tap-through tests — see the OPEN QUESTION above.
