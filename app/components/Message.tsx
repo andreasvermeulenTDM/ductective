@@ -24,7 +24,8 @@
 
 import { View, Text, StyleSheet } from 'react-native';
 import { color, type, space, radius } from '../theme/tokens';
-import { CitationChip } from './Citation';
+import { CitationChip, UnresolvedCitationChip } from './Citation';
+import { partition } from '../lib/citations';
 import type { Citation, MessageKind } from '../lib/supabase';
 
 type Props = {
@@ -41,7 +42,21 @@ export function Message({ kind, body, citations = [], onCitationPress }: Props) 
 
   if (citations.length === 0) return <UncitedDefect body={body} />;
 
-  return <AnswerTurn body={body} citations={citations} onCitationPress={onCitationPress} />;
+  // E6.4, the strict reading: an answer whose every citation is broken is an
+  // uncited claim. Well-formed prose does not make it citeable, and rendering it
+  // as guidance because *something* was attached is exactly the failure the
+  // no-uncited-claims rule exists to stop.
+  const { usable, broken } = partition(citations);
+  if (usable.length === 0) return <UncitedDefect body={body} allBroken={broken} />;
+
+  return (
+    <AnswerTurn
+      body={body}
+      citations={usable}
+      broken={broken}
+      onCitationPress={onCitationPress}
+    />
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -67,10 +82,12 @@ function UserTurn({ body }: { body: string }) {
 function AnswerTurn({
   body,
   citations,
+  broken,
   onCitationPress,
 }: {
   body: string;
   citations: Citation[];
+  broken: { citation: Citation; reason: string }[];
   onCitationPress?: (c: Citation) => void;
 }) {
   const { lead, steps, reading } = parseAnswer(body);
@@ -108,6 +125,17 @@ function AnswerTurn({
       <View style={s.citationRow}>
         {citations.map((c) => (
           <CitationChip key={c.id} citation={c} onPress={(x) => onCitationPress?.(x)} />
+        ))}
+        {/* Broken ones sit alongside the good ones rather than being dropped.
+            Quietly discarding them would make an answer look better sourced than
+            it is — the opposite of what E6.4 is protecting. */}
+        {broken.map(({ citation, reason }) => (
+          <UnresolvedCitationChip
+            key={citation.id}
+            citation={citation}
+            reason={reason}
+            onPress={(x) => onCitationPress?.(x)}
+          />
         ))}
       </View>
 
@@ -151,15 +179,28 @@ function RefusalCard({ body }: { body: string }) {
   );
 }
 
-/** An answer that arrived with no citation. Surfaced, never quietly rendered. */
-function UncitedDefect({ body }: { body: string }) {
+/** An answer that arrived with no usable citation. Surfaced, never quietly rendered. */
+function UncitedDefect({
+  body,
+  allBroken,
+}: {
+  body: string;
+  allBroken?: { citation: Citation; reason: string }[];
+}) {
+  const brokenCount = allBroken?.length ?? 0;
   return (
     <View style={s.defect} accessibilityRole="alert">
       <Text style={s.defectLabel}>WITHHELD — NO SOURCE</Text>
       <Text style={s.defectBody}>
-        A response came back with no citation attached, so it is not being shown as
-        guidance. This is a defect to report, not something to work around.
+        {brokenCount > 0
+          ? `A response came back with ${brokenCount} citation${brokenCount > 1 ? 's' : ''}, none of which resolve to a document and page you could check. It is not being shown as guidance. This is a defect to report, not something to work around.`
+          : 'A response came back with no citation attached, so it is not being shown as guidance. This is a defect to report, not something to work around.'}
       </Text>
+      {allBroken?.map(({ citation, reason }) => (
+        <Text key={citation.id} style={s.defectReason}>
+          · {reason}
+        </Text>
+      ))}
       <Text style={s.defectRaw} numberOfLines={3}>
         {body}
       </Text>
@@ -306,5 +347,6 @@ const s = StyleSheet.create({
   },
   defectLabel: { ...type.overline, color: color.refusalText },
   defectBody: { ...type.body, color: color.textPrimary },
+  defectReason: { ...type.caption, color: color.refusalText },
   defectRaw: { ...type.caption, color: color.textSecondary, fontStyle: 'italic' },
 });

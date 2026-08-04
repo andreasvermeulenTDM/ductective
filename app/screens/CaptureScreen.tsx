@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
+import { OfflineState, PermissionDenied } from '../components/Chrome';
 
 /**
  * Nameplate capture — design only. Mockup s2 (viewfinder) and s3 (confirmation).
@@ -13,21 +14,139 @@ import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
  * The design point worth keeping is the correction path. E6.3 requires that
  * *every* identification be correctable in ≤ 2 taps — including the ones that were
  * right — because a tech who can't override a wrong read gets sent down the wrong
- * unit's diagnostics. "Type the model instead" is on the viewfinder too, so a
- * denied camera permission is never a dead end.
+ * unit's diagnostics. Manual entry is reachable from every state here, so a denied
+ * permission, a dead network, and an unreadable plate all end somewhere useful.
  *
  * Departure from the mockup: the confirmation shows "High confidence" without the
  * numeric 0.94. A raw model score is an internal that a tech can't calibrate
  * against, and it invites trusting a decimal over a nameplate they can read.
  */
+type CaptureState =
+  | 'idle'      // empty  — viewfinder, nothing captured
+  | 'reading'   // loading
+  | 'read'      // success
+  | 'failed'    // error  — the plate came back unreadable
+  | 'denied'    // error  — camera permission refused
+  | 'offline'   // offline — no signal to reach the vision endpoint
+  | 'manual';   // the escape hatch every failure routes to
+
 export function CaptureScreen({ onDone }: { onDone: () => void }) {
-  const [state, setState] = useState<'idle' | 'reading' | 'read'>('idle');
+  const [state, setState] = useState<CaptureState>('idle');
+  const [model, setModel] = useState('');
 
   if (state === 'reading') {
     return (
       <View style={s.center}>
         <ActivityIndicator color={color.accent} />
         <Text style={s.hint}>Reading the nameplate…</Text>
+      </View>
+    );
+  }
+
+  if (state === 'denied') {
+    return (
+      <PermissionDenied
+        onManualEntry={() => setState('manual')}
+        onOpenSettings={() => setState('idle')}
+      />
+    );
+  }
+
+  if (state === 'offline') {
+    return (
+      <OfflineState
+        title="No signal to read the plate"
+        detail="Identifying a unit from a photo needs a connection. You can type the model instead and carry on — that works offline."
+        onRetry={() => setState('idle')}
+        action={{ label: 'Type the model instead', onPress: () => setState('manual') }}
+      />
+    );
+  }
+
+  if (state === 'failed') {
+    return (
+      <View style={s.center}>
+        <View style={s.errorCard}>
+          <View style={s.errorHead}>
+            <Text style={s.errorGlyph}>!</Text>
+            <Text style={s.errorTitle}>Couldn't read that plate</Text>
+          </View>
+          <Text style={s.errorBody}>
+            The model line didn't come through clearly enough to be sure, and a
+            guess here sends you down the wrong unit's diagnostics.
+          </Text>
+          <Pressable
+            onPress={() => setState('idle')}
+            style={({ pressed }) => [s.primary, pressed && s.primaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Retake the photo"
+          >
+            <Text style={s.primaryText}>Retake</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setState('manual')}
+            style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Type the model instead"
+          >
+            <Text style={s.secondaryText}>Type the model instead</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (state === 'manual') {
+    return (
+      <View style={s.confirm}>
+        <Text style={s.overline}>TYPE THE MODEL</Text>
+        <Text style={s.hint}>
+          Off the data plate — manufacturer and model number. Partial is fine, I'll
+          tell you if it isn't something I cover.
+        </Text>
+
+        <TextInput
+          value={model}
+          onChangeText={setModel}
+          placeholder="e.g. Trane YSC072E3 or Carrier 50HC"
+          placeholderTextColor={color.textSecondary}
+          style={s.input}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          accessibilityLabel="Unit model number"
+        />
+
+        <View style={s.actions}>
+          <Pressable
+            onPress={onDone}
+            disabled={!model.trim()}
+            style={({ pressed }) => [
+              s.primary,
+              pressed && s.primaryPressed,
+              !model.trim() && s.primaryDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Use this model and continue"
+            accessibilityState={{ disabled: !model.trim() }}
+          >
+            <Text style={s.primaryText}>Use this unit</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setState('idle')}
+            style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Go back to the camera"
+          >
+            <Text style={s.secondaryText}>Use the camera instead</Text>
+          </Pressable>
+        </View>
+
+        {/* The typed model reaches the chat screen but not the session row:
+            `equipment` is set when a session is created, and there is no update
+            path in the store. Recorded as a CONTRACT MISMATCH against Stage 3. */}
+        <Text style={s.warn}>
+          Prototype: the model you type isn't attached to the session yet.
+        </Text>
       </View>
     );
   }
@@ -78,7 +197,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
 
           {/* One tap to reach correction, from either outcome. E6.3. */}
           <Pressable
-            onPress={() => setState('idle')}
+            onPress={() => setState('manual')}
             style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
             accessibilityRole="button"
             accessibilityLabel="Wrong unit, pick it myself"
@@ -118,12 +237,54 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
 
         {/* Always present, so a denied camera permission is never a dead end. */}
         <Pressable
+          onPress={() => setState('manual')}
           style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
           accessibilityRole="button"
           accessibilityLabel="Enter the model number manually instead"
         >
           <Text style={s.secondaryText}>Type the model instead</Text>
         </Pressable>
+      </View>
+
+      <StateSimulator onPick={setState} />
+    </View>
+  );
+}
+
+/**
+ * Reaches the failure states that no real camera can produce here.
+ *
+ * E6.6 requires each state to be *reachable* and screenshotted. Without a camera
+ * or a vision endpoint, denied / unreadable / offline are otherwise unreachable,
+ * and a state nobody can open is a state nobody has checked.
+ *
+ * `__DEV__` is false in any production build, so this cannot ship. It goes away
+ * on its own once the real camera lands and these states arise for real.
+ */
+function StateSimulator({ onPick }: { onPick: (s: CaptureState) => void }) {
+  if (!__DEV__) return null;
+
+  const states: { id: CaptureState; label: string }[] = [
+    { id: 'failed', label: 'unreadable' },
+    { id: 'denied', label: 'denied' },
+    { id: 'offline', label: 'offline' },
+  ];
+
+  return (
+    <View style={s.simulator}>
+      <Text style={s.simulatorLabel}>DEV — REACH A FAILURE STATE</Text>
+      <View style={s.simulatorRow}>
+        {states.map((x) => (
+          <Pressable
+            key={x.id}
+            onPress={() => onPick(x.id)}
+            style={({ pressed }) => [s.simulatorButton, pressed && s.secondaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Simulate the ${x.label} state`}
+          >
+            <Text style={s.simulatorButtonText}>{x.label}</Text>
+          </Pressable>
+        ))}
       </View>
     </View>
   );
@@ -202,6 +363,30 @@ const s = StyleSheet.create({
     paddingVertical: space.md,
   },
 
+  input: {
+    minHeight: MIN_TOUCH + 8,
+    ...type.body,
+    color: color.textPrimary,
+    backgroundColor: color.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+    paddingHorizontal: space.lg,
+  },
+
+  errorCard: {
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surface,
+  },
+  errorHead: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  errorGlyph: { ...type.title, color: color.refusalText },
+  errorTitle: { ...type.heading, color: color.textPrimary, flex: 1 },
+  errorBody: { ...type.body, color: color.textSecondary },
+
   actions: { gap: space.sm, marginTop: space.lg },
   primary: {
     minHeight: MIN_TOUCH + 8,
@@ -211,6 +396,7 @@ const s = StyleSheet.create({
     backgroundColor: color.interactiveFill,
   },
   primaryPressed: { backgroundColor: color.pressed },
+  primaryDisabled: { backgroundColor: color.border },
   primaryText: { ...type.bodyStrong, color: color.textOnInteractive },
   secondary: {
     minHeight: MIN_TOUCH,
@@ -222,6 +408,19 @@ const s = StyleSheet.create({
   },
   secondaryPressed: { backgroundColor: color.surface },
   secondaryText: { ...type.bodyStrong, color: color.textPrimary },
+
+  simulator: { marginTop: space.xl, gap: space.sm },
+  simulatorLabel: { ...type.overline, color: color.textSecondary, textAlign: 'center' },
+  simulatorRow: { flexDirection: 'row', gap: space.sm, justifyContent: 'center' },
+  simulatorButton: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    paddingHorizontal: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  simulatorButtonText: { ...type.chip, color: color.textSecondary },
 
   warn: { ...type.caption, color: color.refusalText, textAlign: 'center', marginTop: space.md },
 });

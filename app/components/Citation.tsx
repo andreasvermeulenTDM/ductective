@@ -14,6 +14,7 @@
 
 import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
+import { resolve } from '../lib/citations';
 import type { Citation } from '../lib/supabase';
 
 /** Rendered chip height. Kept in one place so the slop math can't drift from it. */
@@ -52,6 +53,47 @@ export function CitationChip({
 }
 
 /**
+ * A citation that does not resolve — E6.4.
+ *
+ * Drawn as a defect rather than a citation: alert red, an explicit "unresolved"
+ * word, and no attempt to render whatever partial document name or page number
+ * came through. The failure mode this exists to prevent is a chip reading
+ * `p.0` or ` · p.undefined` that still looks authoritative enough to act on.
+ *
+ * It stays tappable on purpose. A tech who sees it needs to know *why* it broke
+ * and that the claim above it is not backed — silently disabling the control
+ * would leave them guessing.
+ */
+export function UnresolvedCitationChip({
+  citation,
+  reason,
+  onPress,
+}: {
+  citation: Citation;
+  reason: string;
+  onPress: (c: Citation) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onPress(citation)}
+      hitSlop={touchSlop(CHIP_HEIGHT, 96)}
+      style={s.chipTouch}
+      accessibilityRole="button"
+      accessibilityLabel={`Unresolved source. ${reason}`}
+      accessibilityHint="Explains why this citation could not be resolved"
+    >
+      {({ pressed }) => (
+        <View style={[s.chipBroken, pressed && s.chipBrokenPressed]}>
+          <Text style={s.chipBrokenText} numberOfLines={1}>
+            ! source unresolved
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+/**
  * The source itself.
  *
  * The mockup shows the retrieved passage quoted here, which is the right design —
@@ -63,6 +105,44 @@ export function CitationChip({
  * over with placeholder prose.
  */
 function SourceBody({ citation, onClose }: { citation: Citation; onClose: () => void }) {
+  const resolution = resolve(citation);
+
+  // E6.4: an unresolved citation explains itself and stops. It does not fall
+  // through to the normal layout, which would print a half-empty document name
+  // and a nonexistent page as though they were a real reference.
+  if (!resolution.resolvable) {
+    return (
+      <>
+        <View style={s.sourceHead}>
+          <View style={s.sourceIconBroken}>
+            <Text style={s.sourceIconBrokenGlyph}>!</Text>
+          </View>
+          <View style={s.sourceHeadText}>
+            <Text style={s.sourceDoc}>Source unresolved</Text>
+            <Text style={s.sourcePage}>{resolution.reason}</Text>
+          </View>
+        </View>
+
+        <View style={s.brokenNotice}>
+          <Text style={s.brokenNoticeText}>
+            The claim this was attached to is not backed by a source you can check.
+            Treat it as unverified and report it — this is a defect, not something
+            to work around.
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={onClose}
+          style={({ pressed }) => [s.closeButton, pressed && s.closeButtonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Close and go back to the answer"
+        >
+          <Text style={s.closeText}>Back to the answer</Text>
+        </Pressable>
+      </>
+    );
+  }
+
   return (
     <>
       <View style={s.sourceHead}>
@@ -183,6 +263,40 @@ const s = StyleSheet.create({
   },
   chipPressed: { backgroundColor: color.surfaceRaised, borderColor: color.accent },
   chipText: { ...type.chip, color: color.accent },
+
+  chipBroken: {
+    height: CHIP_HEIGHT,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: space.sm + 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: color.refusalBorder,
+    backgroundColor: color.refusalSurface,
+  },
+  chipBrokenPressed: { borderColor: color.refusal },
+  chipBrokenText: { ...type.chip, color: color.refusalText },
+
+  sourceIconBroken: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: color.refusalSurface,
+    borderWidth: 1,
+    borderColor: color.refusalBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sourceIconBrokenGlyph: { ...type.heading, color: color.refusalText },
+  brokenNotice: {
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.refusalBorder,
+    backgroundColor: color.refusalSurface,
+    marginBottom: space.lg,
+  },
+  brokenNoticeText: { ...type.body, color: color.textPrimary },
 
   backdrop: { flex: 1, backgroundColor: color.scrim, justifyContent: 'flex-end' },
   sheet: {

@@ -135,10 +135,58 @@ Verified in the browser at 375×812 and 1024×768 against real Supabase. **Not
 verified on a physical iOS or Android device** — that needs SETUP-BLOCKERS H7, and
 no agent can claim it.
 
+## E6.6 — state coverage, enumerated
+
+The story says "nine states"; `tests/suites/human-only.mjs` is the operative spec
+and asks for **loading, empty, error, and offline for each of chat, camera, and
+history** — twelve. All twelve now exist and are reachable.
+
+| | loading | empty | error | offline |
+|---|---|---|---|---|
+| **Chat** | reopening a session | first run, with coverage stated | transport failure, nothing partial kept | inline notice, answers stay readable |
+| **Camera** | reading the plate | viewfinder, nothing captured | plate unreadable → retake or type | no signal → type instead |
+| **History** | loading past jobs | no jobs yet | query failed, with retry | can't reach history, nothing lost |
+
+Plus a thirteenth that E6.3 requires: **camera permission denied**, routing to
+manual entry. Verified live — denied → "Type the model instead" → a working model
+form, no dead end.
+
+Two notes on how they're reached:
+
+- Offline is classified from the failure that actually occurred (`lib/net.ts`),
+  not a mocked flag. The human-only checklist rightly insists the screenshots come
+  from airplane mode on a real device, and that still stands.
+- Camera's three failure states are unreachable without a camera or a vision
+  endpoint, so a `__DEV__`-only simulator opens them. `__DEV__` is false in any
+  production build. It exists because a state nobody can open is a state nobody
+  has checked, and it disappears on its own when the real camera lands.
+
+## E6.4 — the unresolvable-citation rule
+
+`lib/citations.ts` defines *resolves* once, for the UI and for Stage 5: a citation
+resolves when it names a document and a page a technician could physically turn to.
+A missing document, or a page that is null, non-integer, or < 1, does not.
+
+Three behaviours follow, all wired:
+
+1. A broken citation renders as a red **"! source unresolved"** chip, never as a
+   chip with `p.0` or `p.undefined` in it. Tapping explains why.
+2. Broken citations render **alongside** good ones rather than being dropped —
+   silently discarding them would make an answer look better-sourced than it is.
+3. An answer whose citations **all** fail to resolve is an uncited claim and
+   renders as the withheld-defect card. Well-formed prose doesn't make it citeable.
+
+**This state cannot be reached through the app's own write path**, and that is the
+correct outcome: `sql/002` constrains `source_document not null` and
+`page integer not null check (page > 0)`, so the database refuses to store one.
+The guard covers citations arriving from Run B's core, which writes on a different
+path. E6.4 marks this criterion *(machine)* rather than screenshot-based for
+exactly that reason — so no `__DEV__` backdoor was added to fake it.
+
 ## Still open for E6
 
-- Camera states: permission denied, upload failure. History: loading, error.
-  Roughly 5 of E6.6's 9 states exist.
-- E6.4's unresolvable-citation error state.
 - 200% OS font scaling (E6.7) — needs a device.
-- E6.10 component tests — needs a test runner chosen and added.
+- E6.10 component tests — still BLOCKED. `resolve()` and `parseAnswer()` are now
+  pure and exported specifically so they can be unit-tested without a renderer,
+  but the repo still has no test runner (E0.7, Backend-owned, currently FAIL).
+- Nothing checked at 375×667 (iPhone SE), the narrowest common phone.

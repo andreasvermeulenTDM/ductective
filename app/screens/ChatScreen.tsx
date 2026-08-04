@@ -7,6 +7,7 @@ import { useLayout } from '../theme/layout';
 import { Message as MessageView } from '../components/Message';
 import { Loading, ErrorState, OfflineNotice } from '../components/Chrome';
 import { CitationSheet, SourcePanel } from '../components/Citation';
+import { looksOffline } from '../lib/net';
 import { STARTERS } from '../lib/mockDiagnostics';
 import { createSession, loadMessages, submitSymptom } from '../lib/store';
 import { isConfigured, CONFIG_HINT, type Citation, type Message } from '../lib/supabase';
@@ -18,11 +19,6 @@ import { isConfigured, CONFIG_HINT, type Citation, type Message } from '../lib/s
  */
 const SEND_SIZE = 40;
 
-/** A failed fetch and a failed query read differently; both mean "no signal" here. */
-function looksOffline(e: unknown) {
-  const m = e instanceof Error ? e.message : String(e);
-  return /network|fetch|offline|timeout|ECONN|Failed to fetch/i.test(m);
-}
 
 export function ChatScreen({
   sessionId,

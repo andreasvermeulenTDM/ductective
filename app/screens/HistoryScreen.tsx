@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, SectionList, StyleSheet, RefreshControl } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
-import { Loading, ErrorState, EmptyState } from '../components/Chrome';
+import { Loading, ErrorState, EmptyState, OfflineState } from '../components/Chrome';
+import { looksOffline } from '../lib/net';
 import { listSessions } from '../lib/store';
 import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
 
@@ -16,20 +17,35 @@ import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
 export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       setSessions(await listSessions());
+      setOffline(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setOffline(looksOffline(e));
     }
   }, []);
 
   useEffect(() => { if (isConfigured) load(); }, [load]);
 
   if (!isConfigured) return <ErrorState title="Not connected" detail={CONFIG_HINT} />;
+
+  // Offline before error: "no signal" and "something broke" send a technician to
+  // two different places, and on a roof the first is the ordinary case (E6.6).
+  if (offline) {
+    return (
+      <OfflineState
+        title="Can't reach your history"
+        detail="Past jobs live on the server, so this list needs a connection. Nothing has been lost — it'll be here when you have signal."
+        onRetry={load}
+      />
+    );
+  }
   if (error) return <ErrorState title="Couldn't load history" detail={error} onRetry={load} />;
   if (!sessions) return <Loading label="Loading past jobs…" />;
 

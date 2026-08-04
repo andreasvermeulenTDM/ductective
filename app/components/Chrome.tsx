@@ -136,6 +136,106 @@ export function EmptyState({ title, detail }: { title: string; detail: string })
   );
 }
 
+/**
+ * Full-screen offline state, for camera and history — E6.6.
+ *
+ * Distinct from `ErrorState` on purpose. "You're offline" and "something broke"
+ * send a technician to two different places, and on a roof the first is the
+ * common case. It carries a retry because signal comes back.
+ */
+export function OfflineState({
+  title,
+  detail,
+  onRetry,
+  action,
+}: {
+  title: string;
+  detail: string;
+  onRetry?: () => void;
+  action?: { label: string; onPress: () => void };
+}) {
+  return (
+    <View style={s.center}>
+      <View style={s.offlineCard}>
+        <View style={s.errorHead}>
+          <Text style={s.offlineGlyph}>⚠</Text>
+          <Text style={s.errorTitle}>{title}</Text>
+        </View>
+        <Text style={s.centerText}>{detail}</Text>
+        {onRetry && (
+          <Pressable
+            onPress={onRetry}
+            style={({ pressed }) => [s.button, pressed && s.buttonPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+          >
+            <Text style={s.buttonText}>Try again</Text>
+          </Pressable>
+        )}
+        {action && (
+          <Pressable
+            onPress={action.onPress}
+            style={({ pressed }) => [s.secondaryButton, pressed && s.tabPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
+          >
+            <Text style={s.secondaryButtonText}>{action.label}</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Camera permission denied — E6.3 and E6.6.
+ *
+ * The story's requirement is that a denied permission "routes to manual model
+ * entry rather than a dead end", so the escape is the primary action here, not a
+ * footnote under an apology. Opening Settings is offered second: a tech standing
+ * on a roof wants to get on with the job, not fix an OS setting.
+ */
+export function PermissionDenied({
+  onManualEntry,
+  onOpenSettings,
+}: {
+  onManualEntry: () => void;
+  onOpenSettings?: () => void;
+}) {
+  return (
+    <View style={s.center}>
+      <View style={s.errorCard}>
+        <View style={s.errorHead}>
+          <Text style={s.errorGlyph}>⃠</Text>
+          <Text style={s.errorTitle}>No camera access</Text>
+        </View>
+        <Text style={s.centerText}>
+          Ductective can't open the camera, so it can't read a data plate. You can
+          still tell me the model and carry on.
+        </Text>
+        <Pressable
+          onPress={onManualEntry}
+          style={({ pressed }) => [s.button, pressed && s.buttonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Type the model instead"
+        >
+          <Text style={s.buttonText}>Type the model instead</Text>
+        </Pressable>
+        {onOpenSettings && (
+          <Pressable
+            onPress={onOpenSettings}
+            style={({ pressed }) => [s.secondaryButton, pressed && s.tabPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Open system settings to grant camera access"
+          >
+            <Text style={s.secondaryButtonText}>Grant access in Settings</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export type Tab = 'chat' | 'history';
 
 const TABS: { id: Tab; label: string; glyph: string }[] = [
@@ -271,6 +371,27 @@ const s = StyleSheet.create({
   errorHead: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   errorGlyph: { ...type.title, color: color.refusalText },
   errorTitle: { ...type.heading, color: color.textPrimary, flex: 1 },
+
+  offlineCard: {
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.refusalBorder,
+    backgroundColor: color.surface,
+  },
+  offlineGlyph: { ...type.title, color: color.refusalText },
+
+  secondaryButton: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: space.xl,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.borderStrong,
+  },
+  secondaryButtonText: { ...type.bodyStrong, color: color.textPrimary },
 
   button: {
     minHeight: MIN_TOUCH,
