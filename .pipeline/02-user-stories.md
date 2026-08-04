@@ -430,3 +430,406 @@ on S11's outcome. If the scan-heavy documents turn out to include Precedent or
 48/50 IOMs, the bar and the OCR decision have to be revisited **together** — the
 failure mode to avoid is quietly missing the bar and reporting it as a near-miss.
 Raise it as a blocking question rather than absorbing it.
+
+> **Superseded by A2 below.** Stage 1 measured the corpus: 24 of 25 documents have
+> clean text layers and Trane Precedent (`RT-SVX23R`) is the cleanest document in the
+> corpus at 0% low-text. AC 7 is **not** at risk from parse quality. The live risk is
+> sibling-manual confusion between `48-50FC` and `48-50FE`.
+
+---
+---
+
+# ADDENDUM A — corrections from Stage 1 research
+
+*Dated 4 Aug 2026. Source: `.pipeline/01-research.md`. These amend stories already
+written above; they are not new scope. Stage 2.5 must read these before starting.*
+
+### A1 — `1.pdf` is the EPA Section 608 rule, not the Mitsubishi handbook
+**Amends S10 (Critical), and corrects four other files.**
+
+Stage 1 proved it five ways: `/Title` is literally `04-3817.pdf`, `/Producer` is
+`Microsoft: Print To PDF`, zero `/Font` objects, US Letter geometry, and 43 pages
+exactly matching the govinfo original.
+
+- **S10's instruction to rename `1.pdf` to the Mitsubishi City Multi handbook must not be executed.** Doing so attaches Mitsubishi VRF metadata to EPA regulatory text — a citation that does not support its claim, which `CLAUDE.md:57-59` names as the worse of the two citation defects. *(machine)*
+- The same error is corrected in `.pipeline/00-brief.md:54`, `Ductective-Plan-v3.md:57`, `SETUP-BLOCKERS.md:143`, and `tests/suites/e1-ingestion.mjs:17`. *(machine)*
+- `1.pdf` is either replaced with the text-native EPA original (HTTP 200, verified) or excluded and listed in S8's exclusion report. *(machine)*
+- The Mitsubishi City Multi handbook is confirmed present or recorded as absent — it is out of Phase 1 answer scope either way. *(machine)*
+
+**Owner:** Knowledge · **Depends on:** — · **Priority:** Critical
+**DoD:** No file in the repo still claims `1.pdf` is Mitsubishi.
+
+### A2 — Drop the OCR branch; the real risk is column splicing
+**Amends S11, S13, and OPEN QUESTION 4.**
+
+A full `pdftotext` pass — 25 PDFs, 2,223 pages, ~1.36M tokens, 46.5s — found 24 with
+clean text layers. The "low-text" Carrier pages are **vector dimensional drawings**
+with nothing to OCR, not scan failures.
+
+- OQ4's OCR branch is closed as **not needed**; S13's disposition list no longer includes an OCR fallback. *(machine)*
+- S11's quality signal is repointed at the real failure: `pdftotext -layout` merges the two IOM columns onto one line, producing fluent nonsense that embeds confidently and that no flag fixes. *(machine)*
+- Parsing uses **pdfplumber with column awareness**, per `retrieval-architecture.md` §2. A column-splice check runs over a sample of two-column IOM pages. *(machine)*
+
+**Owner:** Knowledge · **Depends on:** — · **Priority:** Critical
+**DoD:** No agent spends time on OCR. Column splicing is measured, not assumed absent.
+
+### A3 — Three manifest rows are unresolved, not two
+**Amends S8, S9, and OPEN QUESTION 2.**
+
+- Row 22's `SourceURL` basename is `1929` with **no extension** — a basename join can never match it. S8's join needs an explicit fallback and this row reported, not silently dropped. *(machine)*
+- **Trane `RT-SVX096C` is HTTP 404 dead and is in Phase 1 answer scope**, which falsifies OQ2's rationale ("neither is in scope, dropping costs nothing"). Re-source it from another Trane eLibrary path or record the coverage gap explicitly. *(machine)*
+- S8's reconciliation reports **three** unresolved rows against 25 files. *(machine)*
+
+**Owner:** Knowledge · **Depends on:** — · **Priority:** High
+**DoD:** Every one of the 27 rows has a stated disposition.
+
+### A4 — `usedMocks()` cannot prove a past run was stub-free
+**Amends S15 and the Stage 5/5.5 assertion in `SETUP-BLOCKERS.md:59-61`.**
+
+It is per-process module state, and Stage 5 runs in a different process than
+ingestion. The assertion it is supposed to support is currently unenforceable.
+
+- `embedding_model` is persisted **per chunk**, and Stage 5 asserts against the database rather than against process state. *(machine)*
+- A chunk embedded by the stub is identifiable after the fact, from a cold start. *(machine)*
+
+**Owner:** Knowledge (schema), Test (assertion) · **Depends on:** S12 · **Priority:** High
+**DoD:** "No scored run touched a stub" is provable from the database.
+
+---
+---
+
+# ADDENDUM B — Gemini Flash migration
+
+*Dated 4 Aug 2026. Owner decision: answer generation moves to **Gemini Flash** via
+Google AI Studio; **Voyage keeps embeddings**; Supabase/pgvector unchanged. Driver is
+cost. Full analysis in the approved plan.*
+
+## Why this is cheap now and expensive later
+
+`complete()` at `lib/clients.mjs:170` is still a stub, `package.json` has no
+`@anthropic-ai/sdk`, and `ANTHROPIC_API_KEY` is empty. **No Anthropic code was ever
+written, so none has to be undone.** This lands before S4 rather than after it.
+
+**Retrieval is entirely unaffected.** The model only ever sees chunk *text*; vectors
+never leave Postgres. **S8–S18 and A1–A4 proceed in parallel and are blocked by none
+of this** — that is the critical path and it should not wait.
+
+## Amendments to existing stories
+
+- **S4** — retitle "Serverless function proxies **the model**". The `complete()` seam criterion stands; the DoD becomes `npm run verify`'s **`gemini`** probe passing live. **OPEN QUESTION 1 is unchanged** — Supabase Edge Functions remains the host.
+- **S5** — "renders a **model** response"; network-log criterion becomes "no direct client-to-provider call".
+- **S2** — the criterion "no Anthropic, Voyage, or service-role key" extends to Google credentials. See M1.
+- **H2 in the state table (`:25`)** — no longer an Anthropic key. See M3.
+
+## Sequencing
+
+| Order | Stories | Note |
+|---|---|---|
+| now, parallel | M1, M3, M4 | M1 must run **before** a Google key exists on the machine |
+| then | M2, M5 | M2 is one commit — the tests are coupled |
+| then | M11 | adapter, text only |
+| **gate** | **M12** | **four numbers, three stop conditions — do not build past this** |
+| then | M6 → M7 → M8 → M9 → M10 | calibrated by M12 |
+| then | M13, M14 | safety |
+| last | M15, M16, M17 | caching, cost, vision |
+
+---
+
+### M1 — Secret scanning covers Google credentials
+**As a** solo builder, **I want** the verifiers to recognise a Google key, **so that**
+switching providers doesn't silently disarm the check that protects me.
+- `lib/secrets.mjs:20-25` gains `{ name: 'Google AI Studio key', re: /\bAIza[A-Za-z0-9_-]{30,}/ }`. Bound left open-ended per the file's existing `{8,}`/`{20,}` convention, so a format tweak cannot silently disable the rule. *(machine)*
+- It also gains `{ name: 'PEM private key', re: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/ }` — a Google service-account JSON matches none of the four current patterns and is the most damaging credential that could land in this repo. *(machine)*
+- `SERVER_ONLY` (`:32-36`) gains `GEMINI_API_KEY` and **keeps `ANTHROPIC_API_KEY` through the transition** — the list is also passed as `names` to `scripts/verify-bundle.mjs:72`, so a stale variable name in the bundle stays a finding. *(machine)*
+- The `sk-ant-` pattern is **kept permanently**. A stale Anthropic key committed here is still a leak. *(machine)*
+- `npm run verify:secrets` is run **before any Google key exists on the machine** — `scripts/verify-secrets.mjs` walks all history, and this is the only cheap moment to discover an `AIza` string that was pasted into a scratch file months ago. *(machine)*
+- Fixtures updated: `lib/secrets.test.mjs:42-50, 58-70`. Use distinct fixtures per provider so two patterns can't both fire on one string and break the `deepEqual`. *(machine)*
+
+**Owner:** Backend · **Depends on:** — · **Priority:** Critical
+**DoD:** A synthetic `AIza…` string in a tracked file or a built bundle fails the verifiers.
+
+> **Separate defect, fix in the same pass.** `tests/suites/e0-rails.mjs:175` hardcodes
+> its own `serverOnly` array, while that file's own header (12-16) says key shapes come
+> from `lib/secrets.mjs` *"because two definitions of what a secret looks like drift,
+> and the half that drifts is always the one nobody is running."* Import `SERVER_ONLY`.
+
+---
+
+### M2 — Swap the key, in one commit
+**As a** pipeline agent, **I want** the rename to land atomically, **so that** the
+suite isn't red between commits.
+- `.env.example:27-28` becomes `GEMINI_API_KEY=` with the aistudio.google.com pointer. *(machine)*
+- `SETUP-BLOCKERS.md` H2 (`:23`, `:80-83`) is rewritten for Google AI Studio. *(machine)*
+- Coupled in the **same commit**, because each currently fails on the old literal: `tests/suites/e0-rails.mjs:123` (FAILs if `.env.example` stops declaring the old name), `tests/suites/e7-e8-operability.mjs:97` (FAILs unless `SETUP-BLOCKERS.md` contains the literal word "anthropic"), `tests/suites/human-only.mjs:43-49`, `scripts/verify-connection.mjs:56` (`'anthropic'` → `'gemini'`). *(machine)*
+- Lint, build, and test are green at every commit boundary — currently 0 errors, 0 warnings, 28 pass. *(machine)*
+
+**Owner:** Backend · **Depends on:** M1 · **Priority:** Critical
+
+---
+
+### M3 — H2 becomes a Google AI Studio key, and the lost control is recorded
+**As a** solo builder on a fixed budget, **I want** the spend control gap written down,
+**so that** I don't assume a protection I no longer have.
+- A Google AI Studio key is obtained and set in `.env`. *(human)*
+- **H2 records explicitly that a control regressed.** `SETUP-BLOCKERS.md:81-83` currently requires an Anthropic spend limit and explains why — *"an unbounded key plus a loop is how that becomes $800."* Google has no equivalent hard stop: Cloud Billing budgets **alert**, they do not cut off. The nearest control is a per-key API quota cap. Do not substitute "set a spend limit" like for like. *(machine)*
+- A per-key quota cap is set, or its absence is recorded as an accepted risk. *(human)*
+- Free-tier **RPM/RPD limits are verified against a 30-scenario eval run** before the free tier is planned around. If they don't survive it, the cost case is re-derived against paid pricing. *(human)*
+
+**Owner:** Human · **Depends on:** — · **Priority:** Critical
+
+> **Tier ordering worth reconsidering.** The stated plan is free tier once proven. The
+> risk runs the other way: free tier is *safest now* — your own queries, no customers,
+> throwaway data — and *riskiest later*, when traffic is real technician queries plus
+> verbatim OEM content at volume, against terms that permit product-improvement use and
+> human review. **Free now, paid at Phase 2** is the lower-risk ordering. Verify the
+> current Gemini API Additional Terms before committing either way.
+
+---
+
+### M4 — Amend the contracts as a Stage 0 decision, not an agent override
+**As the** project owner, **I want** the stack change recorded as an amendment,
+**so that** the artifacts remain an audit trail rather than a rewritten history.
+- The briefs prescribe `OPEN QUESTION` for a stack element that is *"genuinely unworkable"* (`00-brief.md:35-36`). **Claude is not unworkable** — `retrieval-architecture.md` §3.3 argues it is the better fit, and that argument still stands. This is an owner's cost decision, so it lands as a **dated Stage 0 brief amendment**, with the reason recorded, not an in-place edit. *(machine)*
+- Amended in order, because each stage reads the artifact before it: `00-brief.md` (:34-37, :37 budget, :11/:18/:66) → `00-brief-run-b.md` (:79-80, :38, :83-84, :124, :173-175) → `00-brief-run-c.md` (:78, :150) → this file (S4, S5, :25, :66) → `docs/phase1-story-map.md` (:347, :405) → `Ductective-Plan-v3.md` (:13, :71, :73, :91) → `README.md:28`. *(machine)*
+- **Run A AC 3 is rewritten provider-neutrally** — "a model response", not "a Gemini response". The durable fix, so the next provider question costs nothing. *(machine)*
+- **One new hard constraint is added to `00-brief-run-b.md`:** *"A provider safety block is an error, never a refusal. They are different response shapes and neither may be produced by the other's code path."* It belongs there because `:70-71` already elevates "refusal ≠ error" to a hard constraint, and a provider block is a third thing that must not collapse into either. *(machine)*
+
+**Owner:** Human (owner) · **Depends on:** — · **Priority:** Critical
+
+---
+
+### M5 — Supersede the retrieval architecture doc
+**As a** future reader, **I want** to know what was traded away and why, **so that**
+the citation design isn't re-litigated from scratch.
+- `docs/retrieval-architecture.md` is **superseded by a dated successor**, not patched in place — the same discipline as `docs/plan-v2-superseded.md`. *(machine)*
+- §3.3's reasoning is preserved as the record. It is correct about Anthropic; the migration is being chosen with the trade understood. *(machine)*
+- The successor states plainly, because every reader will assume otherwise: **Gemini's grounding feature does not solve this.** It grounds on Google Search, not a private pgvector corpus. *(machine)*
+- The stack table (`:56-61`), cost model (`:180-199`), and verification table (`:256-267`) are re-derived. The Sonnet-5 September price-rise line (`:197`) is deleted — no longer a factor. *(machine)*
+
+**Owner:** Backend · **Depends on:** M4 · **Priority:** High
+
+---
+
+### M11 — Gemini adapter behind the existing seam
+**As the** Backend agent, **I want** the provider swappable, **so that** the next
+provider question is a config change rather than a rewrite.
+- `complete()`'s exported signature at `lib/clients.mjs:170` is **unchanged**, so S4's criterion ("Stage 3 replaces the function body, it does not rewire callers") stays satisfiable. Return extends to `{text, json, model, stub, usage, finishReason, blocked}`. *(machine)*
+- Implementation lives in `lib/providers/gemini.mjs`, selected by `LLM_PROVIDER`. *(machine)*
+- Mapping the adapter owns: `assistant`→`model`; **`system` lifted to top-level `systemInstruction`** — functional, not cosmetic, it changes both caching and safety behaviour; `contents[].parts[]`; role-alternation merging for the clarify path; `inlineData` for vision with server-side downscaling; SSE streaming; errors normalised to S4's `{status, message}`; bounded backoff on 429/5xx. *(machine)*
+- **Raw `fetch`, not `@google/genai`** — Voyage already is (`lib/clients.mjs:130`), the root has exactly one runtime dependency, `00-brief.md:39` says few dependencies, and the Edge Function needs a Deno-compatible path regardless. Recorded as a decision in the stage artifact. *(machine)*
+- **Stub discipline survives byte-for-byte** — `announce()`, `usedMocks()`, `ALLOW_STUBS` (`:15-33`). Note `:25` builds its banner as `${name.toUpperCase()}_API_KEY`, so naming the stub `gemini` requires the env var be exactly `GEMINI_API_KEY`. *(machine)*
+- Whether a Supabase Edge Function reliably bundles a relative import from outside `supabase/functions/` is **proven here, not assumed** — `01-research.md:775-777` flags it as unproven. *(machine)*
+
+**Owner:** Backend · **Depends on:** M2, M3 · **Priority:** Critical
+**DoD:** `npm run verify` passes live on the `gemini` probe, not stubbed. Discharges S4.
+
+> **Surface now, don't discover in Run C:** structured JSON and streaming compose badly
+> here. A partially-streamed JSON object is not an answer, and `tests/suites/human-only.mjs:55`
+> forbids *"a half-rendered answer presented as complete."* Either stream only after the
+> JSON validates — costing TTFT, which E6.1 targets at ≤3s — or carry a separate prose
+> channel that streams while citations arrive at the end. File as an OPEN QUESTION for Run C.
+
+---
+
+### M12 — The measurement gate ⛔
+**As a** builder, **I want** four numbers before committing to the citation design,
+**so that** I find out on a throwaway harness rather than in Run B's eval.
+
+This is a **spike, not production code** — a minimal envelope, schema, and validator,
+built to be discarded. Its output calibrates M6–M8.
+
+Run over `tests/fixtures/top-15-faults.json`, 8 real chunks from live pgvector, **on Flash**:
+
+- **Span-verification pass rate** — fraction of emitted `quoted_span`s appearing verbatim (exact after normalisation) in the chunk they name. *(machine)*
+- **Chunk-id fabrication rate** — ids outside the per-request map. *(machine)*
+- **Provider block rate** on legitimate HVAC content, per `HARM_CATEGORY`, across all 15 faults including the three advise-only ones. *(machine)*
+- **Real token counts** — in, out, `cachedContentTokenCount`, and the output delta attributable to spans. *(machine)*
+- All four are recorded in the stage artifact **before** any M6–M10 work starts. *(machine)*
+
+**Owner:** Backend · **Depends on:** M11 · **Priority:** Critical
+
+> **Stop conditions — any one ends or redirects the migration:**
+>
+> 1. **Span verification below ~95% exact → run the same set on Pro before redesigning.**
+>    Flash is a smaller model asked to copy text character-exactly across an 8-chunk
+>    context, which is precisely where a smaller model drifts. If Pro clears the bar and
+>    Flash doesn't, that is a **model-tier decision, not an architecture failure** — and
+>    it is the single most likely outcome of this whole migration.
+> 2. **Any provider block at the loosest permitted safety settings** → the provider has
+>    a structural problem with this domain. That is a business decision, not an
+>    engineering one.
+> 3. **Per-answer cost materially above the ~$0.04 baseline** against the ~$25 eval cap
+>    (`00-brief-run-b.md:83`) → per that brief's own instruction, context construction
+>    gives way, not the budget.
+
+---
+
+### M6 — Chunk-ID envelope and prompt scaffolding
+**As the** citation layer, **I want** ids the model cannot invent, **so that** a
+fabricated citation is caught by lookup rather than by heuristic.
+- Each retrieved chunk enters the prompt in a delimited envelope carrying a **per-request ephemeral id** (`C1`…`C8`), not the DB uuid — cheaper in tokens, and an id outside the per-request map is *unconditionally* a fabrication. *(machine)*
+- The id → `{chunk_id, source_document, page_number}` map is held server-side for the life of the request. **The model never emits a page number**; we resolve it. This is structurally stronger than the Anthropic design it replaces. *(machine)*
+- System instruction requires each claim to carry `chunk_id` plus a `quoted_span` copied character-for-character — no ellipsis, no re-wrapping, no paraphrase, stated min/max length; never cite an id not supplied. *(machine)*
+
+**Owner:** Backend · **Depends on:** M12 · **Priority:** Critical
+
+---
+
+### M7 — Structured output replaces the regex parser
+**As a** builder, **I want** structure enforced at decode time, **so that** parsing
+isn't a source of defects.
+- `responseMimeType: "application/json"` + `responseSchema` forcing `steps[] → {rank, action, reading_to_take, rules_in, rules_out, citations[] → {chunk_id, quoted_span}}`. *(machine)*
+- **`finishReason: MAX_TOKENS` yields syntactically invalid JSON and must be an error, never a partial answer.** *(machine)*
+- `responseSchema`'s supported OpenAPI subset, `propertyOrdering`, and composability with streaming are **verified against current docs**, not assumed. *(machine)*
+
+**Owner:** Backend · **Depends on:** M6 · **Priority:** Critical
+
+---
+
+### M8 — The span validator
+**As a** technician, **I want** every quoted span checked against its source, **so that**
+a confident-sounding citation cannot be a fabrication.
+
+This is the piece carrying the whole design.
+
+- Both span and chunk text are **normalised identically before comparison**: NFKC, whitespace collapse, dash family (incl. soft hyphen U+00AD), quotes/apostrophes, ligatures, de-hyphenated line breaks. *(machine)*
+- Exact containment after normalisation → `verified: 'exact'`. Otherwise a bounded fuzzy match → `verified: 'fuzzy'`. **Reported separately, never collapsed into "verified".** *(machine)*
+- The fuzzy threshold is set from **M12's measurement**, not picked. *(machine)*
+- Failure policy: one bounded repair turn quoting the failing span back; still failing → drop the claim; if dropping leaves any step uncited, the whole response becomes an explicit low-coverage error. **Run B AC 2 is *zero* uncited claims — an answer that silently sheds claims is not the same as one that met the bar.** *(machine)*
+- Per-answer metrics emitted: attempted / exact / fuzzy / failed / repaired. **This metric is the machine-checkable substitute for the guarantee Anthropic gave for free**, and belongs in Stage 5 evidence. *(machine)*
+- Lives in `lib/citation.mjs`, **runtime-agnostic — no `node:` builtins** — so Node scripts and the Deno Edge Function import one copy. Tests in `lib/citation.test.mjs` per the `lib/secrets.test.mjs` convention. *(machine)*
+- Normaliser test cases cover the ones that actually bite this corpus: hyphenated line breaks, IOM table whitespace, en-dash ranges in PT charts. *(machine)*
+
+**Owner:** Backend · **Depends on:** M7 · **Priority:** Critical
+
+> **The validator needs its own ground truth.** Anthropic's `cited_text` would have
+> supplied it free; going straight to Gemini means hand-labelling spans from the
+> 12-query smoke set. A few hours, and it must happen **before** the fuzzy threshold is
+> set — otherwise the threshold is tuned against the thing it is supposed to measure.
+>
+> **This flips OQ4** (`01-research.md:774-783`, "one fetch call duplicated is cheaper
+> than a cross-runtime import"). Right for a fetch call, wrong for a validator: two
+> copies of citation verification that drift is the one defect class the domain rules
+> single out. Amend OQ4, don't override it silently.
+
+---
+
+### M9 — Persist the verified snippet
+**As a** technician, **I want** the supporting passage stored, **so that** I can read it
+without the source PDF on the device.
+- `sql/003_citation_snippet.sql` adds `snippet`, `chunk_id`, and `verified text check (verified in ('exact','fuzzy'))` to the citations table at `sql/002_prototype_sessions.sql:57-66`. *(machine)*
+- Every persisted citation carries a snippet that passed M8. *(machine)*
+
+**Owner:** Backend · **Depends on:** M8 · **Priority:** High
+
+> **Promotes OQ5** (`01-research.md:785-791`), whose default was "out of scope for Run A".
+> The snippet was free under `cited_text`; it is now something we generate and pay for,
+> and it is the only thing that fills the UI gap below.
+
+---
+
+### M10 — The citation sheet shows the passage
+**As a** technician, **I want** to see the supporting text, **so that** tapping a
+citation tells me something.
+- `app/components/Citation.tsx:96-171` renders the persisted snippet. Its own comment at `:99-106` documents this as a `CONTRACT MISMATCH`; that comment is resolved. *(machine)*
+- The `unavailable` copy is rewritten — the passage is now present even when the PDF is not. *(machine)*
+- `verified: 'fuzzy'` is visually distinguishable from `'exact'`. *(machine)*
+- `app/lib/supabase.ts` (`Citation` type), `app/lib/citations.ts` (`resolve()`), and `tests/fixtures/SCHEMAS.md` updated — the last per its own rule at `:6-8` ("change it here first"). *(machine)*
+
+**Owner:** Frontend · **Depends on:** M9 · **Priority:** High
+
+---
+
+### M13 — Refuse before generating
+**As a** technician, **I want** the safety refusal to be ours and identical every time,
+**so that** rephrasing a question cannot get me a different answer.
+- The hard-refusal classifier for gas/combustion, live electrical, and refrigerant handling runs **server-side ahead of the model call**. *(machine)*
+- Two layers: a cheap deterministic lexical pre-filter, plus a **Flash** classification call emitting a **category enum only, never prose**. *(machine)*
+- Refusal copy is deterministic across every phrasing AC 5 tries, including ones that pressure for an answer. *(eval)*
+- **Opposite defaults, set deliberately and commented:** a provider block on the *classifier* counts as a refusal-category hit (fail closed); a provider block on the *answer path* is an error. *(machine)*
+- `safetySettings` are set permissively on `DANGEROUS_CONTENT` — HVAC combustion, high-voltage and refrigerant content is legitimate professional material — and **recorded as a decision in the stage artifact, not a quiet constant.** Availability of the most permissive thresholds is verified, not assumed. *(machine)*
+
+**Owner:** Backend · **Depends on:** M12 · **Priority:** Critical
+
+> This **inverts** the risk rather than managing it: the requests most likely to trip
+> `DANGEROUS_CONTENT` never reach the provider, and our copy is what AC 5 scores.
+
+---
+
+### M14 — A provider block can never become a refusal
+**As a** builder, **I want** the two made structurally distinct, **so that** a passing
+safety score means what it says.
+- The adapter's normalised return type **has no refusal variant** — it cannot express one. *(machine)*
+- A synthetic `finishReason: 'SAFETY'` payload yields an error carrying a `providerBlock` marker, and is asserted **never equal to the refusal shape**. *(machine)*
+- **Empty text is an error, never an answer.** A blocked response can be `candidates: []` or a candidate with no parts; an empty bubble is the "blank screen" `tests/suites/human-only.mjs:55` forbids. *(machine)*
+- `sql/002_prototype_sessions.sql:39` already constrains `messages.kind` to `('user','answer','clarify','refusal')` with **no `error` kind** — so a provider block must never persist as a message at all. The invariant is leaned on and stated. *(machine)*
+- `blockReason`, `finishReason`, and per-category `safetyRatings` are logged on every call, and block rate is measured across `tests/fixtures/top-15-faults.json`. **A non-zero block rate on legitimate HVAC queries is a Critical.** *(machine)*
+- `tests/suites/e5-safety.mjs` gains a check that no provider-block path can yield `kind:'refusal'`. *(machine)*
+- **Stage 5.5 records a provider block as an invalid trial to re-run** — neither a pass nor a leak. *12 of 12 refusals where three came from Google's filter is an unmeasured run*, and it will regress silently the day the model version changes. *(eval)*
+
+**Owner:** Backend (adapter), Eval (trial rule) · **Depends on:** M13 · **Priority:** Critical
+
+---
+
+### M15 — Caching becomes an observed effect, not a control
+**As a** builder, **I want** the caching criterion to be checkable on Gemini, **so that**
+it isn't quietly dropped.
+- `docs/phase1-story-map.md:347` — *"Prompt caching is applied to the retrieved context block (machine)"* — **does not survive**: the cacheable prefix is supposed to be retrieved context, which differs on every query. What is actually stable is systemInstruction + schema + refusal policy + few-shot, which may sit below the minimum threshold entirely. *(machine)*
+- Restated as: the request is constructed **stable-prefix-first**, and `usageMetadata.cachedContentTokenCount` is reported for every call. Both halves are checkable. *(machine)*
+- Field names and thresholds verified against current docs. *(machine)*
+
+**Owner:** Backend · **Depends on:** M12 · **Priority:** Medium
+
+> **One thing improves.** Explicit caching makes §3.5's long-context control — classify
+> equipment, load one whole manual, ~61k tokens average and ~165k largest — materially
+> more attractive than it was, because a manual is *stable across many queries about the
+> same unit*, which is exactly the shape explicit caching pays for.
+
+---
+
+### M16 — Re-derive cost, and report a distribution
+**As a** builder on a fixed budget, **I want** real numbers, **so that** the $29/mo
+question at Phase 3 is answerable.
+- Cost is **re-derived from M12's measurements, not re-scaled** — the token counts changed, not just the rates, so a multiplier would carry a stale denominator forward. *(machine)*
+- **Per-answer cost is reported as p50 and p95, not a point value**, because the repair turn gives it a distribution — matching how Run B AC 9 already asks for p50/p95 latency. *(machine)*
+- **Run B AC 9's "caching on and off" is restated as three-way**: cold prefix / warm implicit hit / explicit `cachedContents` with storage amortised. There is no per-request opt-out for implicit caching on AI Studio *(verify)*, so (1) vs (2) is measured by observing cache state rather than toggling a flag. *(machine)*
+- New cost lines with no prior analogue: explicit-cache storage per token-hour; vision input tokens per nameplate photo; the safety-classifier call. *(machine)*
+- Recomputed: `retrieval-architecture.md:190` (~$0.04/answer), `:191` (30-scenario run), `00-brief.md:37`, `Ductective-Plan-v3.md:91`. Deleted: `:197`. *(machine)*
+
+**Owner:** Backend · **Depends on:** M12 · **Priority:** Medium
+
+---
+
+### M17 — Pick the vision model on evidence
+**As a** technician, **I want** the nameplate read correctly, **so that** I'm not given
+guidance for the wrong unit.
+- **Flash and Pro are both measured** on the 10-photo set from Run C AC 3 (Trane Precedent and Carrier 48/50, mixed lighting and angles). *(human)*
+- Run B AC 7's bar — ≥8 of 10 correct — is met by the chosen model, and per-photo results are tabulated. *(human)*
+- **A per-call model split is legitimate**: Flash for answers and the classifier, Pro for vision if the measurement supports it. Recorded as a decision with the numbers behind it. *(machine)*
+- Inline-data request-size ceiling verified; photos downscaled server-side before send. *(machine)*
+
+**Owner:** Backend · **Depends on:** M11 · **Priority:** High
+
+> The 10 photos are a **human collection task that gates an acceptance criterion** —
+> start collecting now, not at Run C kickoff.
+
+---
+
+## New OPEN QUESTIONs, each with a proposed default
+
+6. **Span-verification failure policy.** *Default:* one repair turn, then fail the answer. → M8
+7. **`safetySettings` thresholds.** *Default:* most permissive available on `DANGEROUS_CONTENT`, block rate instrumented, revisit on measurement. → M13
+8. **Model per call path.** *Default:* Flash everywhere; measure Pro for vision (M17) and for spans if M12's gate trips.
+9. **Free vs paid tier.** *Default:* free during POC, paid before Phase 2 traffic — the inverse of the stated sequencing, for the reason in M3.
+10. **Streaming vs structured output in Run C.** *Default:* validate then stream; revisit against the ≤3s TTFT target. → M11
+11. **Long-context control on explicit caching.** *Default:* yes — it is the one place the economics clearly improve. → M15
+
+## Verify against current docs before relying on any of it
+
+Free-tier data-usage wording and RPM/RPD limits; caching thresholds and whether implicit
+caching can be disabled per-request; `usageMetadata` field names; the full
+`blockReason`/`finishReason` enum sets; whether the most permissive `safetySettings`
+require allowlisting; `responseSchema`'s OpenAPI subset and its composability with
+streaming and tool use; inline-image size limits and image tokenisation; current Flash
+and Pro pricing; `AIza` key length; `GEMINI_API_KEY` vs `GOOGLE_API_KEY` resolution;
+whether Supabase Edge Functions bundle a relative import from outside `supabase/functions/`.
