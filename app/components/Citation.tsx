@@ -250,11 +250,18 @@ const s = StyleSheet.create({
    * height; the pill inside keeps the mockup's size. hitSlop is left on as well,
    * so native gets the same floor even where padding is clipped.
    */
-  chipTouch: { minHeight: MIN_TOUCH, justifyContent: 'center' },
+  // maxWidth so a long document name ellipses inside the row rather than running
+  // off the screen edge — reachable past 200%, where a chip can exceed the column.
+  chipTouch: { minHeight: MIN_TOUCH, justifyContent: 'center', maxWidth: '100%' },
   chip: {
-    height: CHIP_HEIGHT,
+    // minHeight, not height. A React Native View is overflow:hidden, so a fixed
+    // height clips its own label the moment the OS font scale goes up — at 200%
+    // this pill was 24dp around 32dp of text, on the app's most-tapped control.
+    // E6.7 requires text to survive 200% without clipping.
+    minHeight: CHIP_HEIGHT,
     alignSelf: 'flex-start',
     justifyContent: 'center',
+    paddingVertical: 2,
     paddingHorizontal: space.sm + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -265,9 +272,10 @@ const s = StyleSheet.create({
   chipText: { ...type.chip, color: color.accent },
 
   chipBroken: {
-    height: CHIP_HEIGHT,
+    minHeight: CHIP_HEIGHT,
     alignSelf: 'flex-start',
     justifyContent: 'center',
+    paddingVertical: 2,
     paddingHorizontal: space.sm + 2,
     borderRadius: radius.pill,
     borderWidth: 1,
@@ -278,8 +286,8 @@ const s = StyleSheet.create({
   chipBrokenText: { ...type.chip, color: color.refusalText },
 
   sourceIconBroken: {
-    width: 42,
-    height: 42,
+    minWidth: 42,
+    minHeight: 42,
     borderRadius: radius.md,
     backgroundColor: color.refusalSurface,
     borderWidth: 1,
@@ -330,8 +338,8 @@ const s = StyleSheet.create({
 
   sourceHead: { flexDirection: 'row', gap: space.md, marginBottom: space.lg },
   sourceIcon: {
-    width: 42,
-    height: 42,
+    minWidth: 42,
+    minHeight: 42,
     borderRadius: radius.md,
     backgroundColor: color.accentSurface,
     borderWidth: 1,

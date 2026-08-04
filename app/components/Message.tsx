@@ -231,8 +231,10 @@ const s = StyleSheet.create({
   steps: { gap: space.lg },
   step: { flexDirection: 'row', gap: space.md },
   stepNumber: {
-    width: 28,
-    height: 28,
+    minWidth: 28,
+    minHeight: 28,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
     borderRadius: radius.pill,
     backgroundColor: color.accentSurface,
     borderWidth: 1,
