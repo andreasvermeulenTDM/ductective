@@ -123,10 +123,13 @@ export function CitationSheet({
       accessibilityViewIsModal
     >
       <Pressable style={s.backdrop} onPress={onClose} accessibilityLabel="Close source">
-        <Pressable style={s.sheet} onPress={(e) => e.stopPropagation()}>
+        {/* A View, not a Pressable. This only has to swallow taps so they don't
+            reach the backdrop and close the sheet — making it a control gives
+            screen readers a phantom unlabelled button that does nothing (E6.7). */}
+        <View style={s.sheet} onStartShouldSetResponder={() => true}>
           <View style={s.grabber} />
           <ScrollView>{citation && <SourceBody citation={citation} onClose={onClose} />}</ScrollView>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
