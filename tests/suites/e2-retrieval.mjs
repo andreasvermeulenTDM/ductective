@@ -19,7 +19,7 @@ function loadJson(c, rel) {
   try {
     return JSON.parse(raw);
   } catch (e) {
-    throw new Error(`${rel} is not valid JSON: ${e.message}`);
+    throw new Error(`${rel} is not valid JSON: ${e.message}`, { cause: e });
   }
 }
 

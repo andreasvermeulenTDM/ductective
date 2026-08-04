@@ -8,6 +8,9 @@
     "node": ">=22"
   },
   "scripts": {
+    "lint": "eslint .",
+    "build": "npm --prefix app run typecheck",
+    "test": "node --test",
     "verify": "node --env-file=.env scripts/verify-connection.mjs",
     "sync-env": "node scripts/sync-app-env.mjs",
     "app": "npm run sync-env && npm --prefix app run web",
@@ -16,5 +19,12 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "globals": "^17.9.0",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.66.0"
   }
 }

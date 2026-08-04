@@ -163,7 +163,7 @@ export default defineSuite({
       story: 'E1.3',
       what: 'documents are keyed by a stable ID, so a rename cannot mis-cite',
       requires: 'knowledge',
-      async run(c) {
+      async run(_c) {
         return blocked('document-identity scheme not yet defined — Stage 2.5 owns it');
       },
     },
