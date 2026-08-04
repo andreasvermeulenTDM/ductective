@@ -4,7 +4,7 @@ Stage 3 artifact for `.pipeline/00-brief.md` (Run A). Stories are the ones in
 `.pipeline/02-user-stories.md`; the pre-Stage-2 numbering in
 `docs/phase1-story-map.md` (E0.x) is superseded by S1–S6.
 
-**This pass covers S1 only.** S2 and S3 are startable and not yet begun; S4–S6 are
+**This pass covers S1 and S2.** S3 is startable and not yet begun; S4–S6 are
 gated. Status of every Backend story is tabulated at the bottom.
 
 ## Precondition — the exemption claimed
@@ -105,6 +105,84 @@ All three exit 0. Then `node tests/run-all.mjs` (no `.env` needed) should report
 
 ---
 
+## S2 — Secrets stay out of the repo and the client bundle ✅
+
+**What was already true, and what wasn't.** Three of S2's four criteria had partial
+coverage in `tests/suites/e0-rails.mjs`: `.env.example` is checked for required
+names and secret-shaped values, tracked files are scanned for key prefixes, and
+`app/` sources are scanned for server-only variable names. Two real gaps remained,
+and both are the kind that only show up in the artifact nobody looks at:
+
+1. **History was scanned for forbidden *paths*, never for key-shaped *content*.**
+   `.env` and `*.pdf` were checked; a key pasted into a tracked file in some earlier
+   commit and deleted later would pass every existing check.
+2. **The bundle was never read.** S2's DoD is explicit — "provable by grep of the
+   built bundle, not by inspection." Reading `app/lib/supabase.ts` is an argument
+   about what *should* be inlined. Metro's actual output is the evidence.
+
+### What landed
+
+| Command | Proves |
+|---|---|
+| `npm run verify:secrets` | No key value and no key-shaped string in any tracked file **or any of the 25 commits on any ref** |
+| `npm run verify:bundle` | Exports the web bundle with `expo export` and greps the built artifact — currently 3 readable files including the 803 kB JS bundle |
+
+Both are backed by [lib/secrets.mjs](../lib/secrets.mjs), which is now the single
+definition of what a secret looks like — `e0-rails.mjs` imports from it instead of
+restating the patterns. Two copies drift, and the half that drifts is always the
+one nobody is running.
+
+### The design decision that matters
+
+The scanner checks **shape** and **literal value**, and the literal check is the
+one brief criterion 3 actually turns on. Shape catches a key from a provider nobody
+has told us about; literal catches the case shape misses — a key re-encoded or
+inlined in a form the regex doesn't match.
+
+That forced an exemption to be explicit rather than accidental: **the anon key is
+supposed to ship.** It is RLS-protected by design and the privilege split is
+already proven live (`npm run verify`: anon gets 401 / `42501` on
+`ductective_health`). Without an exemption the JWT shape rule fails the bundle for
+doing exactly what it should — and a check that cries wolf is a check somebody
+disables. So the bundle scan blanks client-safe literals *before* the shape rules
+run, and `verify-secrets.mjs` deliberately does **not** take that exemption: safe
+to ship in a bundle is not the same as safe to commit. Bundle rules and repo rules
+are different rules, and each script runs its own.
+
+**No finding ever prints the matched value** — findings name the variable and the
+commit. A verifier that leaks the secret it found would be worse than none, and
+there is a test asserting it.
+
+### Coverage
+
+Nine unit tests in [lib/secrets.test.mjs](../lib/secrets.test.mjs), run by
+`npm test` (28 total now, up from 19). The two that carry the weight are
+service-role-in-a-bundle *fails* and anon-key-in-the-same-bundle *passes* — plus
+one asserting no finding object can contain the value it matched.
+
+`verify-bundle.mjs` also fails closed if the export produced no JavaScript: a scan
+that read no bundle found nothing because it read nothing, and reporting that as a
+pass would be a statement about the walk rather than about the app.
+
+### Status of the four criteria
+
+| Criterion | State |
+|---|---|
+| `.env.example` lists every variable, no values | ✅ Verified — `E0.2` check passes |
+| No key in any tracked file or git history | ✅ **Now provable** — 120 files, 25 commits, clean |
+| App reads no API key at runtime | ✅ **Now provable from the built bundle**, not from source |
+| Service-role key never exposed; privilege split holds | ✅ For today. The criterion says "**after S4 lands**" — S4 must re-run `verify:bundle` before it can claim this |
+
+### Honest limit
+
+`ANTHROPIC_API_KEY` is empty in `.env` (H2), so the literal half of both checks
+currently runs against Voyage, service-role, and anon values only. Both scripts
+print that limitation rather than reporting an unqualified pass — **re-run both
+once H2 is cleared**, which is also when S4 first puts an Anthropic key anywhere
+near a build.
+
+---
+
 ## Contracts for Frontend
 
 **None this pass.** S1 adds no API surface. The contract Stage 4 waits on is S4's
@@ -140,8 +218,8 @@ an uncitable chunk impossible by construction rather than by convention.
 | Story | Priority | State |
 |---|---|---|
 | S1 — lint/build/test commands | Critical | ✅ **Done** — this pass |
-| S2 — secrets out of repo and bundle | Critical | Startable now, not begun |
-| S3 — cost tracking against budget | Medium | Startable now, not begun |
+| S2 — secrets out of repo and bundle | Critical | ✅ **Done** — this pass; re-verify after H2 and after S4 |
+| S3 — cost tracking against budget | Medium | Startable now, not begun. Its first criterion ("`embedTokensUsed()` surfaced in the ingest run's output") needs an ingest run to exist — Knowledge's S18 — so only the ledger half is buildable today |
 | S4 — serverless Claude proxy | Critical | **Blocked on H2** — `ANTHROPIC_API_KEY` empty; `lib/clients.mjs:172` throws `TODO(Stage 3)` |
 | S5 — device round trip | Critical | Blocked on S4 + **H7** (no device) |
 | S6 — chunks migration applied | Critical | **Blocked on Knowledge S12** — schema is Stage 2.5's to design |

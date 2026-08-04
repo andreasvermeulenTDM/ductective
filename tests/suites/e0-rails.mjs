@@ -9,13 +9,12 @@
 
 import { defineSuite, pass, fail, blocked } from '../harness.mjs';
 
-/** Key prefixes that must never appear in a tracked file. */
-const SECRET_PATTERNS = [
-  { name: 'Anthropic key', re: /sk-ant-[A-Za-z0-9_-]{8,}/ },
-  { name: 'Voyage key', re: /\bpa-[A-Za-z0-9_-]{20,}/ },
-  { name: 'Supabase JWT', re: /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\./ },
-  { name: 'generic secret assignment', re: /(SERVICE_ROLE|SECRET|PRIVATE)_KEY\s*=\s*\S{20,}/ },
-];
+/*
+ * Key shapes come from lib/secrets.mjs rather than being restated here. Two
+ * definitions of "what a secret looks like" drift, and the half that drifts is
+ * always the one nobody is running.
+ */
+import { SECRET_PATTERNS } from '../../lib/secrets.mjs';
 
 /** §5 layout from Ductective-Plan-v3.md, as E0.1 enumerates it. */
 const LAYOUT = [

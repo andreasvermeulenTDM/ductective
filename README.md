@@ -43,6 +43,8 @@ npm install && npm --prefix app install
 | `npm run build` | `tsc --noEmit` against the Expo app — the only compiled surface | install |
 | `npm test` | Node's built-in runner over every `*.test.mts` / `*.test.mjs` | nothing |
 | `npm run verify` | Supabase rail probe — pgvector, privilege split, live Voyage embed | `.env` |
+| `npm run verify:secrets` | No key value or key-shaped string in any tracked file **or any commit** | install |
+| `npm run verify:bundle` | Exports the web bundle and greps the built artifact for secrets | install |
 | `npm run verify:stage5` | The Stage 5 acceptance run across every epic | `.env` |
 
 The first three are the gate every pipeline stage reports against, and all three
@@ -51,6 +53,11 @@ no install: it is Node's own runner with native type stripping, so a stage can
 always run it. `verify:stage5` is the acceptance suite, not the unit suite —
 without `.env` it reports BLOCKED rather than FAIL, which is the distinction that
 keeps a missing credential from being chased as a defect.
+
+The two `verify:secrets` / `verify:bundle` checks are kept out of `npm run lint`
+deliberately: exporting a web bundle takes about a minute, and a gate slow enough
+to skip is a gate that gets skipped. Run them before any push that touches env
+handling, and always before a release.
 
 ## The two rules
 
