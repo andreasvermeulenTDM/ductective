@@ -20,8 +20,29 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { corpus, selectChunks, normalise } from './chunks.mjs';
+import { normalise } from './chunks.mjs';
+import { supabaseAdmin, embed } from '../../lib/clients.mjs';
 import { complete, ProviderError, DEFAULT_MODEL } from '../../lib/providers/gemini.mjs';
+
+/**
+ * Chunks now come from live pgvector via match_chunks — M12 as originally
+ * written. The pdftotext + keyword-overlap path in chunks.mjs was a stand-in
+ * from before the chunks table existed, and its flaw finally showed: drawing on
+ * the full manifest corpus, keyword overlap served product-data spec tables for
+ * common terms, the model correctly returned zero claims for 7 of 9 faults, and
+ * the run starved below the 20-claim floor. Real retrieval serves the chunks the
+ * production system would actually cite from, which is the thing worth measuring.
+ */
+async function retrieveChunks(db, faultName, k = 8) {
+  const { embeddings } = await embed([`rooftop unit ${faultName}`], { inputType: 'query' });
+  const { data, error } = await db.rpc('match_chunks', {
+    query_embedding: embeddings[0],
+    match_count: k,
+    scope_only: true,
+  });
+  if (error) throw new Error(`match_chunks: ${error.message}`);
+  return (data ?? []).map((h) => ({ doc: h.out_document, page: h.out_page, text: h.out_text }));
+}
 
 const arg = (name, dflt) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -152,14 +173,14 @@ async function ask(fault, chunks, schema) {
 const rows = [];
 console.log(`\nM12 measurement gate — ${MODEL}, ${FAULTS.length} faults, 8 chunks each\n`);
 
-const pool = corpus();
-if (!pool.length) {
-  console.error('No corpus text. Is "HVAC Data/" present and pdftotext installed?');
-  process.exit(1);
-}
+const db = supabaseAdmin();
 
 for (const fault of FAULTS) {
-  const chunks = selectChunks(fault.name, pool);
+  const chunks = await retrieveChunks(db, fault.name);
+  if (chunks.length === 0) {
+    console.error('match_chunks returned nothing — is the corpus ingested?');
+    process.exit(1);
+  }
   const ids = new Set(chunks.map((_, i) => `c${i + 1}`));
   const byId = Object.fromEntries(chunks.map((c, i) => [`c${i + 1}`, c]));
 

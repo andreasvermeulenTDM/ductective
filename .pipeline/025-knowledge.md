@@ -108,9 +108,10 @@ page map (`docs/retrieval-architecture.md` §3.2). Within a page: paragraph
 boundaries first, then lines; target 1,600 chars (≈400 tokens), max 2,400, min
 120 with trailing-scrap folding. `content_hash = sha256(document_id·page·text)`.
 
-Every chunk carries denormalised provenance — document, **page (NOT NULL)**,
-manufacturer, doc type, coverage, `license_status`, `in_scope`,
-`embedding_model` — because a citation rendered from the chunk alone cannot be
+Every chunk carries denormalised provenance — `source_document` (the label,
+added by sql/005 after Stage 5 caught it living behind a join),
+**`page_number` (NOT NULL)**, manufacturer, doc type, `model_coverage`,
+`license_status`, `in_scope`, `embedding_model` — because a citation rendered from the chunk alone cannot be
 broken by a failed join (brief criterion 4).
 
 Scope (S14) derives from the manifest, never from filenames:
@@ -126,13 +127,28 @@ cannot prove a past run was stub-free; the column can, from a cold start).
 Embedding: `voyage-4-large`, 1024 dims, `input_type: 'document'` at ingest,
 `'query'` at search — the asymmetry is functional, not cosmetic.
 
-Call `public.match_chunks(query_embedding vector(1024), match_count int = 8,
-scope_only bool = true)`. OUT columns are `out_*`-prefixed (Postgres RETURNS
+**Query interface.** `public.match_chunks(query_embedding vector(1024),
+match_count int, scope_only bool)`. The **top-k default is 8** (`match_count`);
+callers may lower it, and nothing above 8 has been measured.
+
+**Returned chunk shape.** OUT columns are `out_*`-prefixed (Postgres RETURNS
 TABLE name-collision constraint); `ingest/smoke.mjs` shows the canonical mapping
 back to `{chunk_id, document_id, document, page, text, manufacturer, doc_type,
-coverage, license_status, in_scope, similarity}`. A citation is rendered from
-one row: **document label + page**, with `text` as the passage shown on
-tap-through.
+coverage, license_status, in_scope, similarity}`. As of sql/005 every field a
+citation needs — including `source_document`, the human-readable label — lives
+on the chunk row itself; the read path has no join to fail.
+
+**Result ordering.** Rows come back ranked by cosine similarity, descending —
+`similarity = 1 − (embedding <=> query)`, best first. Ties are not specified and
+must not be relied on.
+
+**Scope filtering.** `scope_only = true` (the default) restricts to
+`in_scope = true` — the 21 Phase 1 documents. Out-of-scope chunks exist in the
+table by design (the brief's precision-measurement requirement) and are only
+reachable by passing `scope_only = false` explicitly.
+
+**Citation rendering.** A citation renders from one returned row:
+`source_document` + `page`, with `text` as the passage shown on tap-through.
 
 `match_chunks_hybrid` (sql/004, RRF over vector + tsvector) exists as an opt-in
 (`RETRIEVAL_MODE=hybrid`) and **measured worse — do not enable it**: 8/14 vs
