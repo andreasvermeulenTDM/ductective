@@ -212,25 +212,28 @@ export async function ingest({ log = console.log } = {}) {
       continue;
     }
 
-    // Upsert the document row first — chunks reference it.
-    const { error: dErr } = await db.from('documents').upsert({
-      id: doc.id,
-      label: doc.label,
-      file_name: doc.file,
-      manufacturer: doc.manufacturer,
-      doc_type: doc.docType,
-      coverage: doc.coverage ?? '',
-      source_url: doc.sourceUrl,
-      license_status: doc.licenseStatus,
-      in_scope: doc.inScope,
-      page_count: quality.page_count,
-      usable_pages: quality.usable_pages,
-      two_column_pages: quality.two_column_pages,
-      mean_alpha_ratio: quality.mean_alpha_ratio,
-      disposition: d.state,
-      disposition_reason: d.reason,
-    });
-    if (dErr) throw new Error(`document upsert ${doc.file}: ${dErr.message}`);
+    // Upsert the document row first — chunks reference it. Wrapped in the same
+    // transport retry as chunk inserts: a run died on the LAST document because
+    // this one call was the only unprotected write in the loop.
+    await withRetry(`document upsert ${doc.file}`, () =>
+      db.from('documents').upsert({
+        id: doc.id,
+        label: doc.label,
+        file_name: doc.file,
+        manufacturer: doc.manufacturer,
+        doc_type: doc.docType,
+        coverage: doc.coverage ?? '',
+        source_url: doc.sourceUrl,
+        license_status: doc.licenseStatus,
+        in_scope: doc.inScope,
+        page_count: quality.page_count,
+        usable_pages: quality.usable_pages,
+        two_column_pages: quality.two_column_pages,
+        mean_alpha_ratio: quality.mean_alpha_ratio,
+        disposition: d.state,
+        disposition_reason: d.reason,
+      })
+    );
 
     // What is already stored for this document?
     const { data: existing, error: eErr } = await db
