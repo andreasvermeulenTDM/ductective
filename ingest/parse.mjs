@@ -48,9 +48,31 @@ const LOW_ALPHA = 0.55;
 /** A document with almost no usable page is excluded rather than half-ingested. */
 const MIN_USABLE_FRAC = 0.2;
 
+/**
+ * Above this fraction of fused tokens, the parser is failing on the document — D1.
+ *
+ * Deliberately near zero. Correct extraction produces essentially no alphabetic run
+ * over 18 characters, so this is not a tuning knob balancing false positives; it is
+ * a tripwire. The affected documents scored 5–13% before the fix.
+ */
+const GLUED_RATIO_MAX = 0.005;
+
+/**
+ * Must match `PARSER_VERSION` in parse.py.
+ *
+ * The cache was previously keyed on filename alone, so a parser fix was invisible
+ * to anyone with a warm cache — the D1 word-boundary fix would have appeared to do
+ * nothing, which is a worse failure than the bug it repairs. A cached parse from an
+ * older parser is now discarded rather than trusted.
+ */
+const PARSER_VERSION = 2;
+
 export function parseDocument(doc) {
   const cachePath = join(CACHE, `${doc.file}.json`);
-  if (existsSync(cachePath)) return JSON.parse(readFileSync(cachePath, 'utf8'));
+  if (existsSync(cachePath)) {
+    const cached = JSON.parse(readFileSync(cachePath, 'utf8'));
+    if (cached.parser_version === PARSER_VERSION) return cached;
+  }
 
   const raw = execFileSync('python', ['ingest/parse.py', join(CORPUS_DIR, doc.file)], {
     encoding: 'utf8',
@@ -93,6 +115,17 @@ export function disposition(quality, doc) {
       state: 'excluded',
       reason: `only ${quality.usable_pages}/${quality.page_count} pages carry usable text ` +
         `(<${MIN_USABLE_FRAC * 100}%) — image-only or drawing-only document`,
+    };
+  }
+  // Checked before the tabular exemption: fused text is a parser failure whatever
+  // the document type, and a PT chart is not entitled to it either.
+  if ((quality.glued_ratio ?? 0) > GLUED_RATIO_MAX) {
+    return {
+      state: 'ingest-with-caveat',
+      reason:
+        `${quality.glued_tokens} fused token(s), ${(quality.glued_ratio * 100).toFixed(1)}% of words — ` +
+        `word boundaries were lost at extraction (D1). Lexical retrieval cannot see this ` +
+        `document's terms; re-parse before trusting its chunks.`,
     };
   }
   if (tabular) {

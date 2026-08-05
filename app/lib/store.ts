@@ -8,6 +8,7 @@
 
 import { supabase, isConfigured, type Citation, type Message, type Session } from './supabase';
 import { mockReply } from './mockDiagnostics';
+import { isLive, requestDiagnosis } from './diagnose';
 
 export class NotConfiguredError extends Error {}
 
@@ -116,24 +117,36 @@ async function appendMessage(
 /**
  * Submit a symptom and persist both turns.
  *
- * The reply comes from mockDiagnostics — canned text with unverified citations.
- * Replacing this one call with the Run B core is the whole of the swap.
+ * The reply comes from the Run B core when `EXPO_PUBLIC_DIAGNOSE_URL` is set, and
+ * from mockDiagnostics when it is not — so a checkout with no backend running
+ * still renders. That was the swap this file was written to accept, and nothing
+ * else in it changed.
+ *
+ * The fallback is deliberately *not* silent-on-error: if a live core is configured
+ * and fails, the error propagates to the caller's error state. Quietly serving a
+ * canned answer in place of a failed real one would mean a technician reading
+ * unverified text believing it came from the manual — the worst outcome available
+ * here, and worse than an honest error card.
  */
 export async function submitSymptom(
   sessionId: string,
   nextSeq: number,
-  input: string
+  input: string,
+  equipment?: string | null
 ): Promise<{ user: Message; reply: Message }> {
   const user = await appendMessage(sessionId, nextSeq, 'user', input);
 
-  const mock = mockReply(input);
-  const reply = await appendMessage(
-    sessionId,
-    nextSeq + 1,
-    mock.kind,
-    mock.body,
-    mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 }))
-  );
+  const result = isLive
+    ? await requestDiagnosis(input, equipment)
+    : (() => {
+        const mock = mockReply(input);
+        return {
+          ...mock,
+          citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })),
+        };
+      })();
+
+  const reply = await appendMessage(sessionId, nextSeq + 1, result.kind, result.body, result.citations);
 
   return { user, reply };
 }

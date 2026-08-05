@@ -82,7 +82,7 @@ function sections(patch) {
   const out = [{ path: '', text: parts[0] }];
   for (const part of parts.slice(1)) {
     // `a/path b/path` — take the b-side, which is the post-change path.
-    const path = (part.match(/^a\/\S+ b\/(\S+)/) || [, ''])[1] || '';
+    const path = part.match(/^a\/\S+ b\/(\S+)/)?.[1] ?? '';
     out.push({ path, text: part });
   }
   return out;

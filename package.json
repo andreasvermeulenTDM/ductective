@@ -21,7 +21,8 @@
     "ingest:reconcile": "node ingest/reconcile.mjs",
     "ingest": "node --env-file=.env ingest/run.mjs",
     "ingest:parse": "node ingest/parse.mjs",
-    "ingest:smoke": "node --env-file=.env ingest/smoke.mjs"
+    "ingest:smoke": "node --env-file=.env ingest/smoke.mjs",
+    "serve": "node --env-file=.env scripts/serve.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0"

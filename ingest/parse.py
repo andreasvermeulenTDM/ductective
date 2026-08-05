@@ -23,12 +23,45 @@ import sys
 
 import pdfplumber
 
+# Bumped whenever a change here alters extracted text. parse.mjs invalidates its
+# cache on this, because a parser fix that a warm cache hides is not a fix.
+PARSER_VERSION = 2
+
 # A gutter must be this fraction of page width to count as a column separator.
 MIN_GUTTER_FRAC = 0.035
 # Columns are only plausible when the gutter sits near the middle of the page.
 GUTTER_BAND = (0.35, 0.65)
 # Below this, a page is a diagram or a cover — real text, just not much of it.
 LOW_TEXT_CHARS = 400
+
+# ---------------------------------------------------------------------------
+# Word segmentation — D1
+# ---------------------------------------------------------------------------
+# pdfplumber's default `x_tolerance` is an absolute 3 points: characters closer
+# together than that are treated as one word. Several documents here set inter-word
+# spacing by glyph positioning rather than emitting a space character, at gaps under
+# 3pt — so whole clauses fused into single tokens:
+#
+#     "Condensercoildirtyorrestricted. Cleancoilorremoverestriction."
+#
+# It reads as a parse curiosity and behaves as a retrieval failure. `to_tsvector`
+# never emits `condenser`, `dirty` or `restriction` for that page, so lexical search
+# cannot see the page at all, and the embedding of a fused token is not the
+# embedding of its words. Measured on the live corpus: only 25% of chunks containing
+# "trane" carried it as a delimited word, and 20% for "precedent".
+#
+# The ratio form scales the tolerance with font size instead of fixing it in points,
+# which is what makes one setting correct across a 6pt table and a 14pt heading.
+# Verified across the corpus: on documents that were already clean the token count
+# is *identical* (313 -> 313, 566 -> 566, canary words unfragmented), and on the
+# affected ones the fused tokens go to zero (48-50LC page 30: 187 -> 1059 tokens,
+# 24 fused -> 0).
+X_TOLERANCE_RATIO = 0.15
+
+# An alphabetic run longer than this is not an English word. "Condensercoildirty-
+# orrestricted" is 30 characters; the longest ordinary word in HVAC prose
+# ("troubleshooting") is 15.
+GLUED_TOKEN_CHARS = 18
 
 
 def find_gutter(words):
@@ -101,8 +134,23 @@ def lines_from(words, tol=2.5):
     return [" ".join(x["text"] for x in sorted(r, key=lambda x: x["x0"])) for r in rows]
 
 
+def count_glued(words):
+    """
+    Tokens too long to be words — the signal S11 was missing.
+
+    The original quality metrics (char count, alpha ratio, two-column detection)
+    are all blind to this failure: fused text has a *higher* alpha ratio than
+    correct text, so the one signal that could have caught it pointed the wrong
+    way. Counted here so a regression is visible rather than inferred later from
+    bad retrieval.
+    """
+    return sum(1 for w in words if len(w["text"]) > GLUED_TOKEN_CHARS and w["text"].isalpha())
+
+
 def parse_page(page):
-    words = page.extract_words(use_text_flow=False, keep_blank_chars=False) or []
+    words = page.extract_words(
+        use_text_flow=False, keep_blank_chars=False, x_tolerance_ratio=X_TOLERANCE_RATIO
+    ) or []
     gutter = find_gutter(words)
     two_col = gutter is not None
 
@@ -131,6 +179,7 @@ def parse_page(page):
         # assumed to be zero.
         "splice_avoided": two_col,
         "low_text": len(text) < LOW_TEXT_CHARS,
+        "glued_tokens": count_glued(words),
     }
 
 
@@ -151,15 +200,24 @@ def parse(path):
                         "two_column": False,
                         "splice_avoided": False,
                         "low_text": True,
+                        "glued_tokens": 0,
                         "error": f"{type(e).__name__}: {e}",
                     }
                 )
 
     usable = [p for p in pages if not p["low_text"]]
+    total_words = sum(p["words"] for p in pages) or 1
+    glued = sum(p.get("glued_tokens", 0) for p in pages)
     return {
         "pages": pages,
+        "parser_version": PARSER_VERSION,
         "quality": {
             "page_count": len(pages),
+            "glued_tokens": glued,
+            # Fraction of all tokens that are fused runs. Expected to be 0.000 now;
+            # anything above GLUED_RATIO_MAX in parse.mjs is a parser regression,
+            # not a property of the document.
+            "glued_ratio": round(glued / total_words, 4),
             "usable_pages": len(usable),
             "low_text_pages": len(pages) - len(usable),
             "two_column_pages": sum(p["two_column"] for p in pages),
