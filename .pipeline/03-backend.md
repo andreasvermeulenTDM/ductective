@@ -265,6 +265,71 @@ Also worth knowing: **`match_chunks_hybrid` does not exist in the live database.
 run through the vector-only `match_chunks` via the runtime fallback — which at least
 proves the fallback works. Applying 004 may address finding 3 directly.
 
+### `sql/004` applied — and the result was negative
+
+Applied to the live database on 5 Aug. **Hybrid RRF made manufacturer precision
+worse, not better**, which is the opposite of what its own rationale predicted:
+
+| Query: *"Trane Precedent rooftop unit tripping on high head pressure"* | Trane docs in top 5 |
+|---|---|
+| Vector-only `match_chunks` | **2** — both real Precedent IOMs (RT-SVX46G p.9, RT-SVX23R p.9) |
+| Hybrid RRF `match_chunks_hybrid` | **1** |
+
+On the second phrasing it went from 1 Trane hit to 0.
+
+**The cause is upstream of the ranking, and it is finding 1 above.** The lexical arm
+is starved by the parse defect. Measured across the 3,685 chunks:
+
+| Token | Chunks containing it as a delimited word |
+|---|---|
+| `pressure` | 66% |
+| `condenser` | 49% |
+| `trane` | **25%** |
+| `precedent` | **20%** |
+
+The damage lands hardest on exactly the discriminating tokens RRF depends on. In
+the other 75–80% the word is glued into a longer string, so `to_tsvector` never
+emits the lexeme and the lexical arm cannot see it. Ranking on what remains — the
+common terms — the lexical arm's top 8 for that query contained **zero occurrences
+of "trane", "precedent", or "pressure"** and was dominated by product-data
+catalogues. Fusing that with a working vector arm dilutes a good result with a bad
+one.
+
+So RRF's design is sound and its diagnosis was right; it cannot work on this corpus
+until the corpus is re-parsed. **Retrieval now defaults to vector-only**, with
+`RETRIEVAL_MODE=hybrid` to opt in. Make hybrid the default again when the parse
+defect is fixed *and the smoke set shows it ahead* — which is what `sql/004`'s own
+comment asks for when it keeps `match_chunks` in place "so the two can be measured
+against each other".
+
+One refinement to finding 1 for Knowledge: the defect is **per document, not
+universal**. `RT-SVX46G-EN` p.9 reads cleanly ("Condensate Drain Pan Overflow
+Switch Frostat™ is standard…") while `48-50LC-04-06` p.33 is glued
+("Condensercoildirtyorrestricted"). That points at a specific extraction path
+rather than the whole pipeline.
+
+### Where the Trane query landed
+
+It now returns a **cited answer** rather than "no documentation": 4 ranked steps,
+0 dropped, ordering coil → fan → high-pressure control → system pressures.
+
+Two things not to overstate. The improvement came from **phrasing, not from 004** —
+the original phrasing still returns "no documentation", and both runs were
+vector-only. And **3 of the 4 citations are Carrier manuals for a Trane unit**.
+They support their claims generically, but citing a Carrier IOM for a Trane
+diagnosis is the cross-manufacturer contamination hybrid was meant to fix and
+can't yet. Eval criterion 3 should be expected to catch this.
+
+Latency on that query was **37.9 s** (vs 12.2 s for the Carrier one) — well inside
+the 150 s Edge cap, but worth watching as context grows.
+
+### A contract defect found in my own response shape
+
+`noDocumentation` was being returned at the top level by the validator and inside
+`meta` by the empty-retrieval path — two places for one fact. `dropped` leaked the
+same way. Both are now normalised into `meta` on all three return paths, along with
+the retrieval `mode`, before Run C builds against either.
+
 ### The blocker this could not clear
 
 An Edge Function can be neither run locally nor deployed from here: H5/H6 (Deno,
