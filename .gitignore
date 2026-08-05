@@ -68,3 +68,7 @@ app/.env
 # regression comparison. Neither belongs in a diff.
 tests/last-run.md
 tests/last-run.json
+
+# M12 spike — regenerable output and the pdftotext cache
+spike/m12/.cache/
+spike/m12/out/
