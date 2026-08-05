@@ -85,14 +85,26 @@ function makeLimiter() {
   };
 }
 
-/** Split by token budget, not by count — the ceiling that actually binds. */
+/**
+ * Voyage accepts at most 128 inputs per request — and a batch is also one
+ * Supabase insert, where every row carries a 1024-float vector.
+ *
+ * On the free tier the token ceiling bound first and this never mattered. Raising
+ * VOYAGE_TPM to the paid limit made the token budget 350k, so batches grew to
+ * hundreds of chunks and the *insert* payload — not the embedding call — started
+ * failing with a bare `fetch failed`. Two ceilings, and whichever is tighter has
+ * to win.
+ */
+const MAX_BATCH_ROWS = 96;
+
+/** Split by whichever ceiling binds first: token budget or row count. */
 function tokenBatches(items) {
   const out = [];
   let cur = [];
   let curTokens = 0;
   for (const c of items) {
     const t = estTokens(c.text);
-    if (cur.length && curTokens + t > BATCH_TOKEN_BUDGET) {
+    if (cur.length && (curTokens + t > BATCH_TOKEN_BUDGET || cur.length >= MAX_BATCH_ROWS)) {
       out.push(cur);
       cur = [];
       curTokens = 0;
@@ -104,8 +116,48 @@ function tokenBatches(items) {
   return out;
 }
 
+/**
+ * Supabase writes retry on transport failures.
+ *
+ * A `TypeError: fetch failed` is a dropped connection, not a rejected write — and
+ * an ingest that dies on one costs the whole remaining run. Postgres errors are
+ * NOT retried: a constraint violation means the data is wrong, and repeating it
+ * just fails more slowly.
+ */
+async function withRetry(label, fn, attempts = 4) {
+  for (let n = 1; ; n++) {
+    try {
+      const { error } = await fn();
+      if (error) throw new Error(`${label}: ${error.message}`);
+      return;
+    } catch (e) {
+      const transport = /fetch failed|ECONN|ETIMEDOUT|socket hang up|network/i.test(e.message);
+      if (!transport || n >= attempts) throw e;
+      await new Promise((r) => setTimeout(r, 2000 * n));
+    }
+  }
+}
+
 /** Voyage list price for the voyage-4 family. Free allowance is 200M tokens. */
 const USD_PER_MTOK = 0.18;
+
+/**
+ * Hard spend stop. The run aborts here rather than continuing to bill.
+ *
+ * Voyage's docs say the first 200M tokens are "free for every account", and the
+ * whole corpus is ~1.7M — so this should never fire. But the docs do not say
+ * whether adding a payment method changes that, and "it should be free" is a
+ * belief, not a control. This is the control.
+ *
+ * 5M is ~3x the corpus: generous enough that a legitimate re-ingest never trips
+ * it, tight enough that a bug looping over the corpus stops in seconds. At full
+ * list price 5M tokens is $0.90, so even the abort ceiling is small.
+ *
+ * Raise with VOYAGE_MAX_TOKENS, deliberately and per-run.
+ */
+const MAX_EMBED_TOKENS = Number(process.env.VOYAGE_MAX_TOKENS || 5_000_000);
+
+export class SpendCapExceeded extends Error {}
 
 /**
  * Embed a batch, surviving a rate-limit miss.
@@ -206,12 +258,22 @@ export async function ingest({ log = console.log } = {}) {
       if (stub) throw new Error('refusing to store stub embeddings — set VOYAGE_API_KEY');
 
       const rows = batch.map((c, j) => ({ ...c, embedding: embeddings[j], embedding_model: model }));
-      const { error } = await db.from('chunks').insert(rows);
-      if (error) throw new Error(`insert chunks ${doc.file}: ${error.message}`);
+      await withRetry(`insert chunks ${doc.file}`, () => db.from('chunks').insert(rows));
 
       stats.inserted += rows.length;
       stats.embedded += rows.length;
       stats.tokens += tokens;
+
+      // Checked after each batch, not at the end — a cap you discover having
+      // exceeded is a report, not a cap.
+      if (stats.tokens > MAX_EMBED_TOKENS) {
+        throw new SpendCapExceeded(
+          `Stopped at ${stats.tokens.toLocaleString()} tokens, over the ` +
+            `${MAX_EMBED_TOKENS.toLocaleString()} cap (~$${((stats.tokens / 1e6) * USD_PER_MTOK).toFixed(2)} ` +
+            `at list price). Everything embedded so far is stored and will not be ` +
+            `re-embedded. Raise VOYAGE_MAX_TOKENS only if this is expected.`
+        );
+      }
     }
 
     log(

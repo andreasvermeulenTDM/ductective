@@ -21,7 +21,7 @@ const TOP_K = 8;
 
 const norm = (s) => (s ?? '').toLowerCase();
 
-export async function runSmokeSet({ topK = TOP_K } = {}) {
+export async function runSmokeSet({ topK = TOP_K, mode = 'hybrid' } = {}) {
   const { bar, queries } = JSON.parse(readFileSync(SET, 'utf8'));
   const db = supabaseAdmin();
   const rows = [];
@@ -31,12 +31,23 @@ export async function runSmokeSet({ topK = TOP_K } = {}) {
     // two costs recall silently — no error, just worse results.
     const { embeddings } = await embed([q.query], { inputType: 'query' });
 
-    const { data, error } = await db.rpc('match_chunks', {
-      query_embedding: embeddings[0],
-      match_count: topK,
-      scope_only: true,
-    });
-    if (error) throw new Error(`match_chunks (${q.id}): ${error.message}`);
+    // Vector-only is kept callable so the fusion can be measured against it
+    // rather than assumed to help. A change to retrieval that nobody compared is
+    // a change nobody can defend.
+    const { data, error } =
+      mode === 'vector'
+        ? await db.rpc('match_chunks', {
+            query_embedding: embeddings[0],
+            match_count: topK,
+            scope_only: true,
+          })
+        : await db.rpc('match_chunks_hybrid', {
+            query_embedding: embeddings[0],
+            query_text: q.query,
+            match_count: topK,
+            scope_only: true,
+          });
+    if (error) throw new Error(`retrieval (${q.id}, ${mode}): ${error.message}`);
 
     // match_chunks prefixes its OUT columns (`out_*`) to avoid RETURNS TABLE name
     // collisions in Postgres. Normalised here so nothing above this line has to
@@ -97,8 +108,10 @@ export async function runSmokeSet({ topK = TOP_K } = {}) {
 }
 
 if (isMain(import.meta.url)) {
-  const r = await runSmokeSet();
-  console.log(`\nS17 — retrieval smoke set   (${EMBED_MODEL}, top-${TOP_K}, in-scope only)\n`);
+  const i = process.argv.indexOf('--mode');
+  const mode = i > -1 ? process.argv[i + 1] : 'hybrid';
+  const r = await runSmokeSet({ mode });
+  console.log(`\nS17 — retrieval smoke set   (${EMBED_MODEL}, ${mode}, top-${TOP_K}, in-scope only)\n`);
   for (const row of r.rows) {
     const mark = row.docOk ? (row.pageOk ? '✓' : '~') : '✗';
     console.log(`  ${mark} ${row.id}  ${row.topDocument.slice(0, 44).padEnd(44)} p.${String(row.topPage ?? '-').padEnd(4)} sim=${row.similarity ?? '-'}`);
