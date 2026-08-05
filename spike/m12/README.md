@@ -92,6 +92,29 @@ A fault that errors is recorded separately from one that produced claims. An
 error is a failure of the *run*, not a measurement, and must never be averaged
 into a pass rate.
 
+## Chunks come from live pgvector now — the original spec, restored
+
+The pdftotext + keyword-overlap selection was a stand-in from before the chunks
+table existed, and its flaw finally surfaced: drawing on the full manifest
+corpus, keyword overlap served product-data spec tables for common terms, the
+model correctly returned zero claims for 7 of 9 completed faults, and the run
+starved below the 20-claim floor. Selection is now `match_chunks` against the
+live index — the chunks the production system would actually cite from, which is
+the thing worth measuring. The zero-claims outcome was the honest-model path
+working against a dishonest harness.
+
+## Quota findings, 7 Aug 2026 — both paths to the gate are gated
+
+- **Flash**: the 20/day cap is also consumed by the adapter's internal 5xx
+  retries — two 502 faults burned ~6 requests, which is why 429s arrived by
+  F10 in a 15-call run. Budget ~1.4 requests per fault, not 1.
+- **Pro**: every Pro variant (3.1-preview, 3-preview, 2.5, pro-latest) returns
+  RESOURCE_EXHAUSTED on this account — **the free tier carries no Pro allowance
+  at all**. An earlier note here said the per-model cap gave Pro its own budget;
+  wrong, and the probe disproved it. Stop condition 1's Flash-vs-Pro comparison
+  requires billing enabled on the Google account. Owner's call — the free tier
+  is theirs to manage.
+
 ## UNMEASURED is a distinct outcome from pass or fail
 
 The harness refuses to report a gate result from too little data: it needs **80%
