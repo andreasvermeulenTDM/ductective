@@ -84,7 +84,12 @@ create table if not exists public.chunks (
 
   -- §3.4: build the lexical columns now, wire retrieval to them later. They cost
   -- nothing at write time and are painful to retrofit.
-  tsv           tsvector    generated always as (to_tsvector('english', text)) stored,
+  --
+  -- `'english'::regconfig` is not decoration. A generated column requires an
+  -- IMMUTABLE expression, and an unqualified `to_tsvector('english', text)` can
+  -- bind to the single-argument STABLE overload, which Postgres rejects with
+  -- "generation expression is not immutable". The cast pins the two-argument form.
+  tsv           tsvector    generated always as (to_tsvector('english'::regconfig, text)) stored,
 
   created_at    timestamptz not null default now(),
   unique (document_id, page, chunk_index)

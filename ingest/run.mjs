@@ -40,7 +40,7 @@ export async function ingest({ log = console.log } = {}) {
 
   for (const doc of documents()) {
     const { pages, quality } = parseDocument(doc);
-    const d = disposition(quality);
+    const d = disposition(quality, doc);
     stats.documents++;
 
     if (d.state === 'excluded') {

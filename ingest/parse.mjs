@@ -13,12 +13,30 @@
  * empty text retrieves nothing, while spliced text retrieves confidently.
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { availableParallelism } from 'node:os';
+import { promisify } from 'node:util';
 import { documents, CORPUS_DIR, isMain } from './reconcile.mjs';
 
+const execFileAsync = promisify(execFile);
 const CACHE = 'ingest/.cache/parsed';
+
+/**
+ * Parsing runs one process per document, several at a time.
+ *
+ * pdfplumber is slow on the graphics-heavy Carrier product-data books — 16–25 MB
+ * files where most of the page is vector drawing. Sequentially the corpus takes
+ * long enough that you stop re-running ingestion, and a corpus you avoid
+ * re-ingesting drifts from its sources. Criterion 8 also measures full re-ingest
+ * wall-clock, so this is part of the deliverable rather than a convenience.
+ *
+ * Capped below core count: each worker holds a whole PDF's object graph, and the
+ * large files here are memory-hungry enough that oversubscribing trades CPU for
+ * swap.
+ */
+const WORKERS = Math.max(2, Math.min(6, availableParallelism() - 2));
 
 /**
  * Below this mean alpha ratio a document is mostly numbers and symbols — a
@@ -46,11 +64,26 @@ export function parseDocument(doc) {
 }
 
 /**
+ * Document types that are *supposed* to be mostly numbers.
+ *
+ * A pressure-temperature chart is a lookup table; measuring its alpha ratio and
+ * calling it low-quality penalises a document for being what it is. The three PT
+ * charts score 0.23–0.44 and are exactly the right source for a saturation-
+ * temperature question — flagging them would have put a caveat on the one
+ * document type that answers a whole fault category correctly.
+ *
+ * Product-data books are different and keep the caveat: they are *mixed* prose and
+ * tables, so a low ratio there genuinely does predict weak prose retrieval.
+ */
+const TABULAR_BY_DESIGN = ['PT Chart'];
+
+/**
  * S13 — one disposition per document, from the measurement. Every document lands
  * in exactly one of these, and the artifact lists all of them.
  */
-export function disposition(quality) {
+export function disposition(quality, doc) {
   const usableFrac = quality.page_count ? quality.usable_pages / quality.page_count : 0;
+  const tabular = doc && TABULAR_BY_DESIGN.includes(doc.docType);
 
   if (quality.error_pages === quality.page_count && quality.page_count > 0) {
     return { state: 'excluded', reason: 'every page failed to parse' };
@@ -62,11 +95,17 @@ export function disposition(quality) {
         `(<${MIN_USABLE_FRAC * 100}%) — image-only or drawing-only document`,
     };
   }
+  if (tabular) {
+    return {
+      state: 'ingest',
+      reason: `reference table by design (alpha ${quality.mean_alpha_ratio}) — numeric content is correct here`,
+    };
+  }
   if (quality.mean_alpha_ratio < LOW_ALPHA) {
     return {
       state: 'ingest-with-caveat',
-      reason: `mean alpha ratio ${quality.mean_alpha_ratio} — mostly tables and part numbers, ` +
-        `expect weak prose retrieval`,
+      reason: `mean alpha ratio ${quality.mean_alpha_ratio} — mixed prose and dimensional tables, ` +
+        `expect weak prose retrieval on the table-heavy pages`,
     };
   }
   if (quality.error_pages) {
@@ -78,20 +117,45 @@ export function disposition(quality) {
   return { state: 'ingest', reason: 'clean text layer' };
 }
 
-export function parseAll({ onProgress } = {}) {
-  const out = [];
-  for (const doc of documents()) {
-    const { pages, quality } = parseDocument(doc);
-    const d = disposition(quality);
-    out.push({ doc, pages, quality, disposition: d });
-    onProgress?.(doc, quality, d);
-  }
+/** Async twin of parseDocument, so several can be in flight at once. */
+async function parseDocumentAsync(doc) {
+  const cachePath = join(CACHE, `${doc.file}.json`);
+  if (existsSync(cachePath)) return JSON.parse(readFileSync(cachePath, 'utf8'));
+
+  const { stdout } = await execFileAsync('python', ['ingest/parse.py', join(CORPUS_DIR, doc.file)], {
+    encoding: 'utf8',
+    maxBuffer: 512 * 1024 * 1024,
+  });
+  const parsed = JSON.parse(stdout);
+  mkdirSync(CACHE, { recursive: true });
+  writeFileSync(cachePath, JSON.stringify(parsed));
+  return parsed;
+}
+
+export async function parseAll({ onProgress } = {}) {
+  const queue = documents();
+  const out = new Array(queue.length);
+  let next = 0;
+
+  const worker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= queue.length) return;
+      const doc = queue[i];
+      const { pages, quality } = await parseDocumentAsync(doc);
+      const d = disposition(quality, doc);
+      out[i] = { doc, pages, quality, disposition: d };
+      onProgress?.(doc, quality, d);
+    }
+  };
+
+  await Promise.all(Array.from({ length: WORKERS }, worker));
   return out;
 }
 
 if (isMain(import.meta.url)) {
   const started = Date.now();
-  const results = parseAll({
+  const results = await parseAll({
     onProgress: (doc, q, d) => {
       const flag = d.state === 'excluded' ? '✗' : d.state === 'ingest-with-caveat' ? '!' : ' ';
       console.log(
