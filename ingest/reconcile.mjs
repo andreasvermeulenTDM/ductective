@@ -150,6 +150,47 @@ export function reconcile() {
   return { header, matched, orphanRows, unattributed: [...unclaimed], files, col };
 }
 
+/**
+ * Phase 1 answer scope, derived from the manifest — never from filenames.
+ *
+ * The brief defines it as "the 18 Trane + Carrier rooftop docs plus the 3 PT
+ * charts". Both halves fall out of manifest columns: manufacturer for the first,
+ * doc type for the second. Deriving it means adding a document to `HVAC Data/`
+ * and its manifest row is all it takes to bring it into scope — no code edit, and
+ * no list of filenames to fall out of date.
+ *
+ * Out-of-scope documents are still ingested and tagged, per the brief, so
+ * retrieval precision is measured against the equipment actually under test.
+ */
+export const IN_SCOPE_MANUFACTURERS = ['Trane', 'Carrier'];
+export const IN_SCOPE_DOCTYPES = ['PT Chart'];
+
+export const isInScope = (doc) =>
+  IN_SCOPE_MANUFACTURERS.includes(doc.manufacturer) || IN_SCOPE_DOCTYPES.includes(doc.docType);
+
+/**
+ * Every document that resolved, with its manifest provenance and scope flag.
+ *
+ * This is the only supported way to enumerate the corpus. Nothing downstream
+ * should read `HVAC Data/` directly or name a file: a document that is not
+ * attributable to a manifest row has no manufacturer, coverage or licence, and a
+ * chunk whose provenance is guessed produces a citation that looks right and is
+ * not.
+ */
+export function documents() {
+  return reconcile().matched.map((m) => ({
+    file: m.file,
+    /** Citable name. From the manifest's intended name, which is descriptive. */
+    label: (m.intendedName || m.file).replace(/\.pdf$/i, ''),
+    manufacturer: m.manufacturer,
+    docType: m.docType,
+    coverage: m.coverage,
+    sourceUrl: m.sourceUrl,
+    licenseStatus: m.licenseStatus,
+    inScope: isInScope(m),
+  }));
+}
+
 if (isMain(import.meta.url)) {
   const { matched, orphanRows, unattributed, files } = reconcile();
   console.log(`\nS8 — corpus reconciliation\n`);
