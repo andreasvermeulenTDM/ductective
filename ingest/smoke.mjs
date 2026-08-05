@@ -38,7 +38,22 @@ export async function runSmokeSet({ topK = TOP_K } = {}) {
     });
     if (error) throw new Error(`match_chunks (${q.id}): ${error.message}`);
 
-    const hits = data ?? [];
+    // match_chunks prefixes its OUT columns (`out_*`) to avoid RETURNS TABLE name
+    // collisions in Postgres. Normalised here so nothing above this line has to
+    // know about that — the retrieval contract Stage 3 consumes is the shape below.
+    const hits = (data ?? []).map((h) => ({
+      chunk_id: h.chunk_id,
+      document_id: h.out_document_id,
+      document: h.out_document,
+      page: h.out_page,
+      text: h.out_text,
+      manufacturer: h.out_manufacturer,
+      doc_type: h.out_doc_type,
+      coverage: h.out_coverage,
+      license_status: h.out_license,
+      in_scope: h.out_in_scope,
+      similarity: h.out_similarity,
+    }));
     const top = hits[0];
 
     // Correct document: any expectDocs pattern matches the top hit's label.

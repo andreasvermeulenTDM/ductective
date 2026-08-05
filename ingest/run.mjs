@@ -25,14 +25,117 @@ import { parseDocument, disposition } from './parse.mjs';
 import { chunkDocument } from './chunk.mjs';
 
 const DRY = process.argv.includes('--dry');
-const EMBED_BATCH = 96;
+
+/**
+ * Voyage's limits without a payment method on file: **3 requests/min and 10,000
+ * tokens/min**. Measured from the 429 body, not guessed.
+ *
+ * A 96-chunk batch is roughly 38k tokens and bounces on the first call, so the
+ * batch is sized by *tokens* rather than by count, and requests are paced against
+ * both ceilings. With a payment method these rise to standard limits and the same
+ * code simply runs faster — override with VOYAGE_RPM / VOYAGE_TPM.
+ *
+ * Pacing lives here rather than in `lib/clients.mjs` for the same reason it lives
+ * in the M12 spike rather than the Gemini adapter: ingestion is a batch job where
+ * throttling is part of the design, while a production client that silently sleeps
+ * through a quota ceiling hides a capacity problem from whoever has to fix it.
+ */
+const RPM = Number(process.env.VOYAGE_RPM || 3);
+const TPM = Number(process.env.VOYAGE_TPM || 10_000);
+
+/**
+ * A single request must fit inside the per-minute ceiling with room to spare.
+ *
+ * The first attempt used 85% of TPM per batch and still 429'd immediately, because
+ * the estimate below undercounts: `docs/retrieval-architecture.md` §1 warns that
+ * chars÷4 "will run somewhat high in reality — model numbers and table fragments
+ * tokenise badly". A batch costed at 8.5k was nearer 15k, over the ceiling before
+ * any pacing could help. 35% leaves headroom for an estimate that is wrong by 2x.
+ */
+const BATCH_TOKEN_BUDGET = Math.floor(TPM * 0.35);
+
+/**
+ * Deliberately pessimistic: chars/3, not chars/4.
+ *
+ * Under-estimating spends real quota and fails the request; over-estimating only
+ * costs wall-clock on a job that already runs for hours. The asymmetry is the
+ * whole argument.
+ */
+const estTokens = (s) => Math.ceil(s.length / 3);
+
+/** Rolling-window limiter over both ceilings. */
+function makeLimiter() {
+  const window = []; // { at, tokens }
+  const prune = (now) => {
+    while (window.length && now - window[0].at > 60_000) window.shift();
+  };
+  return async function take(tokens) {
+    for (;;) {
+      const now = Date.now();
+      prune(now);
+      const used = window.reduce((n, w) => n + w.tokens, 0);
+      if (window.length < RPM && used + tokens <= TPM) {
+        window.push({ at: now, tokens });
+        return;
+      }
+      // Wait until the oldest entry falls out of the window.
+      const waitMs = Math.max(1000, 60_000 - (now - window[0].at) + 250);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  };
+}
+
+/** Split by token budget, not by count — the ceiling that actually binds. */
+function tokenBatches(items) {
+  const out = [];
+  let cur = [];
+  let curTokens = 0;
+  for (const c of items) {
+    const t = estTokens(c.text);
+    if (cur.length && curTokens + t > BATCH_TOKEN_BUDGET) {
+      out.push(cur);
+      cur = [];
+      curTokens = 0;
+    }
+    cur.push(c);
+    curTokens += t;
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
 
 /** Voyage list price for the voyage-4 family. Free allowance is 200M tokens. */
 const USD_PER_MTOK = 0.18;
 
+/**
+ * Embed a batch, surviving a rate-limit miss.
+ *
+ * A full ingest is a two-hour job on the free tier. The first attempt died on a
+ * single 429 several minutes in, losing the run but — because of the content hash
+ * — none of the work already stored. Retrying is what makes the job completable
+ * unattended; the hash is what makes retrying cheap.
+ *
+ * Deliberately narrow: only 429 is retried, and only a few times. Anything else
+ * fails immediately, because a run that grinds through real errors produces a
+ * half-populated index that looks finished.
+ */
+async function embedWithRetry(batch, attempts = 5) {
+  for (let n = 1; ; n++) {
+    try {
+      return await embed(batch.map((c) => c.text), { inputType: 'document' });
+    } catch (e) {
+      const rateLimited = /\b429\b/.test(e.message);
+      if (!rateLimited || n >= attempts) throw e;
+      // A full window, plus a little — the ceiling is per minute.
+      await new Promise((r) => setTimeout(r, 65_000));
+    }
+  }
+}
+
 export async function ingest({ log = console.log } = {}) {
   const started = Date.now();
   const db = DRY ? null : supabaseAdmin();
+  const limiter = makeLimiter();
   const stats = {
     documents: 0, excluded: 0, chunks: 0,
     inserted: 0, unchanged: 0, deleted: 0, embedded: 0, tokens: 0,
@@ -97,11 +200,9 @@ export async function ingest({ log = console.log } = {}) {
     }
 
     // Embed only what is genuinely new. This is the whole point of the hash.
-    for (let i = 0; i < toInsert.length; i += EMBED_BATCH) {
-      const batch = toInsert.slice(i, i + EMBED_BATCH);
-      const { embeddings, model, stub, tokens } = await embed(batch.map((c) => c.text), {
-        inputType: 'document', // corpus side of the asymmetry — queries use 'query'
-      });
+    for (const batch of tokenBatches(toInsert)) {
+      await limiter(batch.reduce((n, c) => n + estTokens(c.text), 0));
+      const { embeddings, model, stub, tokens } = await embedWithRetry(batch);
       if (stub) throw new Error('refusing to store stub embeddings — set VOYAGE_API_KEY');
 
       const rows = batch.map((c, j) => ({ ...c, embedding: embeddings[j], embedding_model: model }));

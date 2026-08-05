@@ -7,7 +7,15 @@
 -- code instead of by hand.
 
 -- pgvector, in Supabase's conventional `extensions` schema.
-create extension if not exists vector with schema extensions;
+-- NOTE (corrected 5 Aug 2026): `with schema extensions` is a lie on any project
+-- where the extension already exists. `if not exists` makes the whole statement a
+-- no-op, clause included — so pgvector stayed where Supabase originally put it,
+-- and this line quietly asserted otherwise for days. `sql/003` then referenced
+-- `extensions.vector(1024)` and failed with "type does not exist".
+--
+-- Never infer an extension's schema from this statement. Set `search_path` and
+-- use unqualified type names, as 003 now does.
+create extension if not exists vector;
 
 -- Health probe. Returns environment facts the verifier can assert against.
 -- security definer so it can read pg_extension; search_path pinned to stop
