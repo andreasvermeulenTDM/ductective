@@ -17,7 +17,8 @@
     "app": "npm run sync-env && npm --prefix app run web",
     "verify:sessions": "node --env-file=.env scripts/verify-sessions.mjs",
     "verify:stage5": "node --env-file=.env tests/run-all.mjs",
-    "verify:secrets": "node --env-file-if-exists=.env scripts/verify-secrets.mjs"
+    "verify:secrets": "node --env-file-if-exists=.env scripts/verify-secrets.mjs",
+    "ingest:reconcile": "node ingest/reconcile.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0"

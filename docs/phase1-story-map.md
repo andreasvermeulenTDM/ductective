@@ -189,7 +189,7 @@ the manifest stays a truthful artifact.
 **As the** citation layer, **I want** each document keyed by something durable,
 **so that** a rename can never produce a mis-citation.
 - Each document gets a stable ID derived from its manifest row, not its filename. *(machine)*
-- `1.pdf` resolves to the Mitsubishi City Multi service handbook and is renamed accordingly. *(machine)*
+- ~~`1.pdf` resolves to the Mitsubishi City Multi service handbook and is renamed accordingly.~~ **SUPERSEDED by A1, 4 Aug 2026 — `1.pdf` is the EPA Section 608 rule.** *(machine)*
 - Chunks reference the document ID; the human-readable title is looked up, not stored per chunk as free text. *(machine)*
 
 **Owner:** Knowledge · **Depends on:** E1.1 · **Priority:** High

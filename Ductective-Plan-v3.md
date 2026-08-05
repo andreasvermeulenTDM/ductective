@@ -54,7 +54,7 @@ Design bias: dark-first, high contrast, large touch targets — this is read on 
 **Known data defects — fix before ingestion:**
 
 1. **Two manifest rows have no file.** Trane `RT-SVX096C-EN_02282025.pdf` (Foundation rooftop IOM) and EPA `04-3817.pdf` (the 2004 Section 608 rule). 27 rows, 25 files. Re-download or drop the rows.
-2. **Filenames on disk ≠ `FileName` column.** Files kept their source names (`1.pdf`, `48-50LC-4-6-C01T.pdf`); the manifest column holds *intended* renames. Join on `SourceURL` basename, not filename. `1.pdf` is the Mitsubishi City Multi handbook — rename it before it causes a mis-citation.
+2. **Filenames on disk ≠ `FileName` column.** Files kept their source names (`1.pdf`, `48-50LC-4-6-C01T.pdf`); the manifest column holds *intended* renames. Join on `SourceURL` basename, not filename. ~~`1.pdf` is the Mitsubishi City Multi handbook~~ — **corrected 4 Aug 2026: `1.pdf` is the EPA Section 608 rule (`04-3817.pdf`).** Renaming it to the Mitsubishi handbook would have been the mis-citation this note was warning about. See A1 in `.pipeline/02-user-stories.md`.
 3. **Mixed text-native and scanned pages.** Several 20 MB+ files are image-heavy. Parse quality will vary; budget for an OCR fallback path and measure extraction quality per document rather than assuming it worked.
 
 **Scope for the prototype KB:** the 18 Trane + Carrier rooftop docs, plus all 3 PT charts. Daikin/Mitsubishi/chiller/EPA get ingested but tagged out of the Phase 1 answer scope — they're for Phase 2 widening, and including them early dilutes retrieval precision on the equipment you're actually testing.

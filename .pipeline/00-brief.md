@@ -49,10 +49,15 @@ and the Expo app can complete a round trip to the model on a real phone.
 
 ## Corpus facts the knowledge stage must handle
 
-- 25 PDFs on disk, 27 manifest rows. Missing: Trane `RT-SVX096C-EN_02282025.pdf`
-  and EPA `04-3817.pdf`. Re-download or drop those rows — decide and record it.
+- **25 PDFs on disk, 25 manifest rows, zero gaps.** *(Amended 4 Aug 2026 — see
+  Amendment 2. This previously read "27 manifest rows … missing RT-SVX096C and
+  04-3817", which was wrong twice over: `04-3817.pdf` was never missing, and the
+  count is now 25 after the owner's prune.)*
 - On-disk filenames are source names, not the manifest's `FileName` column.
-  **Join on `SourceURL` basename.** `1.pdf` is the Mitsubishi City Multi handbook.
+  **Join on `SourceURL` basename.** `1.pdf` is the **EPA Section 608 rule**
+  (`04-3817.pdf`) — corrected 4 Aug 2026, see A1. It is NOT the Mitsubishi
+  handbook, and must not be renamed to one: that would attach VRF metadata to EPA
+  regulatory text.
 - Several 20 MB+ documents are scan-heavy; extraction will partially fail. Measure
   per-document parse quality and handle failures explicitly.
 - Phase 1 answer scope is the 18 Trane + Carrier rooftop docs plus the 3 PT charts.
@@ -161,3 +166,43 @@ correctly reports SKIP rather than a false green.
 
 **Not affected, and should not wait:** S8–S18 and A1–A4 are blocked by none of
 this. That is the critical path.
+
+---
+
+## Amendment 2 — the corpus is the files on disk
+
+*Dated 4 August 2026. Owner decision. Appended, not edited in place.*
+
+**Rule:** the PDFs present in `HVAC Data/` are the corpus. A manifest row with no
+file on disk is **deleted**, not carried as a permanent unresolved gap.
+
+Two rows were removed under it:
+
+| Row | Why |
+|---|---|
+| Trane `RT-SVX096C-EN_02282025.pdf` — Foundation rooftop IOM | Source URL is HTTP 404. **In Phase 1 answer scope** — recorded as a coverage gap below. |
+| Mitsubishi City Multi service handbook | No file on disk. Out of Phase 1 answer scope. |
+
+**Result: 25 rows, 25 files, zero orphans, zero unattributed.** `npm run ingest:reconcile`
+proves it, and E1.1 checks it.
+
+### What reconciliation had to learn along the way
+
+- **`1.pdf` is the EPA Section 608 rule (`04-3817.pdf`), not the Mitsubishi
+  handbook.** Earlier drafts of this brief said the opposite and told Knowledge to
+  rename it — which would have attached VRF metadata to EPA regulatory text, the
+  citation-does-not-support-its-claim defect `CLAUDE.md` calls the worse of the
+  two. Corrected here, in plan v3 §2, in the story map, and in the S10 story.
+- **Two Daikin rows need a fallback join.** Their `SourceURL` ends in a numeric id
+  rather than a filename, so a basename join can never match them, but both files
+  are on disk. The fallback matches the `FileName` stem and refuses to guess when
+  a stem is ambiguous. Reported explicitly, never silent.
+- A3 said three rows were unresolved. It was **four** — A3 missed the second
+  Daikin row. Two of the four resolve via the fallback; two were deleted.
+
+### The coverage gap this accepts
+
+Trane **Foundation** rooftop has no IOM in the corpus and is in Phase 1 answer
+scope. Questions about that line have no source to cite. If criterion 7's smoke
+set shows a Foundation-shaped miss, this is why — re-source the document rather
+than tuning retrieval around it.
