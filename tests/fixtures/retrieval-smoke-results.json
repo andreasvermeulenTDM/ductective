@@ -1,0 +1,569 @@
+{
+  "mode": "vector",
+  "model": "voyage-4-large",
+  "at": "2026-08-05T21:19:27.441Z",
+  "correctDocs": 10,
+  "correctPages": 10,
+  "queries": [
+    {
+      "id": "R01",
+      "docOk": false,
+      "pageOk": false,
+      "returned": [
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 41,
+          "text": "T111 Lockout Circuit B Manual Low refrigerant or faulty suction pressure transducer\nService Test - Circuit B Loss of Charge\nCircuit A High Discharge Pressure An overcharged system, high outdoor ambient temperature\nT126 Shutdown Circuit A Automatic coupled with dirty outdoor coil, plugged filter drier, or a faulty\nService Test - Circuit A High Discharge Pressure high-pressure switch.\nCircuit B High Discharge Pressure An overcharged system, high outdoor ambient temperature\nT127 Shutdown Circuit B Automatic coupled with dirty outdoor coil, plugged filter drier, or a faulty\nService Test - Circuit B High Discharge Pressure high-pressure switch.\nLow refrigerant charge, dirty filters, evaporator fan turning\nCircuit A Low Refrigerant Pressure\nbackwards, loose or broken fan belt, plugged filter drier, faulty\nT133 Add Strike for Circuit A Automatic\ntransducer, excessively cold return air, or stuck open\nService Test - Circuit A Low Refrigerant Pressure\neconomizer when the ambient temperature is low.\nLow refrigerant charge, dirty filters, evaporator fan turning\nCircuit B Low Refrigerant Pressure\nbackwards, loose or broken fan belt, plugged filter drier, faulty\nT134 Add Strike for Circuit B Automatic\ntransducer, excessively cold return air, or stuck open\nService Test - Circuit B Low Refrigerant Pressure\neconomizer when the ambient temperature is low.\nCircuit C Loss of Charge\nT140 Lockout Circuit C Manual Low refrigerant or faulty suction pressure transducer\nService Test - Circuit C Loss of Charge\nLow refrigerant charge, dirty filters, evaporator fan turning"
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 31
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 54
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 41
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 45
+        },
+        {
+          "document": "RT-SVX056D-GB_Airfinity-Rooftop-IOM",
+          "page": 42
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 56
+        }
+      ]
+    },
+    {
+      "id": "R02",
+      "docOk": false,
+      "pageOk": false,
+      "returned": [
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 89,
+          "text": "Troubleshooting\nTable 40. Troubleshooting (continued)\nSymptom Probable Cause Recommended Action\n1. Leak check, repair, evacuate, and recharge system as\n1. System low on refrigerant charge.\nnecessary.\n2. Check return air for obstruction or dirty filters. Check fan\n2. System low on air flow.\nwheels, motors, and belts.\nM. Evaporator coil freezes up during low\nambient operation. 3. Check OAS resistance at connector P15. Refer to the\n3. Outdoor Air Sensor (OAS) has Failed. Resistance versus Temperature chart. Replace sensor if\nnecessary.\n4. Frostat™ has Failed 4. Check Frostat Switch\n1. Economizer connector not plugged into unit wiring\n1. Check connector, and connect if necessary.\nharness.\n2. Verify that 24 VAC is present between ECA terminals 24\nVAC and Common. Place the unit in econ test mode;\n2. Economizer Actuator (ECA) has failed. economizer actuator should drive open. In any other unit\nN. Economizer will not operate. test mode, economizer actuator should drive to minimum\nposition. If ECA does not drive as specified, replace ECA.\n3. Check wiring, Fresh Air Options module, and terminals.\n3. Wiring or terminal failure.\nRepair or replace if necessary.\n4. ECA is defective. 4. Perform the ECA Test Procedures discussed previously.\n1. With the main power off, check the resistance between\nO. Minimum position is at zero, cannot be terminals on J8 at the Customer Connection Module by\n1. Remote Minimum position potentiometer has failed.\nadjusted. Economizer still modulates. rotating the remote minimum position potentiometer knob.\nResistance should be 50 to 200 Ohms."
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 55
+        },
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 67
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 39
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 29
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 54
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 45
+        }
+      ]
+    },
+    {
+      "id": "R03",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "RT-SVX21AD-EN_Rooftop-IOM",
+          "page": 55,
+          "text": "the closed position. If the zone temperature continues to rise\nabove the zone temperature setpoint control band and the\neconomizer damper is full open for 5 minutes, the RTRM\nenergizes the compressor contactor (CC1). If the zone\ntemperature continues to rise above the zone temperature\nsetpoint control band and the economizer damper is fully open,\nthe RTRM energizes the compressor contactor (CC2).\nThe ECA continues to modulate the economizer damper open/\nclosed to keep the mixed air temperature that is calculated by\nthe RTRM.\nIf economizing is not possible, the ECA drives the damper to\nthe minimum position setpoint when the indoor fan relay (F) is\nenergized and allows mechanical cooling operation.\nWhen the unit is equipped with the optional fan failure switch,\nwired between terminals J7-5 and J7-6 on the RTOM, the\nRTRM will stop all cooling functions and produce an analog\noutput if the fan failure switch (FFS) does not open within 40\nseconds after a request for fan operation. When the system is\nconnected to a remote panel, the “SERVICE” LED will flash\nwhen this failure occurs.\nNote: For units equipped with the dehumidification option, if\nthe unit is economizing, the damper resets to minimum\nposition while in dehumidification mode.\nEconomizer Set-Up\nAdjusting the minimum position potentiometer located on the\nunit economizer actuator (ECA) sets the required amount of\nventilation air.\nTwo of the three methods for determining the suitability of the\noutside air can be selected utilizing the enthalpy potentiometer\non the ECA, as described below:"
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 47
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 35
+        },
+        {
+          "document": "48-50FC-20-30-01PD_Product-Data",
+          "page": 138
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 47
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 47
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 46
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 35
+        }
+      ]
+    },
+    {
+      "id": "R04",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 19,
+          "text": "A circuit’s Saturated Condensing Temperature (Temperatures\n→REF.T→SCT.x) can override the fan level at any time if the\nspecific Fan Level Max Pressure (Configuration→COOL→OFC\n→x.MXP) is exceeded. This override will end if the circuit’s\nsaturated condensing temperature (SCT) drops below the specific\nFan Level Min Pressure (Configuration→COOL→OFC\n→x.MNP). The number of fans and contactors on at a given fan\nlevel depends on the specific unit options and size. See Tables 6\nand 7 and below text for specific fan and contactor status at any\ngiven fan level.\nUnits Without Humidi−MiZer(cid:1) System\nOutdoor Fan Motors (OFM) are controlled by Outdoor Fan\nContactors (OFC) which are controlled by the main base board\n(MBB).\nFor 48/50PG03−07 units, a duel speed motor is used. The\nCompressor Contactor (C.A1) turns the OFM on in high speed and\nthe OFC1 is used to change to low speed.\nFor 48/50PG08−14 units, OFM1 is controlled by OFC1 and\nOFM2 is controlled by OFC2.\nFor 48/50PG16 units, OFM1 is controlled by OFC1 and OFM1\nand 2 are controlled by OFC2.\nFor 48/50PG20−28 and 48/50PM16−28 units, OFM1 is controlled\nby OFC1, OFM4 is controlled by OFC3, and OFC2 controls the\nremaining two fans (16 and 20 size) or remaining 4 fans (24 and 28\nsizes).\nUnits With Humidi−MiZer System\nOutdoor fan control for Humidi−MiZer units includes a\nMotormaster(cid:2) variable−speed control of some or all outdoor fans,\ndepending on unit size. The Motormaster control automatically\nadjusts the outdoor fan speed to maintain approximately 80(cid:5) to"
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 88
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 45
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 54
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 19
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 40
+        },
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 67
+        }
+      ]
+    },
+    {
+      "id": "R05",
+      "docOk": false,
+      "pageOk": false,
+      "returned": [
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 80,
+          "text": "Diagnostic LEDs (Light-Emitting Diodes) — There to Table 28 below for a description of alarms. The yellow\nare 3 LEDs (red, yellow, and green) on the lower right hand LED blinks during transmission with the CCN (Carrier Com-\nside of the control board. The red light is used to check fort Network). The green LED blinks during transmission\nunit operation and alarms. A constant pulse is normal unit with the expansion board.\noperation. A series of quick blinks indicates an alarm. Refer\nTable 28 — Control Board LED Alarms\nLED ERROR TROUBLESHOOTING\nDESCRIPTION\nBLINKS CODE COMMENTS\n1 — Normal Operation The expansion board and control board flash the red LED in one-\nsecond intervals when the board is operating properly.\n2 HF-13 Compressor 1 Safety The high or low pressure safety switch for compressor no. 1 has\nopened for 3 seconds. The error will be cleared and compressor\nno. 1 will be allowed to turn on in 15 minutes. If the safeties have\nbeen tripped 3 times in 90 minutes, compressor no. 1 will be\nlocked out until the control board has been manually reset.\n3 HF-14 Compressor 2 Safety The high or low pressure safety switch for compressor no. 2 has\nopened for 3 seconds. The error will be cleared and compressor\nno. 2 will be allowed to turn on in 15 minutes. If the safeties have\nbeen tripped 3 times in 90 minutes, compressor no. 2 will be\nlocked out until the control board has been manually reset.\n4 HF-15 Thermostat Failure The thermostat is calling for both heating and cooling at the\nsame time. The unit will operate on a first call basis and will auto-\nmatically reset."
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 50
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 38
+        },
+        {
+          "document": "RT-SVX21AD-EN_Rooftop-IOM",
+          "page": 74
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 52
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 56
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 32
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 47
+        }
+      ]
+    },
+    {
+      "id": "R06",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "Honeywell-Solstice-R454B-PT-Chart",
+          "page": 1,
+          "text": "PT CHART\n®\nSOLSTICE 454B\n(R-454B)\nR-454B R-454B\nPRESSURE TEMPERATURE (°F) PRESSURE TEMPERATURE (°F)\n(PSIG) (PSIG)\nAVERAGE BUBBLE DEW AVERAGE BUBBLE DEW\n0 -58.1 -59.0 -57.3 320 105.2 104.2 106.3\n20 -24.3 -25.2 -23.3 330 107.4 106.4 108.5\n40 -3.6 -4.6 -2.6 340 109.6 108.5 110.7\n60 11.9 10.9 13.0 345 110.7 109.6 111.7\n70 18.5 17.4 19.6 350 111.7 110.6 112.8\n80 24.5 23.4 25.6 355 112.7 111.7 113.8\n90 30.0 29.0 31.1 360 113.8 112.7 114.8\n95 32.7 31.6 33.8 365 114.8 113.7 115.8\n100 35.2 34.1 36.3 370 115.8 114.7 116.8\n105 37.7 36.6 38.8 375 116.8 115.7 117.8\n110 40.0 38.9 41.1 380 117.8 116.7 118.8\n115 42.3 41.2 43.4 385 118.7 117.7 119.8\n120 44.6 43.5 45.7 390 119.7 118.7 120.7\n125 46.7 45.6 47.9 395 120.7 119.6 121.7\n130 48.9 47.7 50.0 400 121.6 120.6 122.6\n135 50.9 49.8 52.1 405 122.5 121.5 123.6\n140 52.9 51.8 54.1 410 123.5 122.5 124.5\n145 54.9 53.8 56.0 415 124.4 123.4 125.4\n150 56.8 55.7 58.0 420 125.3 124.3 126.3\n155 58.7 57.6 59.8 425 126.2 125.2 127.2\n160 60.5 59.4 61.7 430 127.1 126.1 128.1\n170 64.1 63.0 65.2 435 128.0 127.0 129.0\n180 67.5 66.4 68.6 440 128.9 127.9 129.9\n190 70.8 69.6 71.9 445 129.8 128.8 130.7\n200 73.9 72.8 75.1 450 130.6 129.7 131.6\n210 77.0 75.9 78.1 460 132.3 131.4 133.3\n220 80.0 78.8 81.1 470 134.0 133.1 135.0\n240 85.6 84.5 86.7 480 135.7 134.7 136.6\n260 90.9 89.8 92.0 490 137.3 136.4 138.2\n270 93.4 92.3 94.6 500 138.9 138.0 139.8\n280 95.9 94.8 97.0 510 140.5 139.6 141.4\n290 98.3 97.2 99.5 520 142.1 141.2 142.9\n300 100.7 99.6 101.8 530 143.6 142.7 144.5\n310 103.0 101.9 104.1"
+        },
+        {
+          "document": "Hudson-R454B-PT-Chart",
+          "page": 1
+        },
+        {
+          "document": "Goodman-Daikin-A2L-PT-Chart_R22-410A-32-454B",
+          "page": 2
+        },
+        {
+          "document": "Goodman-Daikin-A2L-PT-Chart_R22-410A-32-454B",
+          "page": 1
+        },
+        {
+          "document": "Hudson-R454B-PT-Chart",
+          "page": 2
+        },
+        {
+          "document": "Goodman-Daikin-A2L-PT-Chart_R22-410A-32-454B",
+          "page": 2
+        },
+        {
+          "document": "Goodman-Daikin-A2L-PT-Chart_R22-410A-32-454B",
+          "page": 1
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 70
+        }
+      ]
+    },
+    {
+      "id": "R07",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 92,
+          "text": "Unit Start-up\nFigure 62. Supply fan performance with or without variable frequency drive - 90 ton air-cooled\nImportant: Maximum static pressure leaving the rooftop is Notes:\n4.0\" H O positive. The static pressure drops\n2 • Supply fan performance curve includes internal\nfrom the supply fan to the space cannot\nresistance of rooftop. For total static pressure\nexceed 4.0\" H O.\n2 determination, system external static must be\nadded to appropriate component static\npressure drops (evaporator coil, filters, optional\neconomizer, optional relief fan, optional heating\nsystem, optional cooling only extended casing,\noptional roof curb).\n• Maximum Cfm (for cULus approval) as follows:\n90 ton - 46,000 Cfm.\n• Minimum motor horsepower is 30 hp.\n92 RT-SVX072E-EN"
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 93
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 90
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 76
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 86
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 81
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 91
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 87
+        }
+      ]
+    },
+    {
+      "id": "R08",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 88,
+          "text": "Troubleshooting\nTable 40. Troubleshooting (continued)\nSymptom Probable Cause Recommended Action\n1. Perform OAS Resistance/Temperature check. Replace if\n1. OAS has failed.\nnecessary.\n2. Check wires, terminals, and OFC3. Repair or replace if\n2. Wiring, terminal, or OFC3 contactor failure.\nnecessary.\n3. ODM3 and/or 4 has failed. 3. Check ODM, replace if necessary.\nG. ODM 3 and/or 4 will not cycle.\n4. See Symbio™ 700 Controller with Voyager 3 Packaged\n4. Symbio™ 700 or Adapter Board is defective. Rooftop Air Conditioners (BAS-APG048*-EN) for Symbio\n700 troubleshooting details.\n5. Check for proper voltage and contact closure. ODF20\n5. ODF20 has failed. relay has a 24 VAC holding coil. If voltage is present,\nreplace relay.\n1. IDM has failed. 1. Check IDM, replace if necessary.\n2. Check wiring, terminals, fuses, and contactor assembly.\n2. Wiring, terminal, fuses, or contactor failure. Repair or replace wiring, terminals, fuses or fan contactor\nassembly.\n3. Place unit in test mode. If the fan operates in the test\nH. Indoor motor (IDM) will not operate 3. ZSM is defective.\nmode, test the ZSM using the appropriate test procedures.\n4. See Symbio™ 700 Controller with Voyager 3 Packaged\n4. Symbio™ 700 is defective. Rooftop Air Conditioners (BAS-APG048*-EN) for Symbio\n700 troubleshooting details.\n5. Check Symbio™ 700 user interface and VFD for Broken\n5. Supply fan proving diagnostic has been enunciated.\nBelt diagnostics. Replace belt if necessary.\n1. CFM has failed. 1. Check CFM, replace if necessary.\n2. Disconnect BROWN wires from capacitor, test, and\n2. CFM capacitor has failed."
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 42
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 87
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 93
+        },
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 67
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 87
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 51
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 6
+        }
+      ]
+    },
+    {
+      "id": "R09",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 42,
+          "text": "MP No Linkage Operation fall Received a table write from Linkage before, now not receiving\nA200 Linkage Timeout Error - Comm Failure Automatic\nback to local SPT any linkage commands\ndna A404 Fire Shutdown Unit Shutdown Automatic Smoke detected by smoke detector\nT408 Dirty Air Filter Alert Generated Automatic Dirty Filter\nGP05/84 If IDF.F =\nYES, then\nIf IDF.F = Yes, then Unit\nFan Status Switch ON, fan commanded off Manual, Bad Fan Status Switch. Configuration incorrect.\nShutdown\notherwise\nautomatic\nT409\nIf IDF.F =\nYES, then\nIf IDF.F = Yes, then Unit Tripped Circuit Breaker. Broken belt. Bad indoor fan motor.\nFan Status Switch OFF, fan commanded on Manual,\nShutdown Configuration incorrect. Bad fan status switch.\notherwise\nautomatic\nR-W1 Jumper Not Installed in Space Temp Mode Unable to run heat Automatic Missing jumper wire\nT410 R-W1 Jumper Must Be Installed to Run Heat In\nUnable to Test Heat Outputs Automatic Missing jumper wire\nService Test\nRun unit as if Y2 and Y1 are\nT411 Thermostat Y2 Input Activated without Y1 Activated Automatic Bad Thermostat or Thermostat Wiring\nOn\nThermostat W2 Input Activated without W1 Run unit as if W2 and W1 are\nT412 Automatic Bad Thermostat or Thermostat Wiring\nActivated On\nThermostat Y and W Inputs Activated Run unit in mode activated\nT413 Automatic Bad Thermostat or Thermostat Wiring\nSimultaneously first\nCalibrate economizer (E.CAL). If problem still exist then\nEconomizer Damper Actuator Out of Calibration Alert Generated Automatic\ndetermine what is limiting economizer rotation.\nEconomizer Damper Actuator Torque Above Load"
+        },
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 80
+        },
+        {
+          "document": "48-50K-01APD_Product-Data",
+          "page": 121
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 87
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 87
+        },
+        {
+          "document": "48-50FE-20-30-01PD_Product-Data",
+          "page": 134
+        },
+        {
+          "document": "48-50K-01APD_Product-Data",
+          "page": 131
+        },
+        {
+          "document": "48-50FE-20-30-01PD_Product-Data",
+          "page": 134
+        }
+      ]
+    },
+    {
+      "id": "R10",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 89,
+          "text": "Troubleshooting\nTable 40. Troubleshooting (continued)\nSymptom Probable Cause Recommended Action\n1. Leak check, repair, evacuate, and recharge system as\n1. System low on refrigerant charge.\nnecessary.\n2. Check return air for obstruction or dirty filters. Check fan\n2. System low on air flow.\nwheels, motors, and belts.\nM. Evaporator coil freezes up during low\nambient operation. 3. Check OAS resistance at connector P15. Refer to the\n3. Outdoor Air Sensor (OAS) has Failed. Resistance versus Temperature chart. Replace sensor if\nnecessary.\n4. Frostat™ has Failed 4. Check Frostat Switch\n1. Economizer connector not plugged into unit wiring\n1. Check connector, and connect if necessary.\nharness.\n2. Verify that 24 VAC is present between ECA terminals 24\nVAC and Common. Place the unit in econ test mode;\n2. Economizer Actuator (ECA) has failed. economizer actuator should drive open. In any other unit\nN. Economizer will not operate. test mode, economizer actuator should drive to minimum\nposition. If ECA does not drive as specified, replace ECA.\n3. Check wiring, Fresh Air Options module, and terminals.\n3. Wiring or terminal failure.\nRepair or replace if necessary.\n4. ECA is defective. 4. Perform the ECA Test Procedures discussed previously.\n1. With the main power off, check the resistance between\nO. Minimum position is at zero, cannot be terminals on J8 at the Customer Connection Module by\n1. Remote Minimum position potentiometer has failed.\nadjusted. Economizer still modulates. rotating the remote minimum position potentiometer knob.\nResistance should be 50 to 200 Ohms."
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 55
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 55
+        },
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 67
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 54
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 45
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 29
+        }
+      ]
+    },
+    {
+      "id": "R11",
+      "docOk": false,
+      "pageOk": false,
+      "returned": [
+        {
+          "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+          "page": 39,
+          "text": "Troubleshooting\nSee ACC-APG002*-EN, Application Guide, Symbio™ 700\nController with Precedent™ Packaged Rooftop Air-\nConditioners.\nPKGP-SVX010A-EN 39"
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 72
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 87
+        },
+        {
+          "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+          "page": 33
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 29
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 86
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 89
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 65
+        }
+      ]
+    },
+    {
+      "id": "R12",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 39,
+          "text": "These alerts cause a strike for the respective circuit. The alert resets\nautomatically. The cause of the alert is usually compressor wiring\ncausing reverse rotation or a faulty compressor.\n39"
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 9
+        },
+        {
+          "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+          "page": 9
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 27
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 27
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 31
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        },
+        {
+          "document": "RT-SVX21AD-EN_Rooftop-IOM",
+          "page": 14
+        }
+      ]
+    },
+    {
+      "id": "R13",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 45,
+          "text": "Cooling Troubleshooting If alarms conditions are corrected and cleared, operation of the\ncompressors and fans may be verified by using the Service Test\nUse the Scrolling Marquee display or a CCN device to view the\nmode. (See Table 4.) See Table 14 for general cooling service\ncooling status display and the cooling diagnostic display (see\nanalysis.\nAppendix A) for information on the cooling operation. Check the\ncurrent alarms and alarm history for any cooling alarm codes and\ncorrect any causes. (See Table 12.) Verify any unique control\nconfigurations per installed site requirements or accessories.\nTable 14 – Cooling Service Analysis\nPROBLEM CAUSE REMEDY\nCompressor and Fan Will Not Power failure. Call power company.\nStart.\nFuse blown or circuit breaker tripped. Check CB1, Replace fuse or reset circuit breaker.\nCB2, and CB3.\nDisconnect off. Power disconnect.\nCompressor time guard to prevent short cycling. Check using ComfortLink Scrolling Marquee.\nThermostat or occupancy schedule set point not Check using ComfortLink Scrolling Marquee.\ncalling for Cooling.\nOutdoor temperature too low. Check Compressor Lockout Temperature using MP\nComfortLink Scrolling Marquee.\nComfortLink dna\nActive alarm. Check active alarms using Scrolling\nMarquee.\nGP05/84\nCompressor Cycles (other than Insufficient line voltage. Determine cause and correct.\nnormally satisfying thermostat). ComfortLink Scrolling\nActive alarm. Check active alarms using\nMarquee.\nCompressor Operates Unit undersized for load. Decrease load or increase size of unit.\nContinuously."
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 38
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 43
+        },
+        {
+          "document": "RT-SVX21AD-EN_Rooftop-IOM",
+          "page": 49
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 27
+        },
+        {
+          "document": "RT-SVX23R-EN_Precedent-Rooftop-IOM",
+          "page": 39
+        },
+        {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 33
+        }
+      ]
+    },
+    {
+      "id": "R14",
+      "docOk": true,
+      "pageOk": true,
+      "returned": [
+        {
+          "document": "50HC-07-12_Install-Instructions",
+          "page": 51,
+          "text": "START-UP CHECKLIST FOR 50HC07-12 SINGLE PACKAGE ROOFTOP\nCOOLING ONLY\n(REMOVE AND USE FOR JOB FILE)\nNOTE: To avoid injury to personnel and damage to equipment or\nproperty when completing the procedures listed in this start-up\nchecklist, use good judgment, follow safe practices, and adhere\nto the safety considerations/information as outlined in preced-\ning sections of this Installation Instruction document.\nI. PRELIMINARY INFORMATION\nMODEL NO. ____________________________________________\nJOB NAME_____________________________________________\nSERIAL NO. ____________________________________________\nADDRESS _____________________________________________\nSTART-UP DATE________________________________________\nTECHNICIAN NAME _____________________________________\nADDITIONAL ACCESSORIES\n_____________________________________________________________________________________________________\nII. PRE-START-UP\nVerify that all packaging materials have been removed from unit (Y/N) _____\nVerify installation of outdoor air hood (Y/N) _____\nVerify that condensate connection is installed per instructions (Y/N) _____\nVerify that all electrical connections and terminals are tight (Y/N) _____\nCheck that indoor-air filters are clean and in place (Y/N) _____\nCheck that outdoor air inlet screens are in place (Y/N) _____\nVerify that unit is level (Y/N) _____\nCheck fan wheels and propeller for location in housing/orifice and verify setscrew is tight (Y/N) _____\nVerify that fan sheaves are aligned and belts are properly tensioned (Y/N) _____"
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 134
+        },
+        {
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 38
+        },
+        {
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 64
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 136
+        },
+        {
+          "document": "48-50PGPM_Single-Package-Rooftop-Service",
+          "page": 188
+        },
+        {
+          "document": "RT-SVX056D-GB_Airfinity-Rooftop-IOM",
+          "page": 42
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 135
+        }
+      ]
+    }
+  ]
+}

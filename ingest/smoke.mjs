@@ -91,6 +91,12 @@ export async function runSmokeSet({ topK = TOP_K, mode = 'hybrid' } = {}) {
       termsFound,
       rankOfFirstGood: rankOfFirstGood || null,
       alternatives: hits.slice(1, 4).map((h) => `${h.document} p.${h.page}`),
+      // For the results artifact: top-1 carries its text so Stage 5 can re-judge
+      // the term check from the file alone; the rest carry document+page only,
+      // which keeps the tracked artifact readable rather than a corpus dump.
+      returned: hits.map((h, i) => (i === 0
+        ? { document: h.document, page: h.page, text: h.text }
+        : { document: h.document, page: h.page })),
     });
   }
 
@@ -108,8 +114,11 @@ export async function runSmokeSet({ topK = TOP_K, mode = 'hybrid' } = {}) {
 }
 
 if (isMain(import.meta.url)) {
+  // Default matches production's default (vector-only, set when hybrid measured
+  // worse) — the tracked results file must reflect what the system actually
+  // ships, with hybrid as the same opt-in here as it is there.
   const i = process.argv.indexOf('--mode');
-  const mode = i > -1 ? process.argv[i + 1] : 'hybrid';
+  const mode = i > -1 ? process.argv[i + 1] : 'vector';
   const r = await runSmokeSet({ mode });
   console.log(`\nS17 — retrieval smoke set   (${EMBED_MODEL}, ${mode}, top-${TOP_K}, in-scope only)\n`);
   for (const row of r.rows) {
@@ -122,5 +131,26 @@ if (isMain(import.meta.url)) {
   console.log(`\n  correct document : ${r.correctDocs}/${r.total}   (bar: ${r.bar.minCorrectDocs} of 12)`);
   console.log(`  correct page     : ${r.correctPages}/${r.total}`);
   console.log(`\n  ${r.passes ? '✅ criterion 7 met' : '❌ criterion 7 NOT met'}\n`);
+
+  // The results artifact Stage 5 judges AC 7 from (see tests/fixtures/SCHEMAS.md).
+  // Written on every run, so the tracked file always reflects the last measurement
+  // rather than the last flattering one.
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(
+    'tests/fixtures/retrieval-smoke-results.json',
+    JSON.stringify(
+      {
+        mode,
+        model: EMBED_MODEL,
+        at: new Date().toISOString(),
+        correctDocs: r.correctDocs,
+        correctPages: r.correctPages,
+        queries: r.rows.map(({ id, docOk, pageOk, returned }) => ({ id, docOk, pageOk, returned })),
+      },
+      null,
+      2
+    )
+  );
+  console.log('  results written: tests/fixtures/retrieval-smoke-results.json\n');
   process.exitCode = r.passes ? 0 : 1;
 }

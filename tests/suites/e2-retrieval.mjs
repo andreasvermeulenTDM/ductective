@@ -67,8 +67,17 @@ export default defineSuite({
 
         const queries = set.queries ?? [];
         const tracked = await c.git('ls-files', SMOKE_SET);
+        // Schema per SCHEMAS.md (reconciled 6 Aug 2026): expectDocs is a non-empty
+        // list of label regexes, expectTerms a non-empty term list. Equally strict
+        // as the old single-document shape — every query must still say what a
+        // correct answer looks like, in a form a machine can judge.
         const malformed = queries
-          .filter((q) => !q.id || !q.query || !q.expect?.document)
+          .filter(
+            (q) =>
+              !q.id || !q.query ||
+              !Array.isArray(q.expectDocs) || q.expectDocs.length === 0 ||
+              !Array.isArray(q.expectTerms) || q.expectTerms.length === 0
+          )
           .map((q) => q.id ?? '(no id)');
 
         const ev = c.fromCheck(
@@ -79,7 +88,7 @@ export default defineSuite({
         );
 
         if (!tracked.stdout.trim()) return fail(ev, 'the smoke set is not tracked by git — it must be version-controlled, not ad hoc');
-        if (malformed.length) return fail(ev, `entries missing id/query/expect.document: ${malformed.join(', ')}`);
+        if (malformed.length) return fail(ev, `entries missing id/query/expectDocs/expectTerms: ${malformed.join(', ')}`);
         return queries.length >= 12 ? pass(ev, `${queries.length} queries`) : fail(ev, `only ${queries.length} queries, need ≥ 12`);
       },
     },
@@ -103,13 +112,17 @@ export default defineSuite({
         for (const q of set.queries ?? []) {
           const got = byId.get(q.id);
           const top = got?.returned?.[0];
-          const docOk = top?.document === q.expect.document;
-          const pageOk = docOk && (q.expect.pages ?? []).includes(top?.page);
+          // Re-judged here from the raw returned results, not read from the
+          // runner's own docOk/pageOk fields — Stage 5 verifies, it does not
+          // take the implementing code's word for its own score.
+          const docOk = !!top && (q.expectDocs ?? []).some((p) => new RegExp(p, 'i').test(top.document));
+          const text = (top?.text ?? '').toLowerCase();
+          const pageOk = docOk && (q.expectTerms ?? []).some((t) => text.includes(t.toLowerCase()));
           if (docOk) docCorrect++;
           if (pageOk) pageCorrectAmongDocCorrect++;
           rows.push(
             `${q.id}  doc:${docOk ? 'ok ' : 'BAD'}  page:${docOk ? (pageOk ? 'ok ' : 'BAD') : '—  '}  ` +
-              `expected ${q.expect.document} p.${(q.expect.pages ?? []).join('/')}  got ${top?.document ?? '(nothing)'} p.${top?.page ?? '—'}`
+              `expected /${(q.expectDocs ?? []).join('|')}/  got ${top?.document ?? '(nothing)'} p.${top?.page ?? '—'}`
           );
         }
 
