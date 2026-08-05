@@ -10,11 +10,22 @@
 
 import { defineSuite, pass, fail, blocked } from '../harness.mjs';
 import { parseCsv, sourceBasename } from '../lib/csv.mjs';
+// The join rules live in ingest/, so this check cannot drift from the code it
+// verifies — the mistake this suite's own header warns about. The *invariant*
+// below is still asserted independently.
+import { fallbackMatch, FILE_OVERRIDES } from '../../ingest/reconcile.mjs';
 
 const CORPUS_DIR = 'HVAC Data';
 
-/** The two rows the brief names as having no file on disk. */
-const KNOWN_GAPS = ['RT-SVX096C-EN_02282025.pdf', '04-3817.pdf'];
+/**
+ * Rows deleted from the manifest on 4 Aug 2026 by owner decision: the files on
+ * disk are the corpus, and a row with no file is removed rather than carried as a
+ * permanent unresolved gap.
+ *
+ * `04-3817.pdf` is deliberately NOT here — it is present on disk as `1.pdf`
+ * (A1). Listing it as a gap was the same mis-identification, in a test.
+ */
+const KNOWN_GAPS = [];
 
 function reconcile(c) {
   const csv = c.read('data/manifest.csv');
@@ -29,11 +40,29 @@ function reconcile(c) {
     if (key) byBasename.set(key, row);
   }
 
-  const rowsWithoutFile = [...byBasename.entries()]
-    .filter(([key]) => !onDisk.includes(key))
-    .map(([key, row]) => `${key}  (${row.Manufacturer} · ${row.DocType})`);
+  /**
+   * Resolve a row to a file by the three documented rules, in order: the
+   * SourceURL basename, a recorded identity correction (a file whose name lies
+   * about what it is), then the FileName-stem fallback for rows whose URL ends in
+   * an id. Anything unresolved by all three is genuinely undecided.
+   */
+  const resolveRow = (row) => {
+    const base = sourceBasename(row.SourceURL);
+    if (base && onDisk.includes(base)) return base;
+    const override = Object.entries(FILE_OVERRIDES).find(([, target]) => target === base)?.[0];
+    if (override && onDisk.includes(override)) return override;
+    return fallbackMatch(row.FileName, onDisk);
+  };
 
-  const filesWithoutRow = onDisk.filter((f) => !byBasename.has(f));
+  const claimed = new Set();
+  const rowsWithoutFile = [];
+  for (const row of rows) {
+    const file = resolveRow(row);
+    if (file) claimed.add(file);
+    else rowsWithoutFile.push(`${sourceBasename(row.SourceURL) || '(no basename)'}  (${row.Manufacturer} · ${row.DocType})`);
+  }
+
+  const filesWithoutRow = onDisk.filter((f) => !claimed.has(f));
 
   return { rows, onDisk, byBasename, rowsWithoutFile, filesWithoutRow };
 }
@@ -97,38 +126,56 @@ export default defineSuite({
     {
       story: 'E1.1',
       ac: 'brief AC 6',
-      what: 'the corpus matches the facts the brief states (27 rows, 25 PDFs, 2 named gaps)',
+      what: 'every manifest row and every file has a disposition — no gaps, no strays',
       async run(c) {
         const r = reconcile(c);
         if (!r) return fail(c.fromFile('data/manifest.csv', 'absent'), 'manifest not found');
 
+        // Amendment 2 (4 Aug 2026): the files on disk ARE the corpus, and a row
+        // with no file is deleted rather than carried. So this no longer asserts a
+        // hardcoded row count — a count has to be edited every time the corpus
+        // legitimately changes, and an assertion people routinely edit stops
+        // meaning anything.
+        //
+        // The invariant is what must hold: nothing is undecided. Every row
+        // resolves to a file, every file resolves to a row. That is brief AC 6 in
+        // one sentence, and it stays true at any corpus size.
         const problems = [];
-        if (r.rows.length !== 27) problems.push(`expected 27 manifest rows, found ${r.rows.length}`);
-        if (r.onDisk.length !== 25) problems.push(`expected 25 PDFs, found ${r.onDisk.length}`);
-        for (const gap of KNOWN_GAPS) {
-          if (r.onDisk.includes(gap)) problems.push(`${gap} is now present — the brief says it is missing`);
+        if (!r.onDisk.length) problems.push('no PDFs found on disk');
+        if (r.filesWithoutRow.length) {
+          problems.push(
+            `${r.filesWithoutRow.length} file(s) attributable to no manifest row — must not be ingested: ` +
+              r.filesWithoutRow.join(', ')
+          );
         }
 
         // The brief names exactly two gaps. Counts alone would pass while a third
         // row quietly failed to resolve, which is the discrepancy this check has
         // to catch: an unnamed orphan is a document nobody has decided about.
-        const unexpected = r.rowsWithoutFile.filter(
-          (row) => !KNOWN_GAPS.some((gap) => row.startsWith(gap))
-        );
+        // A row resolving by neither the basename join, nor the documented
+        // FileName-stem fallback, nor a recorded identity correction is a document
+        // nobody has decided about.
+        const unexpected = [];
+        for (const row of r.rows) {
+          const base = sourceBasename(row.SourceURL);
+          if (base && r.onDisk.includes(base)) continue;
+          if (fallbackMatch(row.FileName, r.onDisk)) continue;
+          if (Object.values(FILE_OVERRIDES).includes(base)) continue;
+          unexpected.push(`${base || '(no basename)'} — ${row.Manufacturer}`);
+        }
         if (unexpected.length) {
           problems.push(
-            `${unexpected.length} manifest row(s) fail to resolve that the brief does not name: ` +
-              unexpected.map((u) => u.split('  ')[0]).join(', ')
+            `${unexpected.length} manifest row(s) resolve to no file by any documented rule: ` +
+              unexpected.join(', ')
           );
         }
 
         const ev = c.fromCheck(
           'assert brief §Corpus facts against the working tree',
-          `rows: ${r.rows.length} (expect 27)\nPDFs: ${r.onDisk.length} (expect 25)\n` +
-            `named gaps still absent: ${KNOWN_GAPS.filter((g) => !r.onDisk.includes(g)).join(', ') || '(none)'}\n` +
-            `orphan rows: ${r.rowsWithoutFile.length} (brief names 2)\n` +
-            `unattributed files: ${r.filesWithoutRow.join(', ') || '(none)'}\n\n` +
-            (problems.join('\n') || 'corpus matches the brief')
+          `manifest rows: ${r.rows.length}\nPDFs on disk: ${r.onDisk.length}\n` +
+            `rows resolving to no file by any documented rule: ${unexpected.length}\n` +
+            `files attributable to no row: ${r.filesWithoutRow.join(', ') || '(none)'}\n\n` +
+            (problems.join('\n') || 'every row and every file has a disposition')
         );
 
         // Drift here is not necessarily a defect — E1.2 may legitimately drop or

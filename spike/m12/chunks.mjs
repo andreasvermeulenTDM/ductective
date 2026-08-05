@@ -24,19 +24,27 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { documents, CORPUS_DIR } from '../../ingest/reconcile.mjs';
 
-const CORPUS = 'HVAC Data';
+const CORPUS = CORPUS_DIR;
 const CACHE = 'spike/m12/.cache';
 
-/** Phase 1 answer scope: Trane Precedent + Carrier 48/50 + a PT chart. */
-export const DOCS = [
-  { file: 'RT-SVX23R-EN_09222022.pdf', label: 'RT-SVX23R-EN — Precedent Rooftop IOM' },
-  { file: 'RT-SVX21AD-EN_06172022.pdf', label: 'RT-SVX21AD-EN — Precedent IOM' },
-  { file: '48-50LC-4-6-C01T.pdf', label: '48-50LC — Carrier 48/50 LC Service' },
-  { file: '50HC-7-12-07SI.pdf', label: '50HC — Carrier 50HC Service' },
-  { file: '48-50PGPM-03T.pdf', label: '48-50PG/PM — Carrier Product Data' },
-  { file: 'R-454B-Pressure-Temperature-Chart.pdf', label: 'R-454B PT Chart' },
-];
+/**
+ * The in-scope corpus, derived from the manifest — not a hand-picked list.
+ *
+ * An earlier version of this file named six documents I chose myself and gave
+ * them labels I typed. That was wrong twice: it silently measured a subset of the
+ * corpus, and the citation labels came from me rather than from the manifest, so
+ * a span could have been attributed to a document description that appears in no
+ * tracked artifact.
+ *
+ * Now every document, its label, its manufacturer and its scope flag come from
+ * `ingest/reconcile.mjs`. Add a file to `HVAC Data/` with a manifest row and it
+ * appears here; there is nothing to edit.
+ */
+export const DOCS = documents()
+  .filter((d) => d.inScope)
+  .map((d) => ({ file: d.file, label: d.label, manufacturer: d.manufacturer, coverage: d.coverage }));
 
 /** One page of one document. `page` is 1-based and is the citable unit. */
 function pagesOf(doc) {
@@ -53,8 +61,10 @@ function pagesOf(doc) {
     maxBuffer: 256 * 1024 * 1024,
   });
 
+  // Cache text only, never the label. The cache is keyed by filename, so storing
+  // the label here meant a label change did not invalidate it — and a stale label
+  // is a citation pointing at a document description that no longer exists.
   const pages = raw.split('\f').map((text, i) => ({
-    doc: doc.label,
     page: i + 1,
     text: text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(),
   }));
@@ -75,7 +85,8 @@ export function corpus() {
   const out = [];
   for (const doc of DOCS) {
     for (const p of pagesOf(doc)) {
-      if (p.text.length >= 400) out.push(p);
+      // Label applied here, from the manifest, so it is always current.
+      if (p.text.length >= 400) out.push({ doc: doc.label, page: p.page, text: p.text });
     }
   }
   return out;

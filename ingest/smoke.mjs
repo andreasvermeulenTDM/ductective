@@ -1,0 +1,98 @@
+/**
+ * smoke.mjs — S17 / brief criterion 7. Does retrieval return the right sections?
+ *
+ *   npm run ingest:smoke
+ *
+ * The knowledge artifact's most important section. Retrieval that returns
+ * plausible-looking *wrong* sections is the failure mode that survives every other
+ * check in this pipeline: the chunk has a real document name and a real page
+ * number, the citation renders, the answer reads well, and it is wrong.
+ *
+ * So this reports, per query, the documents and pages actually returned — not a
+ * pass rate alone. A score with no per-query detail cannot be argued with.
+ */
+
+import { readFileSync } from 'node:fs';
+import { supabaseAdmin, embed, EMBED_MODEL } from '../lib/clients.mjs';
+import { isMain } from './reconcile.mjs';
+
+const SET = 'tests/fixtures/retrieval-smoke-set.json';
+const TOP_K = 8;
+
+const norm = (s) => (s ?? '').toLowerCase();
+
+export async function runSmokeSet({ topK = TOP_K } = {}) {
+  const { bar, queries } = JSON.parse(readFileSync(SET, 'utf8'));
+  const db = supabaseAdmin();
+  const rows = [];
+
+  for (const q of queries) {
+    // 'query', not 'document'. Voyage embeds asymmetrically and mismatching the
+    // two costs recall silently — no error, just worse results.
+    const { embeddings } = await embed([q.query], { inputType: 'query' });
+
+    const { data, error } = await db.rpc('match_chunks', {
+      query_embedding: embeddings[0],
+      match_count: topK,
+      scope_only: true,
+    });
+    if (error) throw new Error(`match_chunks (${q.id}): ${error.message}`);
+
+    const hits = data ?? [];
+    const top = hits[0];
+
+    // Correct document: any expectDocs pattern matches the top hit's label.
+    const docOk = !!top && q.expectDocs.some((p) => new RegExp(p, 'i').test(top.document));
+
+    // Correct page: the returned chunk actually contains the expected terms. A
+    // chunk from the right manual but the wrong page will not.
+    const text = norm(top?.text);
+    const termsFound = q.expectTerms.filter((t) => text.includes(norm(t)));
+    const pageOk = docOk && termsFound.length > 0;
+
+    // Where in the top-k the first acceptable document appears. rank 1 is what
+    // the bar measures, but a right answer at rank 3 is a different problem from
+    // no right answer at all, and the fix differs.
+    const rankOfFirstGood =
+      hits.findIndex((h) => q.expectDocs.some((p) => new RegExp(p, 'i').test(h.document))) + 1;
+
+    rows.push({
+      id: q.id, fault: q.fault, query: q.query,
+      topDocument: top?.document ?? '(nothing returned)',
+      topPage: top?.page ?? null,
+      similarity: top ? Number(top.similarity.toFixed(3)) : null,
+      docOk, pageOk,
+      termsFound,
+      rankOfFirstGood: rankOfFirstGood || null,
+      alternatives: hits.slice(1, 4).map((h) => `${h.document} p.${h.page}`),
+    });
+  }
+
+  const correctDocs = rows.filter((r) => r.docOk).length;
+  const correctPages = rows.filter((r) => r.pageOk).length;
+  return {
+    bar, rows,
+    total: rows.length,
+    correctDocs,
+    correctPages,
+    // Judged against the brief's bar, not against the number of queries authored:
+    // adding queries must not be able to lower the bar.
+    passes: correctDocs >= bar.minCorrectDocs && correctPages >= bar.minCorrectDocs,
+  };
+}
+
+if (isMain(import.meta.url)) {
+  const r = await runSmokeSet();
+  console.log(`\nS17 — retrieval smoke set   (${EMBED_MODEL}, top-${TOP_K}, in-scope only)\n`);
+  for (const row of r.rows) {
+    const mark = row.docOk ? (row.pageOk ? '✓' : '~') : '✗';
+    console.log(`  ${mark} ${row.id}  ${row.topDocument.slice(0, 44).padEnd(44)} p.${String(row.topPage ?? '-').padEnd(4)} sim=${row.similarity ?? '-'}`);
+    console.log(`      ${row.query.slice(0, 88)}`);
+    if (!row.docOk && row.rankOfFirstGood) console.log(`      first acceptable document at rank ${row.rankOfFirstGood}`);
+    if (row.docOk && !row.pageOk) console.log(`      right document, but none of [${row.termsFound.length ? row.termsFound : 'expected terms'}] on this page`);
+  }
+  console.log(`\n  correct document : ${r.correctDocs}/${r.total}   (bar: ${r.bar.minCorrectDocs} of 12)`);
+  console.log(`  correct page     : ${r.correctPages}/${r.total}`);
+  console.log(`\n  ${r.passes ? '✅ criterion 7 met' : '❌ criterion 7 NOT met'}\n`);
+  process.exitCode = r.passes ? 0 : 1;
+}

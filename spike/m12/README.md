@@ -34,6 +34,13 @@ numbers, fragmentary lines — is exactly what makes character-exact copying har
 It also keeps the gate off ingestion's critical path, which matters because M12
 blocks M6–M10.
 
+**The corpus comes from the manifest, not from a list in this file.** `DOCS` is
+`documents().filter(inScope)` from `ingest/reconcile.mjs` — 21 documents, 1,595
+usable pages. An earlier version named six documents chosen by hand with labels
+typed here, which silently measured a subset and attributed spans to document
+descriptions that appear in no tracked artifact. Add a file to `HVAC Data/` with a
+manifest row and it appears here; there is nothing to edit.
+
 **Chunk selection is keyword overlap, not vector retrieval.** Deliberate. This
 gate measures whether the model copies faithfully and stays inside its id map.
 Retrieval quality is criterion 7 and belongs to Stage 2.5. Keeping them apart
