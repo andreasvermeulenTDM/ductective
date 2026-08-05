@@ -15,6 +15,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 
 /**
  * Windows drive letters and backslashes make string comparison unreliable here.
@@ -177,8 +178,24 @@ export const isInScope = (doc) =>
  * chunk whose provenance is guessed produces a citation that looks right and is
  * not.
  */
+/**
+ * S10 — stable document identity, derived from the SourceURL.
+ *
+ * Not the filename and not the manifest's `FileName`. Files here are stored under
+ * source names that lie about their contents (`1.pdf` is the EPA Section 608
+ * rule), and `FileName` holds renames that were never applied. Keying on either
+ * means a rename silently re-points every citation that document ever produced.
+ *
+ * The SourceURL is the one identifier that describes where the document came
+ * from rather than what someone called it. S10's DoD: renaming a file on disk
+ * changes no chunk's citation.
+ */
+export const documentId = (sourceUrl) =>
+  'doc_' + createHash('sha256').update(sourceUrl.trim()).digest('hex').slice(0, 16);
+
 export function documents() {
   return reconcile().matched.map((m) => ({
+    id: documentId(m.sourceUrl),
     file: m.file,
     /** Citable name. From the manifest's intended name, which is descriptive. */
     label: (m.intendedName || m.file).replace(/\.pdf$/i, ''),

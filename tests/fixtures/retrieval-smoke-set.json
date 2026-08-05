@@ -1,0 +1,130 @@
+{
+  "_comment": [
+    "S17 / brief criterion 7 — the retrieval smoke set.",
+    "",
+    "14 queries across Trane Precedent and Carrier 48/50 faults, phrased the way a",
+    "technician would type them rather than the way a manual is indexed. The bar is",
+    "at least 10 of 12 returning the correct document, with the page correct on",
+    "those 10 — 14 are listed so the bar survives two being wrong for reasons that",
+    "turn out to be about the corpus rather than about retrieval.",
+    "",
+    "HOW A QUERY IS JUDGED",
+    "",
+    "  expectDocs   — regexes against the document label. A hit on ANY of them is a",
+    "                 correct document. Several faults are legitimately covered by",
+    "                 more than one manual in this corpus, and insisting on one",
+    "                 specific file would measure luck rather than retrieval.",
+    "  expectTerms  — terms that must appear in the retrieved chunk's text for the",
+    "                 PAGE to count as correct. This is what makes page-correctness",
+    "                 machine-checkable: a chunk from the right document but the",
+    "                 wrong page will not contain them. It is a necessary condition,",
+    "                 not a sufficient one — a human still confirms the page says",
+    "                 what the answer will claim, which is Stage 5.5's job.",
+    "",
+    "Expectations are written against documents that are actually in the corpus.",
+    "Trane Foundation is deliberately absent: RT-SVX096C is a dead URL and the gap",
+    "is recorded in 00-brief.md Amendment 2. Do not add a Foundation query here to",
+    "make coverage look complete."
+  ],
+  "bar": { "minQueries": 12, "minCorrectDocs": 10, "pageCorrectOnCorrectDocs": true },
+  "queries": [
+    {
+      "id": "R01",
+      "fault": "F03 high head pressure",
+      "query": "Trane Precedent rooftop unit tripping on high head pressure, what should I check",
+      "expectDocs": ["Precedent", "RT-SVX"],
+      "expectTerms": ["pressure"]
+    },
+    {
+      "id": "R02",
+      "fault": "F02 low suction pressure",
+      "query": "Carrier 48LC low suction pressure and the evaporator coil is freezing up",
+      "expectDocs": ["48-50LC", "48-50PGPM", "50HC", "48HJ"],
+      "expectTerms": ["suction", "coil", "pressure"]
+    },
+    {
+      "id": "R03",
+      "fault": "F04 economizer not modulating",
+      "query": "economizer damper will not modulate on a Trane Precedent rooftop",
+      "expectDocs": ["Precedent", "RT-SVX"],
+      "expectTerms": ["economizer"]
+    },
+    {
+      "id": "R04",
+      "fault": "F07 condenser fan failure",
+      "query": "condenser fan not running on a Carrier 48 series packaged rooftop",
+      "expectDocs": ["48-50", "48HJ", "50HC", "50E"],
+      "expectTerms": ["condenser", "fan"]
+    },
+    {
+      "id": "R05",
+      "fault": "F10 control board LED codes",
+      "query": "what do the diagnostic LED flash codes on the control board mean",
+      "expectDocs": ["RT-SVX", "Precedent", "IntelliPak", "48-50", "50HC"],
+      "expectTerms": ["led"]
+    },
+    {
+      "id": "R06",
+      "fault": "F14 refrigerant charge verification",
+      "query": "R-454B saturation temperature at 118 psig",
+      "expectDocs": ["PT-Chart", "R454B", "A2L"],
+      "expectTerms": ["454"]
+    },
+    {
+      "id": "R07",
+      "fault": "F08 low airflow / high static",
+      "query": "supply fan external static pressure too high on a rooftop unit",
+      "expectDocs": ["RT-SVX", "Precedent", "48-50", "50HC", "IntelliPak"],
+      "expectTerms": ["static"]
+    },
+    {
+      "id": "R08",
+      "fault": "F05 supply fan won't start",
+      "query": "indoor blower motor will not start Trane rooftop",
+      "expectDocs": ["RT-SVX", "Precedent", "IntelliPak", "PKGP"],
+      "expectTerms": ["motor"]
+    },
+    {
+      "id": "R09",
+      "fault": "F09 thermostat communication",
+      "query": "thermostat is not communicating with the rooftop unit control",
+      "expectDocs": ["RT-SVX", "Precedent", "48-50", "IntelliPak", "50HC"],
+      "expectTerms": ["thermostat"]
+    },
+    {
+      "id": "R10",
+      "fault": "F06 dirty or frozen evaporator coil",
+      "query": "evaporator coil iced over and airflow is weak",
+      "expectDocs": ["RT-SVX", "Precedent", "48-50", "50HC", "48HJ"],
+      "expectTerms": ["coil"]
+    },
+    {
+      "id": "R11",
+      "fault": "F15 unit-specific error codes",
+      "query": "Symbio 800 controller alarm code on an IntelliPak rooftop",
+      "expectDocs": ["IntelliPak", "Symbio", "RT-SVX072"],
+      "expectTerms": ["symbio", "alarm", "code"]
+    },
+    {
+      "id": "R12",
+      "fault": "F13 short cycling",
+      "query": "compressor short cycles on and off repeatedly",
+      "expectDocs": ["RT-SVX", "Precedent", "48-50", "50HC", "PKGP"],
+      "expectTerms": ["compressor"]
+    },
+    {
+      "id": "R13",
+      "fault": "F01 no cooling / compressor won't start",
+      "query": "compressor will not start no cooling call present",
+      "expectDocs": ["RT-SVX", "Precedent", "48-50", "50HC", "PKGP", "48HJ"],
+      "expectTerms": ["compressor"]
+    },
+    {
+      "id": "R14",
+      "fault": "startup / commissioning",
+      "query": "startup checklist before first operation of a Carrier packaged rooftop",
+      "expectDocs": ["48-50", "48HJ", "50HC", "50E"],
+      "expectTerms": ["start"]
+    }
+  ]
+}

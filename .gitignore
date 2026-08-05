@@ -72,3 +72,6 @@ tests/last-run.json
 # M12 spike — regenerable output and the pdftotext cache
 spike/m12/.cache/
 spike/m12/out/
+
+# Parsed-page cache — regenerable, and derived from the gitignored corpus
+ingest/.cache/
