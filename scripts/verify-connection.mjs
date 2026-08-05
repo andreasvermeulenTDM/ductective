@@ -60,8 +60,11 @@ for (const [name, fn] of [
     const how = r.stub ? 'STUB' : 'live';
     const detail = r.embeddings
       ? ` — ${r.model}, ${r.embeddings[0].length}/${EMBED_DIM} dims, ${r.tokens} tokens`
-      : ` — ${r.model}`;
-    pass(`${name} (${how})${detail}`);
+      : ` — ${r.model}, ${r.usage?.inputTokens ?? 0}/${r.usage?.outputTokens ?? 0} tokens, finish=${r.finishReason}`;
+    // A safety block is not a working round trip. Reporting it as PASS is exactly
+    // the collapse 00-brief-run-b.md forbids.
+    if (r.blocked) fail(`${name} (${how}) — provider safety block: ${r.blockReason}`);
+    else pass(`${name} (${how})${detail}`);
   } catch (e) {
     e.message.includes('ALLOW_STUBS') ? skip(`${name} — no key, stub not enabled`) : fail(name, e.message);
   }

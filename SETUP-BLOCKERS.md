@@ -20,7 +20,7 @@ top of them.**
 | # | Blocker | Needed for | Status |
 |---|---|---|---|
 | H1 | Supabase account + project, pgvector enabled | Any storage or retrieval | ✅ **Verified 29 Jul 2026** |
-| H2 | **Google AI Studio key** | Model round trip, diagnostic core | ⬜ Not done — **stubbed** |
+| H2 | **Google AI Studio key** | Model round trip, diagnostic core | ✅ **Verified 4 Aug 2026** |
 | H3 | Voyage API key | Embedding the corpus | ✅ **Verified 3 Aug 2026** |
 | H4 | Supabase CLI available | Migrations, deploying Edge Functions | ✅ **Resolved via `npx`** |
 | H5 | Deno CLI installed | Running Edge Functions locally | ⏸️ **Deferred by decision** |
@@ -126,6 +126,40 @@ Two things the client enforces so they cannot go wrong quietly:
 
 `embedTokensUsed()` accumulates tokens billed per process, so Stage 2.5 can report
 real cost for brief criterion 8 rather than estimating it.
+
+### H2 — evidence
+
+`npm run verify` passes live on the `gemini` probe, not stubbed:
+
+```
+PASS  gemini (live) — gemini-3.6-flash, 2/17 tokens, finish=STOP
+```
+
+**Model is pinned to `gemini-3.6-flash`, deliberately not `gemini-flash-latest`.**
+`-latest` is a moving alias, and Stage 5.5 compares each round against the previous
+one — a model that changes underneath makes a regression indistinguishable from a
+model swap, which is the one thing that reporting exists to catch. Override with
+`GEMINI_MODEL`; re-baseline when you bump it.
+
+**Listed is not callable.** Three findings from probing this account:
+
+| Model | Result |
+|---|---|
+| `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-flash-latest` | ✅ callable |
+| `gemini-2.5-flash` | ❌ `NOT_FOUND` — "no longer available to new users", **despite appearing in the model list** |
+| `gemini-2.0-flash` | ❌ `RESOURCE_EXHAUSTED` |
+
+Do not use the model list as a capability check.
+
+**Safety-filter probe.** Gas/combustion, live electrical, and refrigerant prompts
+all returned `promptBlock=none`. The filter did not fire on HVAC vocabulary. That
+is four prompts, not a measurement — M12 owns the real block rate — but the risk
+looks smaller than the Run B constraint assumed. The constraint stays: a provider
+block is an error, never a refusal, and the failure is silent.
+
+**Your key format is `AQ.`, not `AIza`.** The scanner's original Google rule would
+not have caught this project's own live key. Both patterns are now in
+`lib/secrets.mjs`; verified the live key's shape is matched.
 
 **H4 — Supabase CLI. ✅ Resolved without installing anything.**
 
