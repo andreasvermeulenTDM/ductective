@@ -923,3 +923,185 @@ Almost nothing. Three exceptions, each cheap now and expensive later:
    you've published a price. → E13
 
 Everything else waits for its phase and its own brief.
+
+---
+---
+
+# ADDENDUM C — Unit-first entry (U1–U8)
+
+**Runs B and C. Does not touch Run A's critical path.**
+
+The app should open by establishing *which unit you are standing in front of* —
+by photographing the data plate or by entering it — and only then take questions.
+
+## This is a flow change, not a feature
+
+The prototype already leans this way. `app/App.tsx:13-15` says the plan *"treats a
+data plate as how you **start** a question, not a place you go"*, `sessions.equipment`
+exists in `sql/002_prototype_sessions.sql:24`, and `App.tsx:61` already holds an
+`equipment` state. But capture is currently an **optional composer action**. Making
+it a **gate** is a different design with different consequences, and three of them
+are not obvious:
+
+1. **Coverage honesty moves earlier.** E3.6 currently discovers "I have no
+   documentation for that" *after* a question. Unit-first discovers it before one is
+   asked — which is strictly better for the tech and removes the most likely path to
+   a confidently wrong answer.
+2. **Retrieval narrows before the first query.** `documents.in_scope` and the scope
+   tags from E1.7/E2.3 can filter to one unit's manuals from the outset. That should
+   *raise* precision on brief AC 7's 10-of-12 bar and reduce the sibling-manual
+   confusion Stage 1 flagged between `48-50FC` and `48-50FE`.
+3. **It adds friction to a quick question**, and that is a real cost. The
+   justification is the domain rule, not the UX: an answer citing the wrong unit's
+   manual is a mis-citation, which `CLAUDE.md:57-59` names as worse than an uncited
+   claim. The gate exists to make that failure unreachable.
+
+> **Requires a Stage 0 brief amendment.** `.pipeline/00-brief-run-c.md` lists
+> nameplate capture as an input *alongside* text, not as a precondition for it.
+> Unit-first contradicts that. Amend the brief as a dated Stage 0 decision — the
+> same instrument M4 used — rather than letting stage agents infer a new flow.
+
+---
+
+### U1 — The app opens on unit selection, not the composer
+**As a** technician standing on a roof, **I want** to tell the app what I'm looking at
+first, **so that** everything it says afterward is about my actual unit.
+- A cold start with no active session lands on unit selection, not chat. *(machine)*
+- Both paths are offered as co-equal choices: **photograph the data plate** or **enter the details**. *(machine)*
+- The composer is unavailable until a unit is confirmed — disabled with a reason, not hidden. *(machine)*
+- Opening an existing session from history does **not** re-ask; the unit is already on the session. *(machine)*
+
+**Owner:** Frontend · **Depends on:** U2, U3 · **Priority:** Critical
+**DoD:** No route reaches the composer with `equipment` unset.
+
+---
+
+### U2 — Manual entry is a first-class path, not a fallback
+**As a** technician whose data plate is painted over, **I want** to type the unit in,
+**so that** an unreadable plate doesn't lock me out of the app.
+- Manufacturer and model can be entered directly, reachable **without opening the camera at all**. *(machine)*
+- Partial and near-miss model numbers resolve — faded plates are the normal case, not the edge case. *(machine)*
+- The field does not imply coverage it lacks: an unrecognised entry routes to U4 rather than silently accepting. *(machine)*
+- Camera-permission denial lands here, not in a dead end. *(machine)*
+
+**Owner:** Frontend · **Depends on:** — · **Priority:** Critical
+**DoD:** The whole flow is completable with the camera permanently denied.
+
+> Amends **E4.2**, which today treats manual entry only as a low-confidence
+> *fallback*. Under unit-first it is one of two front doors.
+
+---
+
+### U3 — Capture resolves to a candidate unit, and you confirm it
+**As a** technician, **I want** to see what it read before it acts on it, **so that** a
+misread plate doesn't send me down the wrong unit's diagnostics.
+- A photo returns manufacturer + model rendered for confirmation before any question is taken. *(human)*
+- Extraction confidence is surfaced, not hidden. *(machine)*
+- Low confidence pre-fills U2's form rather than guessing. *(eval)*
+- Correction takes ≤ 2 taps, on every result including correct ones — this is Run C AC 3, unchanged. *(human)*
+
+**Owner:** Frontend (UI), Backend (vision endpoint) · **Depends on:** E4.1, E4.2 · **Priority:** Critical
+**DoD:** Run C AC 3 satisfied through the unit-first flow.
+
+> `app/screens/CaptureScreen.tsx` already renders a confirmation card against a
+> mocked `READ_MODEL`. This story replaces the mock, not the screen.
+
+---
+
+### U4 — Coverage is stated at selection, before any question
+**As a** technician with a Daikin unit, **I want** to be told up front, **so that** I
+don't ask three questions before finding out it can't help.
+- A confirmed unit is matched against `documents.in_scope`. *(machine)*
+- **In scope** (Trane Precedent, Carrier 48/50) → proceed. *(machine)*
+- **Ingested but out of Phase 1 scope** (Daikin, Mitsubishi, chiller, EPA) → say so plainly and name what *is* covered, before a question is taken. *(eval)*
+- **Unrecognised** → do not guess. Offer the nearest covered families, or let the tech proceed with an explicit "no documentation for this unit" state. *(eval)*
+- The app never proceeds silently with a unit it has no documentation for. *(machine)*
+
+**Owner:** Backend (resolution), Frontend (states) · **Depends on:** U2, U3, E1.7, E2.3 · **Priority:** Critical
+**DoD:** Moves E3.6's coverage-edge honesty from post-question to pre-question.
+
+> **The most valuable story in this addendum.** It converts the single most
+> dangerous failure — fluent guidance about a unit with no backing documentation —
+> from a runtime risk into an unreachable state.
+
+---
+
+### U5 — The session carries its unit, and retrieval is scoped by it
+**As the** retrieval layer, **I want** the unit on the session, **so that** every
+citation in a transcript belongs to the same machine.
+- `sessions.equipment` is populated at session creation. The column exists and is nullable today — decide whether unit-first makes it `NOT NULL`. *(machine)*
+- Every retrieval in the session filters to that unit's documents. *(machine)*
+- The unit is visible in the session header throughout, not just at the start. *(machine)*
+- History rows show the unit badge — already built in the design pass. *(machine)*
+
+**Owner:** Backend (scoping), Frontend (header) · **Depends on:** U4, E2.3 · **Priority:** Critical
+**DoD:** No answer in a session cites a document outside its unit's coverage.
+
+---
+
+### U6 — Changing the unit starts a new session
+**As a** technician moving to the next rooftop, **I want** a clean session per unit,
+**so that** my earlier citations don't silently start describing a different machine.
+- Changing the unit is explicit, never inferred from the conversation. *(machine)*
+- It **starts a new session** rather than re-scoping the current one. *(machine)*
+- The prior session stays intact in history under its own unit. *(machine)*
+
+**Owner:** Backend, Frontend · **Depends on:** U5 · **Priority:** High
+**DoD:** A transcript can never contain citations scoped to two different units.
+
+> This is a citation-integrity rule, not a convenience one. Re-scoping in place
+> would leave earlier answers in the transcript cited against a machine they were
+> never about.
+
+---
+
+### U7 — The gate cannot be bypassed into ungrounded answers
+**As a** builder, **I want** one way in, **so that** the gate isn't a suggestion.
+- No path reaches the diagnostic core without a resolved unit — including restored state, deep links, and a cold start while offline. *(machine)*
+- **Safety refusals remain reachable at any point**, with or without a unit. A hard refusal does not depend on knowing the equipment, and gating it behind unit selection would be a guardrail regression. *(machine)*
+
+**Owner:** Backend, Frontend · **Depends on:** U1 · **Priority:** Critical
+**DoD:** Tested by attempting each bypass route, not by inspection.
+
+---
+
+### U8 — States for the new first screen
+**As a** technician with one bar of signal, **I want** the first screen to work
+anyway, **so that** I'm not stuck at the front door.
+- Camera permission denied → U2. *(machine)*
+- Vision endpoint down or rate-limited → U2, not a dead end. *(machine)*
+- **Offline at cold start** → manual entry works offline; capture explains it needs signal. *(human)*
+- Unrecognised-unit and out-of-scope states from U4 are reachable and screenshotted. *(human)*
+
+**Owner:** Frontend · **Depends on:** U1, U4 · **Priority:** Critical
+**DoD:** Run C AC 6 expands from nine states to twelve — unit selection joins chat,
+camera, and history as a surface needing loading/empty/error/offline coverage.
+
+---
+
+## What this changes elsewhere
+
+| Artifact | Change |
+|---|---|
+| `.pipeline/00-brief-run-c.md` | In-scope list: capture becomes a **precondition**, not a co-equal input. AC 6's nine states become twelve. Stage 0 amendment. |
+| `docs/phase1-story-map.md` E4.2 | Manual entry promoted from fallback to front door — see U2 |
+| `docs/phase1-story-map.md` E3.6 | Coverage-edge behavior moves earlier; U4 supersedes the post-question path |
+| `docs/phase1-story-map.md` E6.1 | Composer gains a disabled-until-unit state |
+| `sql/002_prototype_sessions.sql:24` | `equipment` may become `NOT NULL` — open question below |
+| `app/App.tsx:57-87` | `capturing` overlay becomes a routed first screen; Run C picks real navigation anyway |
+
+## Open questions
+
+1. **Does `sessions.equipment` become `NOT NULL`?** *Default:* **yes** — a nullable
+   column re-admits exactly the ungrounded session U7 exists to prevent. Cost is a
+   migration on the prototype table. → U5
+2. **Can a tech proceed with an unrecognised unit?** *Default:* **yes, with an
+   explicit "no documentation for this unit" state** that persists in the session
+   header. Refusing entirely makes the app useless on the 30% of rooftops carrying
+   something else; proceeding silently is the failure U4 exists to prevent. The
+   middle path is honest and still usable. → U4
+3. **Does unit-first survive into Phase 2's wider KB?** *Default:* yes — the wider
+   the corpus, the more retrieval precision depends on scoping. → U5
+4. **Is there a "just ask" escape for a general question?** *Default:* **no** in
+   Phase 1. Every answer is cited to a unit's manual; a unitless question has no
+   grounded answer to give. Revisit if the tech validation (E7.4) says techs want it. → U1
