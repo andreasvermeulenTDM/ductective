@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator, Linking,
+  Animated, View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator, Linking,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { launchImageLibraryAsync } from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { Ionicons } from '@expo/vector-icons';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
+import { fireHaptic } from '../components/Tactile';
 import { OfflineState, PermissionDenied } from '../components/Chrome';
 import { looksOffline } from '../lib/net';
 import { DiagnoseError, isLive, requestIdentifyUnit } from '../lib/diagnose';
@@ -83,6 +85,25 @@ const CONFIDENCE_WORD = { high: 'High', medium: 'Medium', low: 'Low' } as const;
  * capture. A technician who tapped the camera by accident could not get back to
  * their conversation at all.
  */
+/**
+ * The identification's entrance — the app's one earned "magic" moment (polish
+ * P2). A single spring translate+fade on mount; deliberately used nowhere else,
+ * because a diagnostic tool for a roof should otherwise be calm.
+ */
+function ConfirmEntrance({ children }: { children: React.ReactNode }) {
+  const y = useRef(new Animated.Value(24)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(y, { toValue: 0, stiffness: 120, damping: 16, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+    ]).start();
+  }, [y, opacity]);
+  return (
+    <Animated.View style={{ transform: [{ translateY: y }], opacity }}>{children}</Animated.View>
+  );
+}
+
 function CancelBar({ onCancel }: { onCancel: () => void }) {
   return (
     <View style={s.cancelBar}>
@@ -92,7 +113,10 @@ function CancelBar({ onCancel }: { onCancel: () => void }) {
         accessibilityRole="button"
         accessibilityLabel="Cancel and go back to the conversation"
       >
-        <Text style={s.cancelText}>✕  Back</Text>
+        <View style={s.cancelRow}>
+          <Ionicons name="chevron-back" size={18} color={color.textSecondary} />
+          <Text style={s.cancelText}>Back</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -203,6 +227,7 @@ export function CaptureScreen({
       setResult(res);
       // identified:false is a deliberate answer (the honest retake path), not
       // an error — the two must not share a rendering.
+      if (res.identified && res.unit) void fireHaptic('success');
       setState(res.identified && res.unit ? 'read' : 'failed');
     } catch (e) {
       fail(e);
@@ -216,6 +241,7 @@ export function CaptureScreen({
     const cam = cameraRef.current;
     if (!cam || !cameraReady || busy.current) return;
     try {
+      void fireHaptic('shutter');
       const photo = await cam.takePictureAsync({ quality: 1 });
       await identify(photo.uri, photo.width ?? 0, photo.height ?? 0);
     } catch (e) {
@@ -391,6 +417,7 @@ export function CaptureScreen({
     return (
       <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
         <CancelBar onCancel={onCancel} />
+        <ConfirmEntrance>
         <Text style={s.overline}>READ FROM THE PLATE</Text>
 
         <View style={s.card}>
@@ -452,6 +479,7 @@ export function CaptureScreen({
             <Text style={s.secondaryText}>Wrong unit, let me pick</Text>
           </Pressable>
         </View>
+      </ConfirmEntrance>
       </ScrollView>
     );
   }
@@ -560,6 +588,7 @@ const s = StyleSheet.create({
     borderColor: color.border,
   },
   cancelPressed: { backgroundColor: color.surface },
+  cancelRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   cancelText: { ...type.label, color: color.textPrimary },
 
   fill: { flex: 1 },

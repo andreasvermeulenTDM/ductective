@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
+import { ScalePressable, fireHaptic } from '../components/Tactile';
+import { ConversationSkeleton } from '../components/Skeleton';
 import { useLayout } from '../theme/layout';
 import { Message as MessageView } from '../components/Message';
 import { Loading, ErrorState, OfflineNotice, SessionHeader } from '../components/Chrome';
@@ -140,6 +143,7 @@ export function ChatScreen({
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
 
       const reply = await answerExisting(sid, seq + 1, body, equipment, documentIds, controller.signal);
+      if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
       setOffline(false);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
@@ -168,6 +172,7 @@ export function ChatScreen({
       const reply = await answerExisting(
         sessionId, unanswered.seq + 1, unanswered.body, equipment, documentIds, controller.signal
       );
+      if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
       setOffline(false);
     } catch (e) {
@@ -205,7 +210,14 @@ export function ChatScreen({
       {busy && (
         <View style={s.working}>
           <Text style={s.thinking}>
-            Working through it{elapsed >= 3 ? ` · ${elapsed}s` : '…'}
+            {/* Stage labels follow the real pipeline (retrieval completes ~1s in
+                per meta.latency; generation is the rest). Client-paced for now —
+                Run C's streaming transport replaces this with real events. */}
+            {elapsed < 2
+              ? `Searching ${equipment ? `the ${equipment} manuals` : 'the knowledge base'}…`
+              : elapsed < 5
+                ? 'Reading the sections that match…'
+                : `Writing the steps… · ${elapsed}s`}
           </Text>
           {elapsed >= 5 && (
             <>
@@ -287,7 +299,7 @@ export function ChatScreen({
       )}
 
       {loading ? (
-        <Loading label="Loading this job…" />
+        <ConversationSkeleton />
       ) : canShowSourceBeside ? (
         <View style={s.split}>
           <View style={s.fill}>{conversation}</View>
@@ -315,15 +327,16 @@ export function ChatScreen({
       )}
 
       <View style={s.composer}>
-        <Pressable
+        <ScalePressable
           onPress={() => onCapture('camera')}
+          haptic="tap"
           style={({ pressed }) => [s.capture, pressed && s.capturePressed]}
           accessibilityRole="button"
           accessibilityLabel="Photograph the nameplate"
           accessibilityHint="Identifies the unit from its data plate"
         >
-          <Text style={s.captureGlyph}>◉</Text>
-        </Pressable>
+          <Ionicons name="camera-outline" size={22} color={color.accent} />
+        </ScalePressable>
 
         <View style={s.inputWrap}>
           <TextInput
@@ -337,10 +350,11 @@ export function ChatScreen({
             accessibilityLabel="Symptom description"
             onSubmitEditing={() => send(input)}
           />
-          <Pressable
+          <ScalePressable
             onPress={() => send(input)}
             disabled={!input.trim() || busy || !equipment}
             hitSlop={touchSlop(SEND_SIZE)}
+            scaleTo={0.9}
             style={s.sendTouch}
             accessibilityRole="button"
             accessibilityLabel="Send"
@@ -354,10 +368,10 @@ export function ChatScreen({
                   (!input.trim() || busy || !equipment) && s.sendDisabled,
                 ]}
               >
-                <Text style={s.sendGlyph}>↑</Text>
+                <Ionicons name="arrow-up" size={22} color={color.textOnAccent} />
               </View>
             )}
-          </Pressable>
+          </ScalePressable>
         </View>
       </View>
 
@@ -408,36 +422,36 @@ function EmptyAsk({
               <Text style={s.unitChosenLabel}>THIS JOB IS ABOUT</Text>
               <Text style={s.unitChosenText}>{equipment}</Text>
             </View>
-            <Pressable
+            <ScalePressable
               onPress={() => onIdentify('manual')}
               style={({ pressed }) => [s.door, pressed && s.doorPressed]}
               accessibilityRole="button"
               accessibilityLabel={`Change the unit, currently ${equipment}`}
             >
-              <Text style={s.doorGlyph}>⇄</Text>
+              <Ionicons name="swap-horizontal-outline" size={20} color={color.accent} />
               <Text style={s.doorText}>Different unit</Text>
-            </Pressable>
+            </ScalePressable>
           </View>
         ) : (
         <View style={s.doors}>
-          <Pressable
+          <ScalePressable
             onPress={() => onIdentify('camera')}
             style={({ pressed }) => [s.door, pressed && s.doorPressed]}
             accessibilityRole="button"
             accessibilityLabel="Photograph the data plate to identify the unit"
           >
-            <Text style={s.doorGlyph}>◉</Text>
+            <Ionicons name="camera-outline" size={20} color={color.accent} />
             <Text style={s.doorText}>Shoot the data plate</Text>
-          </Pressable>
-          <Pressable
+          </ScalePressable>
+          <ScalePressable
             onPress={() => onIdentify('manual')}
             style={({ pressed }) => [s.door, pressed && s.doorPressed]}
             accessibilityRole="button"
             accessibilityLabel="Type the unit in instead of photographing it"
           >
-            <Text style={s.doorGlyph}>⌨</Text>
+            <Ionicons name="keypad-outline" size={20} color={color.accent} />
             <Text style={s.doorText}>Type the unit in</Text>
-          </Pressable>
+          </ScalePressable>
         </View>
         )}
 
@@ -445,15 +459,16 @@ function EmptyAsk({
 
         <View style={s.starters}>
           {STARTERS.map((sug) => (
-            <Pressable
+            <ScalePressable
               key={sug}
               onPress={() => onPick(sug)}
+              haptic="tap"
               style={({ pressed }) => [s.starter, pressed && s.starterPressed]}
               accessibilityRole="button"
               accessibilityLabel={`Use example: ${sug}`}
             >
               <Text style={s.starterText}>{sug}</Text>
-            </Pressable>
+            </ScalePressable>
           ))}
         </View>
       </View>

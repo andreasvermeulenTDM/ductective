@@ -13,6 +13,8 @@
  */
 
 import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ScalePressable } from './Tactile';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
 import { resolve } from '../lib/citations';
 import type { Citation } from '../lib/supabase';
@@ -33,9 +35,10 @@ export function CitationChip({
   onPress: (c: Citation) => void;
 }) {
   return (
-    <Pressable
+    <ScalePressable
       onPress={() => onPress(citation)}
       hitSlop={touchSlop(CHIP_HEIGHT, 96)}
+      haptic="tap"
       style={s.chipTouch}
       accessibilityRole="button"
       accessibilityLabel={`Source: ${shortDoc(citation.source_document)}, page ${citation.page}`}
@@ -48,7 +51,7 @@ export function CitationChip({
           </Text>
         </View>
       )}
-    </Pressable>
+    </ScalePressable>
   );
 }
 
@@ -149,7 +152,7 @@ function SourceBody({ citation, onClose }: { citation: Citation; onClose: () => 
     <>
       <View style={s.sourceHead}>
         <View style={s.sourceIcon}>
-          <Text style={s.sourceIconGlyph}>§</Text>
+          <Ionicons name="document-text-outline" size={20} color={color.accent} />
         </View>
         <View style={s.sourceHeadText}>
           <Text style={s.sourceDoc}>{citation.source_document}</Text>
