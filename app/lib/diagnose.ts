@@ -178,3 +178,31 @@ export async function requestDiagnosis(
     cancel?.removeEventListener('abort', onCancel);
   }
 }
+
+/**
+ * Ask without a unit, and accept only a refusal — U7's safety escape.
+ *
+ * U1 gates the composer behind unit selection; U7 requires safety refusals to stay
+ * reachable "at any point, with or without a unit". Both hold only if the front
+ * door can be asked something and can refuse it. Amendment 1 to the Run C brief
+ * resolves the conflict this way, with the owner's sign-off.
+ *
+ * The server refuses deterministically before a token is spent — `classifyHazard`
+ * in `lib/safety.mjs` runs ahead of retrieval and the model — so a hazard asked at
+ * the front door never reaches the reasoning core. Anything that is *not* a hazard
+ * is discarded here rather than rendered: an answer with no unit is ungrounded, and
+ * showing it is precisely the failure the gate exists to prevent.
+ *
+ * CONTRACT MISMATCH — owner: Backend. The server still runs retrieval and the model
+ * for a unitless non-hazard before this function throws the result away. That is
+ * wasted spend and it puts the core one bug away from answering ungrounded. The
+ * endpoint should return "unit required" without invoking the model when
+ * `equipment` is absent. Filed rather than worked around.
+ */
+export async function refusalCheck(
+  symptom: string,
+  cancel?: AbortSignal
+): Promise<DiagnoseReply | null> {
+  const reply = await requestDiagnosis(symptom, null, cancel);
+  return reply.kind === 'refusal' ? reply : null;
+}
