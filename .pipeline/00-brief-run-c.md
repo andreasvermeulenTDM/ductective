@@ -158,8 +158,8 @@ real commercial tech can hold on a roof.
 
 ## Amendment 1 — unit first: capture becomes a precondition, not an input
 
-*Dated 5 August 2026. Stage 0 amendment. **Drafted by the Frontend agent at the
-owner's request; not in force until the owner signs off** — see "Sign-off" below.
+*Dated 5 August 2026. Stage 0 amendment. Drafted by the Frontend agent at the
+owner's request; **signed off by the owner 6 August 2026 and now in force.**
 Appended, not edited in place, so the artifact stays an audit trail.*
 
 **What changes.** The app establishes *which unit the technician is standing in
@@ -210,7 +210,14 @@ exists to prevent.
 
 *Proposed default:* the unit-selection screen accepts free text, and anything
 matching a refusal category is refused there, before a unit exists. A refusal
-needs no equipment context to be correct. **Owner decision required.**
+needs no equipment context to be correct.
+
+**RESOLVED — owner accepted the default, 6 August 2026.** Built in `cfb8536`. The
+gate renders a reply only when it is a refusal; anything else is discarded and the
+question carried into the session once a unit exists. Refusal classification is the
+server's deterministic `classifyHazard`, not a second frontend guardrail — a
+duplicate hazard list that could diverge from the core's is the failure mode this
+avoids.
 
 **2. U2 assigns Frontend a criterion it cannot own.** "Partial and near-miss model
 numbers resolve" is listed **Owner: Frontend**, but matching a partial model
@@ -220,7 +227,12 @@ mis-citation risk this amendment exists to remove.
 
 *Proposed default:* that criterion moves to **Backend**, delivered with a
 documented resolution contract; Frontend renders its result and its
-unrecognised-unit state. **Owner decision required.**
+unrecognised-unit state.
+
+**RESOLVED — owner accepted the default, 6 August 2026.** `docs/phase1-story-map.md`
+U2's "partial and near-miss model numbers resolve" is reassigned to Backend. U4's
+unrecognised and out-of-scope states are therefore not built in `cfb8536`: the
+frontend renders a coverage verdict, it does not compute one.
 
 ### Already built against this, before sign-off
 
@@ -232,9 +244,22 @@ amendment. **No gate has been built.** U1 and U7 remain blocked on sign-off.
 
 ### Sign-off
 
-- [ ] Owner accepts the flow change
-- [ ] Owner resolves contradiction 1 (refusals at the front door)
-- [ ] Owner resolves contradiction 2 (who owns model resolution)
+- [x] Owner accepts the flow change — *6 August 2026*
+- [x] Owner resolves contradiction 1 (refusals at the front door) — *default accepted*
+- [x] Owner resolves contradiction 2 (who owns model resolution) — *default accepted*
 
-Until all three are checked, stage agents should treat the **In scope** list above
-as the operative one.
+**In force.** Stage agents should treat this amendment as operative and the
+**In scope** list above as amended by it.
+
+### Landed against this amendment
+
+| Story | State |
+|---|---|
+| U1 — app opens on unit selection | ✅ `cfb8536` |
+| U2 — manual entry is a front door | ✅ `93e0cab` (first criterion; matching is Backend's per contradiction 2) |
+| U3 — capture resolves to a candidate | Confirmation UI exists against a mocked read; needs Backend's vision endpoint |
+| U4 — coverage stated at selection | **Backend** — resolution contract not yet delivered |
+| U5 — session carries its unit | Frontend half ✅ (`93e0cab`, `cfb8536`); retrieval scoping is Backend's |
+| U6 — changing unit starts a new session | Not built |
+| U7 — gate cannot be bypassed | ✅ `cfb8536`, with a CONTRACT MISMATCH filed against Backend |
+| U8 — states for the first screen | ✅ `cfb8536` except U4's two coverage states |
