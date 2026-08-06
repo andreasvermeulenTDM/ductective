@@ -162,6 +162,69 @@ vector's 10/14. First loss was the fused-token corpus; the second is the OR-
 semantics tsquery flooding on common terms. If revisited, scope the lexical arm
 (manufacturer filter or pg_trgm on model numbers) rather than re-weighting RRF.
 
+### §5 addendum — 6 Aug 2026 · unit-scoped retrieval (R1 / ST-03, Run B)
+
+Everything above stands unchanged; this extends it. `sql/007_unit_scoped_retrieval.sql`
+adds one optional parameter to **both** match functions:
+
+```
+match_chunks(query_embedding vector(1024), match_count int default 8,
+             scope_only bool default true,
+             filter_document_ids text[] default null)
+
+match_chunks_hybrid(query_embedding vector(1024), query_text text,
+                    match_count int default 8, scope_only bool default true,
+                    candidates int default 50, rrf_k int default 60,
+                    filter_document_ids text[] default null)
+```
+
+**Semantics.**
+
+- Document ids are **TEXT** (`doc_<sha16>`, keyed on SourceURL per sql/003) — not
+  uuid. The array element type matches `chunks.document_id`.
+- `null` **and the empty array** mean "no filter" (ST-03's acceptance wording:
+  null/empty preserves current behavior exactly). Consequence for callers:
+  **never pass `[]` to mean "this unit has no documents"** — that case must be
+  caught before the RPC (ST-04's fail-closed rule), because at the function it
+  silently means *unscoped*. "Unit resolved to zero documents" is the
+  no-documentation shape, not an RPC call.
+- Non-empty: rows are restricted to chunks whose `document_id` is in the array,
+  **inside the query, before `limit match_count`** — the whole point of R1;
+  client-side post-filtering cannot deliver it.
+- **Composition with `scope_only`: AND, not replacement.** Unit scope and
+  Phase-1 scope remain separable filters, per R1's "not requested, deliberately"
+  — `scope_only=true, filter_document_ids=[...]` returns chunks that are both
+  in Phase 1 scope and in the given documents. In `match_chunks_hybrid` the
+  filter is applied in **both** the `vec` and `lex` arms, so neither arm can
+  reintroduce excluded documents through the fusion.
+- OUT columns, their `out_*` names, ordering, and the returned-chunk mapping in
+  §5 are byte-for-byte unchanged. Positional callers of the old signatures are
+  unaffected (the parameter is appended, defaulted); the migration drops the old
+  signatures explicitly so PostgREST never faces a PGRST203 overload choice.
+
+**Verification tooling.** `ingest/smoke-scoped.mjs` (`npm run ingest:smoke:scoped`)
+probes R01/R02/R05/R11 — the R01/R05/R11 cross-manufacturer misses §6 records,
+plus a Carrier-direction control — with three checks per probe against both
+functions: single-document filter returns only that document's chunks (>0 rows);
+manufacturer-wide filter returns zero other-manufacturer chunks (the Trane-query
+⇒ zero-Carrier spot check); `filter_document_ids: null` still returns rows.
+Results land in `tests/fixtures/retrieval-smoke-scoped-results.json`.
+
+**Status — live verification PENDING.** The migration is committed but **awaits
+the owner's run in the Supabase SQL editor** (this stage cannot apply it).
+Verified now, against the live instance: the scoped smoke fails **gracefully**
+pre-migration — PGRST202 is caught and reported as
+`BLOCKED — sql/007 not applied … Run sql/007_unit_scoped_retrieval.sql in the
+Supabase SQL editor first`, exit code 2 (distinct from a real scoping failure's
+exit 1). After the owner applies sql/007: run `npm run ingest:smoke:scoped`
+(scoping checks) **and** re-run `npm run ingest:smoke` (no-regression check —
+must hold §6's score; results file re-committed per ST-03).
+
+**Toolchain at this addendum** (branch `stage/knowledge-r1`): `npm run lint`
+clean (exit 0, no warnings); `npm test` **80 pass / 0 fail**;
+`node --check ingest/smoke-scoped.mjs` clean. No Gemini calls made (owner
+quota decision, 6 Aug); one Voyage query-embed spent verifying the BLOCKED path.
+
 ## 6. Retrieval smoke set (brief criterion 7) — MET
 
 Fixture `tests/fixtures/retrieval-smoke-set.json` (14 queries, schema per
