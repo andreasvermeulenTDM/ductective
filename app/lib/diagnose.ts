@@ -14,6 +14,7 @@
  */
 
 import { NativeModules, Platform } from 'react-native';
+import { postIdentify, type IdentifyResult } from './identify';
 
 export type DiagnoseCitation = {
   source_document: string;
@@ -134,7 +135,15 @@ export async function requestDiagnosis(
   symptom: string,
   equipment?: string | null,
   /** Lets the technician give up on a long request instead of watching it. */
-  cancel?: AbortSignal
+  cancel?: AbortSignal,
+  /**
+   * The confirmed unit's retrieval scope, from `/resolve-unit` or
+   * `/identify-unit`'s `unit.documentIds`. Absent and empty differ on the wire
+   * (03-backend.md): `null`/`undefined` omits the field — the server gates on
+   * `equipment` alone — while `[]` means "unit resolved to zero documents" and
+   * gets the honest no-documentation answer. Pass the verdict verbatim.
+   */
+  documentIds?: string[] | null
 ): Promise<DiagnoseReply> {
   if (!BASE) throw new DiagnoseError(0, 'No EXPO_PUBLIC_DIAGNOSE_URL configured');
 
@@ -147,7 +156,11 @@ export async function requestDiagnosis(
     const res = await fetch(`${BASE}/diagnose`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symptom, equipment: equipment ?? undefined }),
+      body: JSON.stringify({
+        symptom,
+        equipment: equipment ?? undefined,
+        documentIds: documentIds ?? undefined,
+      }),
       signal: controller.signal,
     });
 
@@ -198,11 +211,12 @@ export async function requestDiagnosis(
  * is discarded here rather than rendered: an answer with no unit is ungrounded, and
  * showing it is precisely the failure the gate exists to prevent.
  *
- * CONTRACT MISMATCH — owner: Backend. The server still runs retrieval and the model
- * for a unitless non-hazard before this function throws the result away. That is
- * wasted spend and it puts the core one bug away from answering ungrounded. The
- * endpoint should return "unit required" without invoking the model when
- * `equipment` is absent. Filed rather than worked around.
+ * The CONTRACT MISMATCH once filed here is CLOSED (ST-02, 03-backend.md Run B
+ * addendum): a unitless non-hazard now returns `kind: 'unit_required'` from the
+ * server *before* retrieval or any model call, so nothing is generated to be
+ * discarded. This function's refusal-only filter still stands — rendering the
+ * unit_required shape as a first-class prompt (instead of the client-side
+ * `needsUnit` state) is Run C's adoption story, not this round's.
  */
 export async function refusalCheck(
   symptom: string,
@@ -210,4 +224,46 @@ export async function refusalCheck(
 ): Promise<DiagnoseReply | null> {
   const reply = await requestDiagnosis(symptom, null, cancel);
   return reply.kind === 'refusal' ? reply : null;
+}
+
+/**
+ * Identify a unit from a nameplate photo — `POST /identify-unit` (ST-05).
+ *
+ * Takes the already-resized base64 JPEG (CaptureScreen resizes via
+ * expo-image-manipulator before calling this; see `resizeTarget` in
+ * identify.ts). The contract classification lives in `postIdentify` so tests
+ * can pin all four response shapes without a server; this wrapper adds what a
+ * pure function can't — the base URL, the timeout, and the cancel path — and
+ * converts a failure outcome into the same `DiagnoseError` the rest of the
+ * app already renders. A provider block or transport failure therefore
+ * *throws*; only a genuine reading (or the honest "couldn't read it") returns.
+ */
+export async function requestIdentifyUnit(
+  base64Jpeg: string,
+  cancel?: AbortSignal
+): Promise<IdentifyResult> {
+  if (!BASE) throw new DiagnoseError(0, 'No EXPO_PUBLIC_DIAGNOSE_URL configured');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const onCancel = () => controller.abort();
+  cancel?.addEventListener('abort', onCancel);
+
+  try {
+    const outcome = await postIdentify(fetch, BASE, base64Jpeg, controller.signal);
+    if (!outcome.ok) {
+      throw new DiagnoseError(outcome.status, outcome.message, outcome.providerBlocked);
+    }
+    return outcome.result;
+  } catch (e) {
+    if (cancel?.aborted) throw new DiagnoseCancelled();
+    if (e instanceof DiagnoseError) throw e;
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new DiagnoseError(0, `Timed out after ${TIMEOUT_MS / 1000}s`);
+    }
+    throw new DiagnoseError(0, e instanceof Error ? e.message : String(e));
+  } finally {
+    clearTimeout(timer);
+    cancel?.removeEventListener('abort', onCancel);
+  }
 }

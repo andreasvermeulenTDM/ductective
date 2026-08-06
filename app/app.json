@@ -22,7 +22,19 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ductective uses the camera to read the unit's data plate."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ductective reads a data-plate photo you already took, to identify the unit."
+        }
+      ]
     ]
   }
 }

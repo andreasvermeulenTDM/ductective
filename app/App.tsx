@@ -61,6 +61,14 @@ export default function App() {
   const [capture, setCapture] = useState<null | 'camera' | 'manual'>(null);
   /** The unit the next session is about, from the capture flow. */
   const [equipment, setEquipment] = useState<string | null>(null);
+  /**
+   * The confirmed unit's retrieval scope (`unit.documentIds` from
+   * `/identify-unit`), so a camera-identified unit's diagnosis is grounded in
+   * that unit's manuals only. Null when the unit was typed (no verdict) or the
+   * session was reopened — the sessions table has no column for it, a filed
+   * Run C gap, not silently persisted here.
+   */
+  const [documentIds, setDocumentIds] = useState<string[] | null>(null);
   /** A question typed at the gate, waiting for a unit to be grounded against. */
   const [carried, setCarried] = useState<string | null>(null);
   const { isTablet } = useLayout();
@@ -69,6 +77,7 @@ export default function App() {
   function openSession(id: string, unit: string | null) {
     setSessionId(id);
     setEquipment(unit);
+    setDocumentIds(null); // scope isn't persisted on the session row
     setTab('chat');
   }
 
@@ -78,6 +87,7 @@ export default function App() {
       onSession={setSessionId}
       onCapture={(mode) => setCapture(mode)}
       equipment={equipment}
+      documentIds={documentIds}
       carriedQuestion={carried}
       onCarriedConsumed={() => setCarried(null)}
     />
@@ -100,7 +110,12 @@ export default function App() {
       onDone={(unit) => {
         // The confirmed unit labels the next session, which is what makes a
         // history row identifiable by the job rather than by its first sentence.
-        if (unit) setEquipment(unit);
+        // Its documentIds (the coverage verdict's, verbatim) scope every
+        // diagnosis in the session to that unit's manuals.
+        if (unit) {
+          setEquipment(unit.equipment);
+          setDocumentIds(unit.documentIds);
+        }
         setCapture(null);
       }}
       onCancel={() => setCapture(null)}
@@ -166,7 +181,7 @@ export default function App() {
                   // Tapping Ask while already there starts a fresh job. Only
                   // History reopens an existing one — a tab tap shouldn't silently
                   // resurrect the last session.
-                  if (t === 'chat' && tab === 'chat') { setSessionId(null); setEquipment(null); }
+                  if (t === 'chat' && tab === 'chat') { setSessionId(null); setEquipment(null); setDocumentIds(null); }
                   setTab(t);
                 }}
               />

@@ -1,34 +1,79 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, ActivityIndicator, Linking,
+} from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { launchImageLibraryAsync } from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { OfflineState, PermissionDenied } from '../components/Chrome';
+import { looksOffline } from '../lib/net';
+import { DiagnoseError, isLive, requestIdentifyUnit } from '../lib/diagnose';
+import {
+  base64Bytes,
+  confirmedUnitFrom,
+  MAX_UPLOAD_BYTES,
+  resizeTarget,
+  type ConfirmedUnit,
+  type IdentifyResult,
+} from '../lib/identify';
 
 /**
- * Nameplate capture — design only. Mockup s2 (viewfinder) and s3 (confirmation).
+ * Nameplate capture — the real thing. Mockup s2 (viewfinder) and s3
+ * (confirmation), now wired to the camera and `POST /identify-unit`
+ * (03-backend.md, ST-05). The owner's escalation was explicit: "I want to use
+ * my camera for capturing the nameplate — not simulated."
  *
- * No camera is wired up. E6.3's real version sends the image to Run B's vision
- * endpoint, which does not exist yet, so simulating the capture is the honest
- * option: it shows the layout, the confirmation step, and the correction path
- * without pretending a model read anything.
+ * Module choice, per the SDK 54 docs: **expo-camera** for the capture path and
+ * **expo-image-picker** for the library path. The picker alone could do both,
+ * but its camera is a full-screen system modal — which would throw away the
+ * corner-bracketed viewfinder this screen is designed around. `CameraView`
+ * renders *inside* the frame, so the design language survives contact with the
+ * hardware. The library path matters on its own: a plate photographed earlier,
+ * from the ground, before climbing.
+ *
+ * The photo is resized on-device (expo-image-manipulator) before upload — the
+ * server re-downscales to the same 1536px cap regardless (`lib/vision.mjs`),
+ * so shipping a 4 MB capture over rooftop LTE buys nothing but wait.
  *
  * The design point worth keeping is the correction path. E6.3 requires that
- * *every* identification be correctable in ≤ 2 taps — including the ones that were
- * right — because a tech who can't override a wrong read gets sent down the wrong
- * unit's diagnostics. Manual entry is reachable from every state here, so a denied
- * permission, a dead network, and an unreadable plate all end somewhere useful.
+ * *every* identification be correctable in ≤ 2 taps — including the ones that
+ * were right — because a tech who can't override a wrong read gets sent down
+ * the wrong unit's diagnostics. Manual entry is reachable from every state, so
+ * a denied permission, a dead network, a provider block, and an unreadable
+ * plate all end somewhere useful.
  *
- * Departure from the mockup: the confirmation shows "High confidence" without the
- * numeric 0.94. A raw model score is an internal that a tech can't calibrate
- * against, and it invites trusting a decimal over a nameplate they can read.
+ * Departure from the mockup, kept from the design pass: confidence renders as
+ * the class word ("High confidence"), never the raw score. The wire agrees —
+ * the contract sends `high | medium | low` and no decimal exists to leak.
+ *
+ * Response handling follows the contract's own taxonomy, and the distinctions
+ * are load-bearing:
+ *  - `identified: true`  → the confirmation card, with the coverage verdict.
+ *  - `identified: false` → an honest "couldn't read it" *answer* (retake +
+ *    manual entry), not an error — the server said so deliberately.
+ *  - provider block / transport → an **error with a retry**, never rendered
+ *    as an identification. A filter artifact must not read as a verdict about
+ *    the technician's actual unit.
  */
 type CaptureState =
-  | 'idle'      // empty  — viewfinder, nothing captured
-  | 'reading'   // loading
-  | 'read'      // success
-  | 'failed'    // error  — the plate came back unreadable
-  | 'denied'    // error  — camera permission refused
-  | 'offline'   // offline — no signal to reach the vision endpoint
+  | 'idle'      // viewfinder — live camera in the frame
+  | 'reading'   // loading — photo uploading / model reading
+  | 'read'      // success — identified, confirmation card
+  | 'failed'    // the plate came back unreadable (a deliberate answer)
+  | 'offline'   // no signal to reach the vision endpoint
+  | 'error'     // provider block or transport failure — retryable
   | 'manual';   // the escape hatch every failure routes to
+
+/**
+ * Re-encode quality for the upload. Nameplate text is high-contrast print;
+ * 0.7 keeps stamped characters legible at roughly a third of the bytes of a
+ * full-quality JPEG. The server re-encodes at its own q80 anyway
+ * (`lib/vision.mjs` JPEG_QUALITY) — this knob only buys upload time.
+ */
+const JPEG_COMPRESS = 0.7;
+
+const CONFIDENCE_WORD = { high: 'High', medium: 'Medium', low: 'Low' } as const;
 
 /**
  * A way out, on every state.
@@ -58,8 +103,8 @@ export function CaptureScreen({
   onCancel,
   initialMode = 'camera',
 }: {
-  /** Called with the confirmed unit, so the session can be labelled with it. */
-  onDone: (equipment?: string | null) => void;
+  /** Called with the confirmed unit — its label and its retrieval scope. */
+  onDone: (unit?: ConfirmedUnit | null) => void;
   onCancel: () => void;
   /**
    * U2 — manual entry is a front door, not a fallback.
@@ -73,25 +118,130 @@ export function CaptureScreen({
 }) {
   const [state, setState] = useState<CaptureState>(initialMode === 'manual' ? 'manual' : 'idle');
   const [model, setModel] = useState('');
+  /** The last wire result — the 'read' and 'failed' states render from it. */
+  const [result, setResult] = useState<IdentifyResult | null>(null);
+  /** The last failure — the 'error' state renders from it. */
+  const [failure, setFailure] = useState<{ message: string; providerBlocked: boolean } | null>(null);
+
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraReady, setCameraReady] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
+  const abort = useRef<AbortController | null>(null);
+  /** Synchronous re-entry guard — same double-fire lesson as ChatScreen's. */
+  const busy = useRef(false);
+
+  /**
+   * Ask for the camera once, on arrival. Asking again after a "deny" is the
+   * OS's nag pattern, not ours — after that the in-frame button (canAskAgain)
+   * or Settings (permanently denied) are the explicit paths.
+   */
+  const asked = useRef(false);
+  useEffect(() => {
+    if (permission && !permission.granted && permission.canAskAgain && !asked.current) {
+      asked.current = true;
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
+
+  /** The preview unmounts whenever we leave the viewfinder; its readiness must not outlive it. */
+  useEffect(() => {
+    if (state !== 'idle') setCameraReady(false);
+  }, [state]);
+
+  /** Classify a failure into the state that tells the technician the truth. */
+  function fail(e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    if (err.name === 'DiagnoseCancelled') { setState('idle'); return; }
+    if (looksOffline(err)) { setState('offline'); return; }
+    const providerBlocked = err instanceof DiagnoseError && err.providerBlocked;
+    setFailure({
+      providerBlocked,
+      // The DiagnoseError copy for a provider block talks about rephrasing a
+      // symptom — wrong organ for a photo. Say what actually happened: the
+      // provider's filter fired. It is not a reading of the plate.
+      message: providerBlocked
+        ? "The vision service's own filter blocked that photo. That's a filter artifact, not a reading of your plate — try again, or type the model instead."
+        : err instanceof DiagnoseError ? err.userMessage : err.message,
+    });
+    setState('error');
+  }
+
+  /** Resize on-device, upload, and route the response to its state. */
+  async function identify(uri: string, width: number, height: number) {
+    if (busy.current) return;
+    busy.current = true;
+    setState('reading');
+    const controller = new AbortController();
+    abort.current = controller;
+    try {
+      if (!isLive) {
+        // No simulated fallback, by design: pretending a model read the plate
+        // is exactly what this screen just stopped doing.
+        throw new DiagnoseError(
+          0,
+          'No diagnostic server is configured, and reading a plate needs one. Typing the model still works.'
+        );
+      }
+
+      const target = resizeTarget(width, height);
+      let context = ImageManipulator.manipulate(uri);
+      if (target.resize) context = context.resize({ width: target.width });
+      const rendered = await context.renderAsync();
+      const saved = await rendered.saveAsync({
+        format: SaveFormat.JPEG,
+        compress: JPEG_COMPRESS,
+        base64: true,
+      });
+      if (!saved.base64) throw new DiagnoseError(0, "Couldn't encode the photo for upload.");
+      if (base64Bytes(saved.base64) > MAX_UPLOAD_BYTES) {
+        // Post-resize this is ~50× under the cap; hitting it means something
+        // upstream misbehaved. Fail here rather than burn LTE on a 413.
+        throw new DiagnoseError(413, 'That photo is too large to send even after resizing.');
+      }
+
+      const res = await requestIdentifyUnit(saved.base64, controller.signal);
+      setResult(res);
+      // identified:false is a deliberate answer (the honest retake path), not
+      // an error — the two must not share a rendering.
+      setState(res.identified && res.unit ? 'read' : 'failed');
+    } catch (e) {
+      fail(e);
+    } finally {
+      abort.current = null;
+      busy.current = false;
+    }
+  }
+
+  async function capture() {
+    const cam = cameraRef.current;
+    if (!cam || !cameraReady || busy.current) return;
+    try {
+      const photo = await cam.takePictureAsync({ quality: 1 });
+      await identify(photo.uri, photo.width ?? 0, photo.height ?? 0);
+    } catch (e) {
+      fail(e);
+    }
+  }
+
+  /** The library path: a plate photographed from the ground, before climbing. */
+  async function pickFromLibrary() {
+    if (busy.current) return;
+    try {
+      const picked = await launchImageLibraryAsync({ mediaTypes: 'images', quality: 1 });
+      if (picked.canceled || !picked.assets?.[0]) return;
+      const asset = picked.assets[0];
+      await identify(asset.uri, asset.width ?? 0, asset.height ?? 0);
+    } catch (e) {
+      fail(e);
+    }
+  }
 
   if (state === 'reading') {
     return (
       <View style={s.center}>
         <ActivityIndicator color={color.accent} />
         <Text style={s.hint}>Reading the nameplate…</Text>
-        <CancelBar onCancel={onCancel} />
-      </View>
-    );
-  }
-
-  if (state === 'denied') {
-    return (
-      <View style={s.fill}>
-        <View style={s.cancelInset}><CancelBar onCancel={onCancel} /></View>
-        <PermissionDenied
-          onManualEntry={() => setState('manual')}
-          onOpenSettings={() => setState('idle')}
-        />
+        <CancelBar onCancel={() => { abort.current?.abort(); onCancel(); }} />
       </View>
     );
   }
@@ -110,6 +260,42 @@ export function CaptureScreen({
     );
   }
 
+  // Provider block or transport failure — an error with a retry, never an
+  // identification. Distinct from 'failed', which is the server's deliberate
+  // "couldn't read it" answer.
+  if (state === 'error') {
+    return (
+      <View style={s.center}>
+        <View style={s.cancelInsetCentred}><CancelBar onCancel={onCancel} /></View>
+        <View style={s.errorCard}>
+          <View style={s.errorHead}>
+            <Text style={s.errorGlyph}>!</Text>
+            <Text style={s.errorTitle}>
+              {failure?.providerBlocked ? "That photo didn't get read" : "Couldn't identify the unit"}
+            </Text>
+          </View>
+          <Text style={s.errorBody}>{failure?.message ?? 'Something went wrong on the way to the vision service.'}</Text>
+          <Pressable
+            onPress={() => setState('idle')}
+            style={({ pressed }) => [s.primary, pressed && s.primaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Try the photo again"
+          >
+            <Text style={s.primaryText}>Try again</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setState('manual')}
+            style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Type the model instead"
+          >
+            <Text style={s.secondaryText}>Type the model instead</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   if (state === 'failed') {
     return (
       <View style={s.center}>
@@ -119,10 +305,17 @@ export function CaptureScreen({
             <Text style={s.errorGlyph}>!</Text>
             <Text style={s.errorTitle}>Couldn't read that plate</Text>
           </View>
+          {/* The server's own re-take copy — a deliberate answer, verbatim. */}
           <Text style={s.errorBody}>
-            The model line didn't come through clearly enough to be sure, and a
-            guess here sends you down the wrong unit's diagnostics.
+            {result?.message ??
+              "The model line didn't come through clearly enough to be sure, and a guess here sends you down the wrong unit's diagnostics."}
           </Text>
+          {/* A partial read surfaces honestly, but never resolves a unit. */}
+          {result && (result.manufacturer || result.model) && (
+            <Text style={s.partialRead}>
+              Made out so far: {[result.manufacturer, result.model].filter(Boolean).join(' ')}
+            </Text>
+          )}
           <Pressable
             onPress={() => setState('idle')}
             style={({ pressed }) => [s.primary, pressed && s.primaryPressed]}
@@ -167,7 +360,7 @@ export function CaptureScreen({
 
         <View style={s.actions}>
           <Pressable
-            onPress={() => onDone(model.trim())}
+            onPress={() => onDone({ equipment: model.trim(), documentIds: null })}
             disabled={!model.trim()}
             style={({ pressed }) => [
               s.primary,
@@ -189,55 +382,55 @@ export function CaptureScreen({
             <Text style={s.secondaryText}>Use the camera instead</Text>
           </Pressable>
         </View>
-
-        {/* The typed model reaches the chat screen but not the session row:
-            `equipment` is set when a session is created, and there is no update
-            path in the store. Recorded as a CONTRACT MISMATCH against Stage 3. */}
-        <Text style={s.warn}>
-          Prototype: the model you type isn't attached to the session yet.
-        </Text>
       </ScrollView>
     );
   }
 
-  if (state === 'read') {
+  if (state === 'read' && result?.identified && result.unit) {
+    const unit = result.unit;
     return (
       <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
         <CancelBar onCancel={onCancel} />
         <Text style={s.overline}>READ FROM THE PLATE</Text>
 
         <View style={s.card}>
-          <Text style={s.maker}>{READ_MODEL.split(' ')[0]}</Text>
-          <Text style={s.model}>{READ_MODEL.split(' ').slice(1).join(' ')}</Text>
-          <View style={s.tags}>
-            {['Packaged rooftop', '6 ton', 'R-410A'].map((t) => (
-              <View key={t} style={s.tag}>
-                <Text style={s.tagText}>{t}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={s.maker}>{result.manufacturer}</Text>
+          <Text style={s.model}>{result.model}</Text>
           <View style={s.cardFoot}>
-            <Text style={s.confidence}>High confidence</Text>
-            <Text style={s.docCount}>3 documents</Text>
+            <Text style={result.confidence === 'high' ? s.confidence : s.confidenceGuarded}>
+              {CONFIDENCE_WORD[result.confidence]} confidence
+            </Text>
+            <Text style={s.docCount}>
+              {unit.documents.length === 1 ? '1 document' : `${unit.documents.length} documents`}
+            </Text>
           </View>
         </View>
 
-        <Text style={s.overline}>I'LL ANSWER FROM</Text>
-        <View style={s.docList}>
-          {[
-            'RT-SVX23R-EN — Precedent Rooftop IOM',
-            'RT-SVX21AD-EN — Precedent Economizer',
-            'R-410A pressure-temperature chart',
-          ].map((d) => (
-            <Text key={d} style={s.doc} numberOfLines={1}>
-              {d}
-            </Text>
-          ))}
-        </View>
+        {unit.status === 'covered' && unit.documents.length > 0 ? (
+          <>
+            <Text style={s.overline}>I'LL ANSWER FROM</Text>
+            <View style={s.docList}>
+              {unit.documents.map((d) => (
+                <View key={d.id} style={s.doc}>
+                  <Text style={s.docId} numberOfLines={1}>{d.id}</Text>
+                  <Text style={s.docCoverage} numberOfLines={1}>{d.coverage}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          // The coverage verdict, in the server's own ready-to-render words.
+          // Confirming a non-covered unit is still allowed: its empty
+          // documentIds scope means every question gets the honest
+          // "no documentation" answer rather than another manufacturer's manual.
+          <View style={s.coverageNote} accessibilityRole="alert">
+            <Text style={s.coverageNoteText}>{unit.message}</Text>
+          </View>
+        )}
 
         <View style={s.actions}>
           <Pressable
-            onPress={() => onDone(READ_MODEL)}
+            onPress={() => { const confirmed = confirmedUnitFrom(result); if (confirmed) onDone(confirmed); }}
             style={({ pressed }) => [s.primary, pressed && s.primaryPressed]}
             accessibilityRole="button"
             accessibilityLabel="Confirm this unit and continue"
@@ -245,9 +438,13 @@ export function CaptureScreen({
             <Text style={s.primaryText}>That's the unit</Text>
           </Pressable>
 
-          {/* One tap to reach correction, from either outcome. E6.3. */}
+          {/* One tap to reach correction, from either outcome. E6.3. The read
+              is prefilled so a near-miss is an edit, not a retype. */}
           <Pressable
-            onPress={() => setState('manual')}
+            onPress={() => {
+              setModel([result.manufacturer, result.model].filter(Boolean).join(' '));
+              setState('manual');
+            }}
             style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
             accessibilityRole="button"
             accessibilityLabel="Wrong unit, pick it myself"
@@ -255,11 +452,21 @@ export function CaptureScreen({
             <Text style={s.secondaryText}>Wrong unit, let me pick</Text>
           </Pressable>
         </View>
-
-        <Text style={s.warn}>
-          Prototype: nothing was photographed and no model read this. Fixed text.
-        </Text>
       </ScrollView>
+    );
+  }
+
+  // idle — the viewfinder. Permission gates what renders inside the frame; a
+  // permanent denial swaps the whole screen for the manual-entry escape.
+  if (permission && !permission.granted && !permission.canAskAgain) {
+    return (
+      <View style={s.fill}>
+        <View style={s.cancelInset}><CancelBar onCancel={onCancel} /></View>
+        <PermissionDenied
+          onManualEntry={() => setState('manual')}
+          onOpenSettings={() => Linking.openSettings()}
+        />
+      </View>
     );
   }
 
@@ -267,23 +474,61 @@ export function CaptureScreen({
     <ScrollView style={s.sunken} contentContainerStyle={s.viewfinder}>
       <CancelBar onCancel={onCancel} />
       <View style={s.frame}>
-        <View style={[s.corner, s.cornerTL]} />
-        <View style={[s.corner, s.cornerTR]} />
-        <View style={[s.corner, s.cornerBL]} />
-        <View style={[s.corner, s.cornerBR]} />
-        <Text style={s.frameHint}>RTU DATA PLATE</Text>
+        {permission?.granted ? (
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            onCameraReady={() => setCameraReady(true)}
+            accessibilityLabel="Camera preview — point at the unit's data plate"
+          />
+        ) : (
+          <View style={s.permissionPrompt}>
+            <Text style={s.hint}>Ductective needs the camera to read a data plate.</Text>
+            <Pressable
+              onPress={requestPermission}
+              style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Allow camera access"
+            >
+              <Text style={s.secondaryText}>Allow camera access</Text>
+            </Pressable>
+          </View>
+        )}
+        <View pointerEvents="none" style={[s.corner, s.cornerTL]} />
+        <View pointerEvents="none" style={[s.corner, s.cornerTR]} />
+        <View pointerEvents="none" style={[s.corner, s.cornerBL]} />
+        <View pointerEvents="none" style={[s.corner, s.cornerBR]} />
+        {!permission?.granted && <Text style={s.frameHint}>RTU DATA PLATE</Text>}
       </View>
 
       <Text style={s.hint}>Fill the frame with the plate. Glare is fine, I'll ask if I can't read it.</Text>
 
       <View style={s.actions}>
         <Pressable
-          onPress={() => { setState('reading'); setTimeout(() => setState('read'), 1200); }}
-          style={({ pressed }) => [s.primary, pressed && s.primaryPressed]}
+          onPress={capture}
+          disabled={!permission?.granted || !cameraReady}
+          style={({ pressed }) => [
+            s.primary,
+            pressed && s.primaryPressed,
+            (!permission?.granted || !cameraReady) && s.primaryDisabled,
+          ]}
           accessibilityRole="button"
-          accessibilityLabel="Simulate taking a photo of the nameplate"
+          accessibilityLabel="Take the photo of the nameplate"
+          accessibilityState={{ disabled: !permission?.granted || !cameraReady }}
         >
-          <Text style={s.primaryText}>Simulate capture</Text>
+          <Text style={s.primaryText}>Capture the plate</Text>
+        </Pressable>
+
+        {/* A plate already in the camera roll — shot from the ground, or by
+            whoever was up there last. */}
+        <Pressable
+          onPress={pickFromLibrary}
+          style={({ pressed }) => [s.secondary, pressed && s.secondaryPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Choose a photo of the plate from your library"
+        >
+          <Text style={s.secondaryText}>Choose from photos</Text>
         </Pressable>
 
         {/* Always present, so a denied camera permission is never a dead end. */}
@@ -296,53 +541,9 @@ export function CaptureScreen({
           <Text style={s.secondaryText}>Type the model instead</Text>
         </Pressable>
       </View>
-
-      <StateSimulator onPick={setState} />
     </ScrollView>
   );
 }
-
-/**
- * Reaches the failure states that no real camera can produce here.
- *
- * E6.6 requires each state to be *reachable* and screenshotted. Without a camera
- * or a vision endpoint, denied / unreadable / offline are otherwise unreachable,
- * and a state nobody can open is a state nobody has checked.
- *
- * `__DEV__` is false in any production build, so this cannot ship. It goes away
- * on its own once the real camera lands and these states arise for real.
- */
-function StateSimulator({ onPick }: { onPick: (s: CaptureState) => void }) {
-  if (!__DEV__) return null;
-
-  const states: { id: CaptureState; label: string }[] = [
-    { id: 'failed', label: 'unreadable' },
-    { id: 'denied', label: 'denied' },
-    { id: 'offline', label: 'offline' },
-  ];
-
-  return (
-    <View style={s.simulator}>
-      <Text style={s.simulatorLabel}>DEV — REACH A FAILURE STATE</Text>
-      <View style={s.simulatorRow}>
-        {states.map((x) => (
-          <Pressable
-            key={x.id}
-            onPress={() => onPick(x.id)}
-            style={({ pressed }) => [s.simulatorButton, pressed && s.secondaryPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Simulate the ${x.label} state`}
-          >
-            <Text style={s.simulatorButtonText}>{x.label}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/** The simulated read. Named once so the card and the session cannot disagree. */
-const READ_MODEL = 'Trane Precedent YSC072E3';
 
 const CORNER = 42;
 
@@ -389,7 +590,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: color.surface,
+    // Clips the live preview to the frame's radius; the brackets sit above it.
+    overflow: 'hidden',
   },
+  permissionPrompt: { gap: space.md, padding: space.lg, alignItems: 'center' },
   corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: color.accent },
   cornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.sm },
   cornerTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.sm },
@@ -412,14 +616,6 @@ const s = StyleSheet.create({
   },
   maker: { ...type.label, color: color.textSecondary },
   model: { ...type.display, color: color.textPrimary },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  tag: {
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.md,
-    backgroundColor: color.surfaceRaised,
-  },
-  tagText: { ...type.chip, color: color.textPrimary },
   cardFoot: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -429,6 +625,8 @@ const s = StyleSheet.create({
     borderTopColor: color.border,
   },
   confidence: { ...type.label, color: color.accent, flex: 1 },
+  /** Medium/low reads — same word treatment, without the accent's endorsement. */
+  confidenceGuarded: { ...type.label, color: color.textSecondary, flex: 1 },
   docCount: { ...type.label, color: color.textSecondary },
 
   docList: {
@@ -438,11 +636,23 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
   doc: {
-    ...type.label,
-    color: color.textPrimary,
+    gap: space.xs,
     paddingHorizontal: space.md,
     paddingVertical: space.md,
   },
+  docId: { ...type.label, color: color.textPrimary },
+  docCoverage: { ...type.caption, color: color.textSecondary },
+
+  /** The verdict for a unit that identified but isn't covered — U4's honesty. */
+  coverageNote: {
+    gap: space.sm,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+  },
+  coverageNoteText: { ...type.body, color: color.textPrimary },
 
   input: {
     minHeight: MIN_TOUCH + 8,
@@ -467,6 +677,7 @@ const s = StyleSheet.create({
   errorGlyph: { ...type.title, color: color.refusalText },
   errorTitle: { ...type.heading, color: color.textPrimary, flex: 1 },
   errorBody: { ...type.body, color: color.textSecondary },
+  partialRead: { ...type.caption, color: color.textSecondary },
 
   actions: { gap: space.sm, marginTop: space.lg },
   primary: {
@@ -489,19 +700,4 @@ const s = StyleSheet.create({
   },
   secondaryPressed: { backgroundColor: color.surface },
   secondaryText: { ...type.bodyStrong, color: color.textPrimary },
-
-  simulator: { marginTop: space.xl, gap: space.sm },
-  simulatorLabel: { ...type.overline, color: color.textSecondary, textAlign: 'center' },
-  simulatorRow: { flexDirection: 'row', gap: space.sm, justifyContent: 'center' },
-  simulatorButton: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    paddingHorizontal: space.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  simulatorButtonText: { ...type.chip, color: color.textSecondary },
-
-  warn: { ...type.caption, color: color.refusalText, textAlign: 'center', marginTop: space.md },
 });
