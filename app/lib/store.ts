@@ -152,14 +152,21 @@ export async function answerExisting(
   replySeq: number,
   input: string,
   equipment?: string | null,
+  /** Retrieval scope from the capture flow's verdict — see requestDiagnosis. */
+  documentIds?: string[] | null,
   cancel?: AbortSignal
 ): Promise<Message> {
-  const result = await generateReply(input, equipment, cancel);
+  const result = await generateReply(input, equipment, documentIds, cancel);
   return appendMessage(sessionId, replySeq, result.kind, result.body, result.citations);
 }
 
-async function generateReply(input: string, equipment?: string | null, cancel?: AbortSignal) {
-  if (isLive) return requestDiagnosis(input, equipment, cancel);
+async function generateReply(
+  input: string,
+  equipment?: string | null,
+  documentIds?: string[] | null,
+  cancel?: AbortSignal
+) {
+  if (isLive) return requestDiagnosis(input, equipment, cancel, documentIds);
   const mock = mockReply(input);
   return { ...mock, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
 }
@@ -169,11 +176,12 @@ export async function submitSymptom(
   nextSeq: number,
   input: string,
   equipment?: string | null,
+  documentIds?: string[] | null,
   cancel?: AbortSignal
 ): Promise<{ user: Message; reply: Message }> {
   const user = await appendMessage(sessionId, nextSeq, 'user', input);
 
-  const result = await generateReply(input, equipment, cancel);
+  const result = await generateReply(input, equipment, documentIds, cancel);
 
   const reply = await appendMessage(sessionId, nextSeq + 1, result.kind, result.body, result.citations);
 

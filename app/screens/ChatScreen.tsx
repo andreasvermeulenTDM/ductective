@@ -38,6 +38,7 @@ export function ChatScreen({
   onSession,
   onCapture,
   equipment,
+  documentIds,
   carriedQuestion,
   onCarriedConsumed,
 }: {
@@ -45,6 +46,12 @@ export function ChatScreen({
   onSession: (id: string) => void;
   onCapture: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
+  /**
+   * The confirmed unit's retrieval scope, from the capture flow's coverage
+   * verdict. Null for manually-typed units and reopened sessions (the row
+   * doesn't persist it) — the server then gates on `equipment` alone.
+   */
+  documentIds?: string[] | null;
   /** A question typed at the unit gate, resumed once a unit exists (U1). */
   carriedQuestion?: string | null;
   onCarriedConsumed?: () => void;
@@ -132,7 +139,7 @@ export function ChatScreen({
       setMessages((prev) => [...prev, user]);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
 
-      const reply = await answerExisting(sid, seq + 1, body, equipment, controller.signal);
+      const reply = await answerExisting(sid, seq + 1, body, equipment, documentIds, controller.signal);
       setMessages((prev) => [...prev, reply]);
       setOffline(false);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
@@ -159,7 +166,7 @@ export function ChatScreen({
     abort.current = controller;
     try {
       const reply = await answerExisting(
-        sessionId, unanswered.seq + 1, unanswered.body, equipment, controller.signal
+        sessionId, unanswered.seq + 1, unanswered.body, equipment, documentIds, controller.signal
       );
       setMessages((prev) => [...prev, reply]);
       setOffline(false);
