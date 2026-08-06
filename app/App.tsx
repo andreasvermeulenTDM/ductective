@@ -33,6 +33,7 @@ import { PrototypeBanner, TabBar, NavRail, type Tab } from './components/Chrome'
 import { ChatScreen } from './screens/ChatScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { CaptureScreen } from './screens/CaptureScreen';
+import { UnitGate } from './screens/UnitGate';
 
 /**
  * The shipped lockup, not a redrawn mark.
@@ -60,10 +61,14 @@ export default function App() {
   const [capture, setCapture] = useState<null | 'camera' | 'manual'>(null);
   /** The unit the next session is about, from the capture flow. */
   const [equipment, setEquipment] = useState<string | null>(null);
+  /** A question typed at the gate, waiting for a unit to be grounded against. */
+  const [carried, setCarried] = useState<string | null>(null);
   const { isTablet } = useLayout();
 
-  function openSession(id: string) {
+  /** Reopening a job restores its unit; U1 forbids re-asking for one it already has. */
+  function openSession(id: string, unit: string | null) {
     setSessionId(id);
+    setEquipment(unit);
     setTab('chat');
   }
 
@@ -73,6 +78,19 @@ export default function App() {
       onSession={setSessionId}
       onCapture={(mode) => setCapture(mode)}
       equipment={equipment}
+      carriedQuestion={carried}
+      onCarriedConsumed={() => setCarried(null)}
+    />
+  );
+
+  /**
+   * U1 — a cold start with no unit lands on unit selection, not chat.
+   * A session opened from history already carries its unit, so it skips the gate.
+   */
+  const gate = (
+    <UnitGate
+      onIdentify={(mode) => setCapture(mode)}
+      onCarryOver={setCarried}
     />
   );
 
@@ -94,10 +112,10 @@ export default function App() {
       <View style={s.sessionList}>
         <HistoryScreen onOpen={openSession} />
       </View>
-      <View style={s.fill}>{chat}</View>
+      <View style={s.fill}>{equipment || sessionId ? chat : gate}</View>
     </View>
   ) : tab === 'chat' ? (
-    chat
+    equipment || sessionId ? chat : gate
   ) : (
     <HistoryScreen onOpen={openSession} />
   );

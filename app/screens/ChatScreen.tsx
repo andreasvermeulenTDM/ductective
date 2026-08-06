@@ -38,11 +38,16 @@ export function ChatScreen({
   onSession,
   onCapture,
   equipment,
+  carriedQuestion,
+  onCarriedConsumed,
 }: {
   sessionId: string | null;
   onSession: (id: string) => void;
   onCapture: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
+  /** A question typed at the unit gate, resumed once a unit exists (U1). */
+  carriedQuestion?: string | null;
+  onCarriedConsumed?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -64,6 +69,12 @@ export function ChatScreen({
       .catch((e) => { setError(e); setOffline(looksOffline(e)); })
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!carriedQuestion) return;
+    setInput(carriedQuestion);
+    onCarriedConsumed?.();
+  }, [carriedQuestion, onCarriedConsumed]);
 
   /** A visible clock while waiting. Ten silent seconds reads as a hang. */
   useEffect(() => {
@@ -268,6 +279,23 @@ export function ChatScreen({
         conversation
       )}
 
+      {!equipment && (
+        <View style={s.gateNotice}>
+          <Text style={s.gateNoticeText}>
+            Pick the unit before asking — every answer is cited to that machine's
+            manuals, so I can't ground one without it.
+          </Text>
+          <Pressable
+            onPress={() => onCapture('manual')}
+            style={({ pressed }) => [s.gateAction, pressed && s.secondaryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Choose the unit"
+          >
+            <Text style={s.secondaryActionText}>Choose the unit</Text>
+          </Pressable>
+        </View>
+      )}
+
       <View style={s.composer}>
         <Pressable
           onPress={() => onCapture('camera')}
@@ -283,7 +311,8 @@ export function ChatScreen({
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder="Describe the symptom…"
+            editable={Boolean(equipment)}
+            placeholder={equipment ? 'Describe the symptom…' : 'Pick the unit first'}
             placeholderTextColor={color.textSecondary}
             style={s.input}
             multiline
@@ -292,19 +321,19 @@ export function ChatScreen({
           />
           <Pressable
             onPress={() => send(input)}
-            disabled={!input.trim() || busy}
+            disabled={!input.trim() || busy || !equipment}
             hitSlop={touchSlop(SEND_SIZE)}
             style={s.sendTouch}
             accessibilityRole="button"
             accessibilityLabel="Send"
-            accessibilityState={{ disabled: !input.trim() || busy }}
+            accessibilityState={{ disabled: !input.trim() || busy || !equipment }}
           >
             {({ pressed }) => (
               <View
                 style={[
                   s.send,
                   pressed && s.sendPressed,
-                  (!input.trim() || busy) && s.sendDisabled,
+                  (!input.trim() || busy || !equipment) && s.sendDisabled,
                 ]}
               >
                 <Text style={s.sendGlyph}>↑</Text>
@@ -336,6 +365,9 @@ function EmptyAsk({
   onPick: (s: string) => void;
   onIdentify: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
+  /** A question typed at the unit gate, resumed once a unit exists (U1). */
+  carriedQuestion?: string | null;
+  onCarriedConsumed?: () => void;
 }) {
   return (
     <View style={s.empty}>
@@ -510,6 +542,26 @@ const s = StyleSheet.create({
   inlineErrorText: { ...type.heading, color: color.textPrimary },
   inlineErrorDetail: { ...type.caption, color: color.refusalText },
   inlineErrorHint: { ...type.caption, color: color.textSecondary },
+
+  gateNotice: {
+    gap: space.sm,
+    marginHorizontal: space.lg,
+    marginBottom: space.sm,
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+  },
+  gateNoticeText: { ...type.caption, color: color.textPrimary },
+  gateAction: {
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.borderStrong,
+  },
 
   composer: {
     flexDirection: 'row',

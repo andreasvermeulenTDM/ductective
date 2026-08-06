@@ -14,7 +14,12 @@ import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
  * sentence a tech happened to type. Both are derived in `listSessions`; when that
  * read falls back, the badges are simply absent rather than showing a false zero.
  */
-export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
+export function HistoryScreen({
+  onOpen,
+}: {
+  /** The unit travels with the id — U1 must not re-ask for a session that has one. */
+  onOpen: (id: string, equipment: string | null) => void;
+}) {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
@@ -74,7 +79,7 @@ export function HistoryScreen({ onOpen }: { onOpen: (id: string) => void }) {
       renderSectionHeader={({ section }) => <Text style={s.sectionLabel}>{section.title}</Text>}
       renderItem={({ item }) => (
         <Pressable
-          onPress={() => onOpen(item.id)}
+          onPress={() => onOpen(item.id, item.equipment ?? null)}
           style={({ pressed }) => [s.row, item.refused && s.rowRefused, pressed && s.rowPressed]}
           accessibilityRole="button"
           accessibilityLabel={describe(item)}
