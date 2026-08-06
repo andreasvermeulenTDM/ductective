@@ -5,11 +5,12 @@ import {
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
 import { useLayout } from '../theme/layout';
 import { Message as MessageView } from '../components/Message';
-import { Loading, ErrorState, OfflineNotice } from '../components/Chrome';
+import { Loading, ErrorState, OfflineNotice, SessionHeader } from '../components/Chrome';
 import { CitationSheet, SourcePanel } from '../components/Citation';
 import { looksOffline } from '../lib/net';
 import { STARTERS } from '../lib/mockDiagnostics';
-import { createSession, loadMessages, submitSymptom } from '../lib/store';
+import { answerExisting, askQuestion, createSession, loadMessages } from '../lib/store';
+import { DiagnoseError } from '../lib/diagnose';
 import { isConfigured, CONFIG_HINT, type Citation, type Message } from '../lib/supabase';
 
 /**
@@ -20,23 +21,39 @@ import { isConfigured, CONFIG_HINT, type Citation, type Message } from '../lib/s
 const SEND_SIZE = 40;
 
 
+/**
+ * What to show a technician when a request fails.
+ *
+ * `DiagnoseError` carries the provider's raw text for logs; `userMessage` is the
+ * part meant for a person. Anything else falls back to its own message, which for
+ * Supabase and network errors is already short and readable.
+ */
+function friendlyError(e: Error): string {
+  if (e instanceof DiagnoseError) return e.userMessage;
+  return e.message;
+}
+
 export function ChatScreen({
   sessionId,
   onSession,
   onCapture,
+  equipment,
 }: {
   sessionId: string | null;
   onSession: (id: string) => void;
   onCapture: () => void;
+  equipment?: string | null;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [offline, setOffline] = useState(false);
   const [citation, setCitation] = useState<Citation | null>(null);
   const scroller = useRef<ScrollView>(null);
+  const abort = useRef<AbortController | null>(null);
   const { canShowSourceBeside } = useLayout();
 
   useEffect(() => {
@@ -44,9 +61,31 @@ export function ChatScreen({
     setLoading(true);
     loadMessages(sessionId)
       .then((m) => { setMessages(m); setOffline(false); })
-      .catch((e) => { setError(e.message); setOffline(looksOffline(e)); })
+      .catch((e) => { setError(e); setOffline(looksOffline(e)); })
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  /** A visible clock while waiting. Ten silent seconds reads as a hang. */
+  useEffect(() => {
+    if (!busy) { setElapsed(0); return; }
+    const started = Date.now();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => clearInterval(t);
+  }, [busy]);
+
+  /**
+   * A question that was saved but never answered — the tail of a failed request.
+   * Without this, reopening that session showed the technician their own words and
+   * an empty screen, which reads as lost work rather than a retryable failure.
+   */
+  const unanswered =
+    messages.length > 0 && messages[messages.length - 1].kind === 'user'
+      ? messages[messages.length - 1]
+      : null;
+
+  function cancel() {
+    abort.current?.abort();
+  }
 
   async function send(text: string) {
     const body = text.trim();
@@ -54,22 +93,62 @@ export function ChatScreen({
     setBusy(true);
     setError(null);
     setInput('');
+    const controller = new AbortController();
+    abort.current = controller;
     try {
       let sid = sessionId;
       if (!sid) {
-        const created = await createSession(body);
+        const created = await createSession(body, equipment);
         sid = created.id;
         onSession(sid);
       }
-      const { user, reply } = await submitSymptom(sid, messages.length, body);
-      setMessages((prev) => [...prev, user, reply]);
+      // Two steps, not one: the question is persisted and shown before the answer
+      // is attempted, so a failure leaves a visible turn with a retry beside it
+      // rather than a saved-but-invisible question. Retrying then regenerates only
+      // the reply — asking again as a whole would persist a duplicate question.
+      const seq = messages.length;
+      const user = await askQuestion(sid, seq, body);
+      setMessages((prev) => [...prev, user]);
+      requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
+
+      const reply = await answerExisting(sid, seq + 1, body, equipment, controller.signal);
+      setMessages((prev) => [...prev, reply]);
       setOffline(false);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setOffline(looksOffline(e));
-      setInput(body); // never silently eat what they typed
+      const err = e instanceof Error ? e : new Error(String(e));
+      // A cancel is the technician's own decision, not a failure to report.
+      if (err.name !== 'DiagnoseCancelled') {
+        setError(err);
+        setOffline(looksOffline(err));
+      }
     } finally {
+      abort.current = null;
+      setBusy(false);
+    }
+  }
+
+  /** Regenerate the missing reply for an already-saved question. */
+  async function answerUnanswered() {
+    if (!sessionId || !unanswered || busy) return;
+    setBusy(true);
+    setError(null);
+    const controller = new AbortController();
+    abort.current = controller;
+    try {
+      const reply = await answerExisting(
+        sessionId, unanswered.seq + 1, unanswered.body, equipment, controller.signal
+      );
+      setMessages((prev) => [...prev, reply]);
+      setOffline(false);
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      if (err.name !== 'DiagnoseCancelled') {
+        setError(err);
+        setOffline(looksOffline(err));
+      }
+    } finally {
+      abort.current = null;
       setBusy(false);
     }
   }
@@ -94,16 +173,73 @@ export function ChatScreen({
         ))
       )}
 
-      {busy && <Text style={s.thinking}>Working through it…</Text>}
+      {busy && (
+        <View style={s.working}>
+          <Text style={s.thinking}>
+            Working through it{elapsed >= 3 ? ` · ${elapsed}s` : '…'}
+          </Text>
+          {elapsed >= 5 && (
+            <>
+              <Text style={s.workingHint}>
+                Reading the manuals takes a moment. It's still going.
+              </Text>
+              <Pressable
+                onPress={cancel}
+                style={({ pressed }) => [s.secondaryAction, pressed && s.secondaryPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Stop waiting for this answer"
+              >
+                <Text style={s.secondaryActionText}>Stop</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
+
+      {/* A saved question with no answer beside it. Offered as a retry rather than
+          left as a blank screen the technician has to interpret. */}
+      {!busy && unanswered && !error && (
+        <View style={s.inlineError}>
+          <Text style={s.inlineErrorText}>This one never got answered</Text>
+          <Text style={s.inlineErrorHint}>
+            The request failed before a reply came back. Your question is saved — ask
+            it again and nothing is lost.
+          </Text>
+          <Pressable
+            onPress={answerUnanswered}
+            style={({ pressed }) => [s.retry, pressed && s.retryPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Answer this question now"
+          >
+            <Text style={s.retryText}>Try again</Text>
+          </Pressable>
+        </View>
+      )}
 
       {error && !offline && (
         <View style={s.inlineError}>
           <Text style={s.inlineErrorText}>The answer didn't come back</Text>
-          <Text style={s.inlineErrorDetail}>{error}</Text>
+          {/* The provider's own words are 600 characters of JSON naming the vendor
+              and linking to a billing console. Unactionable on a roof, and on a
+              safety tool it reads as broken rather than busy. */}
+          <Text style={s.inlineErrorDetail}>{friendlyError(error)}</Text>
           <Text style={s.inlineErrorHint}>
             Nothing partial has been kept — a half answer isn't worth acting on. Your
             question is still in the box.
           </Text>
+          <Pressable
+            onPress={() => (unanswered ? answerUnanswered() : send(input))}
+            disabled={!unanswered && !input.trim()}
+            style={({ pressed }) => [
+              s.retry,
+              pressed && s.retryPressed,
+              !unanswered && !input.trim() && s.retryDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Try the question again"
+          >
+            <Text style={s.retryText}>Try again</Text>
+          </Pressable>
         </View>
       )}
     </ScrollView>
@@ -112,6 +248,14 @@ export function ChatScreen({
   return (
     <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {offline && <OfflineNotice />}
+
+      {messages.length > 0 && (
+        <SessionHeader
+          title={messages[0]?.body ?? 'This job'}
+          equipment={equipment}
+          offline={offline}
+        />
+      )}
 
       {loading ? (
         <Loading label="Loading this job…" />
@@ -251,7 +395,32 @@ const s = StyleSheet.create({
   starterPressed: { backgroundColor: color.surfaceRaised },
   starterText: { ...type.bodyStrong, color: color.textPrimary },
 
+  working: { gap: space.sm, alignItems: 'flex-start' },
   thinking: { ...type.caption, color: color.accent },
+  workingHint: { ...type.caption, color: color.textSecondary },
+  secondaryAction: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    paddingHorizontal: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.borderStrong,
+  },
+  secondaryPressed: { backgroundColor: color.surface },
+  secondaryActionText: { ...type.bodyStrong, color: color.textPrimary },
+
+  retry: {
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.lg,
+    backgroundColor: color.interactiveFill,
+    marginTop: space.sm,
+  },
+  retryPressed: { backgroundColor: color.pressed },
+  retryDisabled: { backgroundColor: color.border },
+  retryText: { ...type.bodyStrong, color: color.textOnInteractive },
+
 
   inlineError: {
     gap: space.sm,

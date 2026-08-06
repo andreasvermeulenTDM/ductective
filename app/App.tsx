@@ -57,6 +57,8 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  /** The unit the next session is about, from the capture flow. */
+  const [equipment, setEquipment] = useState<string | null>(null);
   const { isTablet } = useLayout();
 
   function openSession(id: string) {
@@ -69,11 +71,20 @@ export default function App() {
       sessionId={sessionId}
       onSession={setSessionId}
       onCapture={() => setCapturing(true)}
+      equipment={equipment}
     />
   );
 
   const body = capturing ? (
-    <CaptureScreen onDone={() => setCapturing(false)} />
+    <CaptureScreen
+      onDone={(unit) => {
+        // The confirmed unit labels the next session, which is what makes a
+        // history row identifiable by the job rather than by its first sentence.
+        if (unit) setEquipment(unit);
+        setCapturing(false);
+      }}
+      onCancel={() => setCapturing(false)}
+    />
   ) : isTablet ? (
     // Tablet: the session list keeps its width beside the answer rather than
     // being a screen you leave the conversation to reach (E6.9).
@@ -135,7 +146,7 @@ export default function App() {
                   // Tapping Ask while already there starts a fresh job. Only
                   // History reopens an existing one — a tab tap shouldn't silently
                   // resurrect the last session.
-                  if (t === 'chat' && tab === 'chat') setSessionId(null);
+                  if (t === 'chat' && tab === 'chat') { setSessionId(null); setEquipment(null); }
                   setTab(t);
                 }}
               />

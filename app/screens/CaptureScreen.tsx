@@ -30,7 +30,37 @@ type CaptureState =
   | 'offline'   // offline — no signal to reach the vision endpoint
   | 'manual';   // the escape hatch every failure routes to
 
-export function CaptureScreen({ onDone }: { onDone: () => void }) {
+/**
+ * A way out, on every state.
+ *
+ * Without this the capture flow was a trap: the tab bar is hidden while
+ * capturing, iOS has no hardware back, and the only exit was completing a
+ * capture. A technician who tapped the camera by accident could not get back to
+ * their conversation at all.
+ */
+function CancelBar({ onCancel }: { onCancel: () => void }) {
+  return (
+    <View style={s.cancelBar}>
+      <Pressable
+        onPress={onCancel}
+        style={({ pressed }) => [s.cancelButton, pressed && s.cancelPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Cancel and go back to the conversation"
+      >
+        <Text style={s.cancelText}>✕  Back</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+export function CaptureScreen({
+  onDone,
+  onCancel,
+}: {
+  /** Called with the confirmed unit, so the session can be labelled with it. */
+  onDone: (equipment?: string | null) => void;
+  onCancel: () => void;
+}) {
   const [state, setState] = useState<CaptureState>('idle');
   const [model, setModel] = useState('');
 
@@ -39,33 +69,41 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
       <View style={s.center}>
         <ActivityIndicator color={color.accent} />
         <Text style={s.hint}>Reading the nameplate…</Text>
+        <CancelBar onCancel={onCancel} />
       </View>
     );
   }
 
   if (state === 'denied') {
     return (
-      <PermissionDenied
-        onManualEntry={() => setState('manual')}
-        onOpenSettings={() => setState('idle')}
-      />
+      <View style={s.fill}>
+        <View style={s.cancelInset}><CancelBar onCancel={onCancel} /></View>
+        <PermissionDenied
+          onManualEntry={() => setState('manual')}
+          onOpenSettings={() => setState('idle')}
+        />
+      </View>
     );
   }
 
   if (state === 'offline') {
     return (
-      <OfflineState
-        title="No signal to read the plate"
-        detail="Identifying a unit from a photo needs a connection. You can type the model instead and carry on — that works offline."
-        onRetry={() => setState('idle')}
-        action={{ label: 'Type the model instead', onPress: () => setState('manual') }}
-      />
+      <View style={s.fill}>
+        <View style={s.cancelInset}><CancelBar onCancel={onCancel} /></View>
+        <OfflineState
+          title="No signal to read the plate"
+          detail="Identifying a unit from a photo needs a connection. You can type the model instead and carry on — that works offline."
+          onRetry={() => setState('idle')}
+          action={{ label: 'Type the model instead', onPress: () => setState('manual') }}
+        />
+      </View>
     );
   }
 
   if (state === 'failed') {
     return (
       <View style={s.center}>
+        <View style={s.cancelInsetCentred}><CancelBar onCancel={onCancel} /></View>
         <View style={s.errorCard}>
           <View style={s.errorHead}>
             <Text style={s.errorGlyph}>!</Text>
@@ -99,6 +137,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
   if (state === 'manual') {
     return (
       <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
+        <CancelBar onCancel={onCancel} />
         <Text style={s.overline}>TYPE THE MODEL</Text>
         <Text style={s.hint}>
           Off the data plate — manufacturer and model number. Partial is fine, I'll
@@ -118,7 +157,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
 
         <View style={s.actions}>
           <Pressable
-            onPress={onDone}
+            onPress={() => onDone(model.trim())}
             disabled={!model.trim()}
             style={({ pressed }) => [
               s.primary,
@@ -154,11 +193,12 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
   if (state === 'read') {
     return (
       <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
+        <CancelBar onCancel={onCancel} />
         <Text style={s.overline}>READ FROM THE PLATE</Text>
 
         <View style={s.card}>
-          <Text style={s.maker}>Trane</Text>
-          <Text style={s.model}>Precedent YSC072E3</Text>
+          <Text style={s.maker}>{READ_MODEL.split(' ')[0]}</Text>
+          <Text style={s.model}>{READ_MODEL.split(' ').slice(1).join(' ')}</Text>
           <View style={s.tags}>
             {['Packaged rooftop', '6 ton', 'R-410A'].map((t) => (
               <View key={t} style={s.tag}>
@@ -187,7 +227,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
 
         <View style={s.actions}>
           <Pressable
-            onPress={onDone}
+            onPress={() => onDone(READ_MODEL)}
             style={({ pressed }) => [s.primary, pressed && s.primaryPressed]}
             accessibilityRole="button"
             accessibilityLabel="Confirm this unit and continue"
@@ -215,6 +255,7 @@ export function CaptureScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <ScrollView style={s.sunken} contentContainerStyle={s.viewfinder}>
+      <CancelBar onCancel={onCancel} />
       <View style={s.frame}>
         <View style={[s.corner, s.cornerTL]} />
         <View style={[s.corner, s.cornerTR]} />
@@ -290,9 +331,26 @@ function StateSimulator({ onPick }: { onPick: (s: CaptureState) => void }) {
   );
 }
 
+/** The simulated read. Named once so the card and the session cannot disagree. */
+const READ_MODEL = 'Trane Precedent YSC072E3';
+
 const CORNER = 42;
 
 const s = StyleSheet.create({
+  cancelBar: { alignSelf: 'flex-start', marginBottom: space.md },
+  cancelInset: { paddingHorizontal: space.lg, paddingTop: space.lg },
+  cancelInsetCentred: { alignSelf: 'stretch', paddingHorizontal: space.lg },
+  cancelButton: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    paddingHorizontal: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  cancelPressed: { backgroundColor: color.surface },
+  cancelText: { ...type.label, color: color.textPrimary },
+
   fill: { flex: 1 },
   sunken: { flex: 1, backgroundColor: color.backgroundSunken },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: space.xl, gap: space.md },

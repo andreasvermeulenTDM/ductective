@@ -128,23 +128,52 @@ async function appendMessage(
  * unverified text believing it came from the manual — the worst outcome available
  * here, and worse than an honest error card.
  */
+/**
+ * Persist the technician's question, and nothing else.
+ *
+ * Separated from answering so a failed diagnosis cannot cost the question, and so
+ * retrying cannot persist a second copy of it. The caller holds the returned turn
+ * and asks for its answer separately.
+ */
+export function askQuestion(sessionId: string, seq: number, input: string): Promise<Message> {
+  return appendMessage(sessionId, seq, 'user', input);
+}
+
+/**
+ * Answer a question that is already saved but never got a reply.
+ *
+ * A failed diagnosis leaves the user's turn persisted and no answer beside it, so
+ * reopening that session showed the technician their own words and nothing else —
+ * indistinguishable from losing their work. This regenerates the missing reply
+ * without appending a second copy of the question.
+ */
+export async function answerExisting(
+  sessionId: string,
+  replySeq: number,
+  input: string,
+  equipment?: string | null,
+  cancel?: AbortSignal
+): Promise<Message> {
+  const result = await generateReply(input, equipment, cancel);
+  return appendMessage(sessionId, replySeq, result.kind, result.body, result.citations);
+}
+
+async function generateReply(input: string, equipment?: string | null, cancel?: AbortSignal) {
+  if (isLive) return requestDiagnosis(input, equipment, cancel);
+  const mock = mockReply(input);
+  return { ...mock, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
+}
+
 export async function submitSymptom(
   sessionId: string,
   nextSeq: number,
   input: string,
-  equipment?: string | null
+  equipment?: string | null,
+  cancel?: AbortSignal
 ): Promise<{ user: Message; reply: Message }> {
   const user = await appendMessage(sessionId, nextSeq, 'user', input);
 
-  const result = isLive
-    ? await requestDiagnosis(input, equipment)
-    : (() => {
-        const mock = mockReply(input);
-        return {
-          ...mock,
-          citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })),
-        };
-      })();
+  const result = await generateReply(input, equipment, cancel);
 
   const reply = await appendMessage(sessionId, nextSeq + 1, result.kind, result.body, result.citations);
 
