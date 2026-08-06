@@ -1,9 +1,9 @@
 {
   "mode": "vector",
   "model": "voyage-4-large",
-  "at": "2026-08-06T00:06:45.346Z",
-  "correctDocs": 10,
-  "correctPages": 10,
+  "at": "2026-08-06T11:41:22.280Z",
+  "correctDocs": 11,
+  "correctPages": 11,
   "queries": [
     {
       "id": "R01",
@@ -47,17 +47,17 @@
     },
     {
       "id": "R02",
-      "docOk": false,
-      "pageOk": false,
+      "docOk": true,
+      "pageOk": true,
       "returned": [
         {
-          "document": "RT-SVX34W-EN_Rooftop-IOM",
-          "page": 89,
-          "text": "Troubleshooting\nTable 40. Troubleshooting (continued)\nSymptom Probable Cause Recommended Action\n1. Leak check, repair, evacuate, and recharge system as\n1. System low on refrigerant charge.\nnecessary.\n2. Check return air for obstruction or dirty filters. Check fan\n2. System low on air flow.\nwheels, motors, and belts.\nM. Evaporator coil freezes up during low\nambient operation. 3. Check OAS resistance at connector P15. Refer to the\n3. Outdoor Air Sensor (OAS) has Failed. Resistance versus Temperature chart. Replace sensor if\nnecessary.\n4. Frostat™ has Failed 4. Check Frostat Switch\n1. Economizer connector not plugged into unit wiring\n1. Check connector, and connect if necessary.\nharness.\n2. Verify that 24 VAC is present between ECA terminals 24\nVAC and Common. Place the unit in econ test mode;\n2. Economizer Actuator (ECA) has failed. economizer actuator should drive open. In any other unit\nN. Economizer will not operate. test mode, economizer actuator should drive to minimum\nposition. If ECA does not drive as specified, replace ECA.\n3. Check wiring, Fresh Air Options module, and terminals.\n3. Wiring or terminal failure.\nRepair or replace if necessary.\n4. ECA is defective. 4. Perform the ECA Test Procedures discussed previously.\n1. With the main power off, check the resistance between\nO. Minimum position is at zero, cannot be terminals on J8 at the Customer Connection Module by\n1. Remote Minimum position potentiometer has failed.\nadjusted. Economizer still modulates. rotating the remote minimum position potentiometer knob.\nResistance should be 50 to 200 Ohms."
+          "document": "48HJ-32SI_Install-Startup-Service",
+          "page": 55,
+          "text": "2. Evaporator coil frosted; check and replace low-\npressure switch if necessary.\nLoss of Compressor Superheat Thermostatic expansion valve (TXV). 1. Check TXV bulb mounting, and secure tightly to suc-\nConditions with Subcooling/Reheat tion line.\nDehumidification Coil Energized. 2. Replace TXV if stuck open or closed.\n55"
         },
         {
-          "document": "48HJ-32SI_Install-Startup-Service",
-          "page": 55
+          "document": "RT-SVX34W-EN_Rooftop-IOM",
+          "page": 89
         },
         {
           "document": "50E-C2SI_Install-Startup-Service",
@@ -468,16 +468,16 @@
           "page": 27
         },
         {
-          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
-          "page": 27
-        },
-        {
           "document": "RT-SVX34W-EN_Rooftop-IOM",
           "page": 31
         },
         {
           "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
-          "page": 33
+          "page": 27
+        },
+        {
+          "document": "50E-C2SI_Install-Startup-Service",
+          "page": 64
         },
         {
           "document": "RT-SVX21AD-EN_Rooftop-IOM",
@@ -548,12 +548,12 @@
           "page": 64
         },
         {
-          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
-          "page": 136
-        },
-        {
           "document": "48-50PGPM_Single-Package-Rooftop-Service",
           "page": 188
+        },
+        {
+          "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+          "page": 136
         },
         {
           "document": "RT-SVX056D-GB_Airfinity-Rooftop-IOM",
