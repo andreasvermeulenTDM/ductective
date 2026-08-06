@@ -56,12 +56,22 @@ function CancelBar({ onCancel }: { onCancel: () => void }) {
 export function CaptureScreen({
   onDone,
   onCancel,
+  initialMode = 'camera',
 }: {
   /** Called with the confirmed unit, so the session can be labelled with it. */
   onDone: (equipment?: string | null) => void;
   onCancel: () => void;
+  /**
+   * U2 — manual entry is a front door, not a fallback.
+   *
+   * Opening straight into the form matters for the case the story is about: a
+   * plate painted over, or a camera the technician has permanently denied.
+   * Routing them through a viewfinder first implies the camera is the real path
+   * and typing is the consolation prize.
+   */
+  initialMode?: 'camera' | 'manual';
 }) {
-  const [state, setState] = useState<CaptureState>('idle');
+  const [state, setState] = useState<CaptureState>(initialMode === 'manual' ? 'manual' : 'idle');
   const [model, setModel] = useState('');
 
   if (state === 'reading') {

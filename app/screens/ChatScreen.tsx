@@ -41,7 +41,7 @@ export function ChatScreen({
 }: {
   sessionId: string | null;
   onSession: (id: string) => void;
-  onCapture: () => void;
+  onCapture: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -160,7 +160,7 @@ export function ChatScreen({
   const conversation = (
     <ScrollView ref={scroller} style={s.fill} contentContainerStyle={s.scroll}>
       {messages.length === 0 ? (
-        <EmptyAsk onPick={setInput} />
+        <EmptyAsk onPick={setInput} onIdentify={onCapture} equipment={equipment} />
       ) : (
         messages.map((m) => (
           <MessageView
@@ -249,9 +249,9 @@ export function ChatScreen({
     <KeyboardAvoidingView style={s.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {offline && <OfflineNotice />}
 
-      {messages.length > 0 && (
+      {(equipment || messages.length > 0) && (
         <SessionHeader
-          title={messages[0]?.body ?? 'This job'}
+          title={messages[0]?.body ?? 'No question yet'}
           equipment={equipment}
           offline={offline}
         />
@@ -270,7 +270,7 @@ export function ChatScreen({
 
       <View style={s.composer}>
         <Pressable
-          onPress={onCapture}
+          onPress={() => onCapture('camera')}
           style={({ pressed }) => [s.capture, pressed && s.capturePressed]}
           accessibilityRole="button"
           accessibilityLabel="Photograph the nameplate"
@@ -328,7 +328,15 @@ export function ChatScreen({
  * Coverage is stated before a tech can hit the edge of it — E3.6's honesty at the
  * boundary, moved forward into the empty state so it costs nobody a wasted query.
  */
-function EmptyAsk({ onPick }: { onPick: (s: string) => void }) {
+function EmptyAsk({
+  onPick,
+  onIdentify,
+  equipment,
+}: {
+  onPick: (s: string) => void;
+  onIdentify: (mode: 'camera' | 'manual') => void;
+  equipment?: string | null;
+}) {
   return (
     <View style={s.empty}>
       <View>
@@ -344,6 +352,47 @@ function EmptyAsk({ onPick }: { onPick: (s: string) => void }) {
           Trane Precedent and Carrier 48/50 packaged rooftops. Anything else, I'll say
           so instead of guessing.
         </Text>
+        {equipment ? (
+          <View style={s.doors}>
+            <View style={s.unitChosen}>
+              <Text style={s.unitChosenLabel}>THIS JOB IS ABOUT</Text>
+              <Text style={s.unitChosenText}>{equipment}</Text>
+            </View>
+            <Pressable
+              onPress={() => onIdentify('manual')}
+              style={({ pressed }) => [s.door, pressed && s.doorPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Change the unit, currently ${equipment}`}
+            >
+              <Text style={s.doorGlyph}>⇄</Text>
+              <Text style={s.doorText}>Different unit</Text>
+            </Pressable>
+          </View>
+        ) : (
+        <View style={s.doors}>
+          <Pressable
+            onPress={() => onIdentify('camera')}
+            style={({ pressed }) => [s.door, pressed && s.doorPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Photograph the data plate to identify the unit"
+          >
+            <Text style={s.doorGlyph}>◉</Text>
+            <Text style={s.doorText}>Shoot the data plate</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onIdentify('manual')}
+            style={({ pressed }) => [s.door, pressed && s.doorPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Type the unit in instead of photographing it"
+          >
+            <Text style={s.doorGlyph}>⌨</Text>
+            <Text style={s.doorText}>Type the unit in</Text>
+          </Pressable>
+        </View>
+        )}
+
+        <Text style={s.orAsk}>Or just describe what it's doing:</Text>
+
         <View style={s.starters}>
           {STARTERS.map((sug) => (
             <Pressable
@@ -381,6 +430,34 @@ const s = StyleSheet.create({
   },
   coverageLabel: { ...type.overline, color: color.accent },
   coverageBody: { ...type.body, color: color.textPrimary },
+
+  doors: { gap: space.sm },
+  unitChosen: {
+    gap: space.xs,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+  },
+  unitChosenLabel: { ...type.overline, color: color.accent },
+  unitChosenText: { ...type.heading, color: color.textPrimary },
+
+  door: {
+    minHeight: MIN_TOUCH + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+  },
+  doorPressed: { backgroundColor: color.surfaceRaised },
+  doorGlyph: { ...type.heading, color: color.accent },
+  doorText: { ...type.bodyStrong, color: color.textPrimary },
+  orAsk: { ...type.caption, color: color.textSecondary },
 
   starters: { gap: space.sm },
   starter: {

@@ -56,7 +56,8 @@ export default function App() {
 
   const [tab, setTab] = useState<Tab>('chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [capturing, setCapturing] = useState(false);
+  /** null = not identifying a unit. Otherwise which front door is open (U2). */
+  const [capture, setCapture] = useState<null | 'camera' | 'manual'>(null);
   /** The unit the next session is about, from the capture flow. */
   const [equipment, setEquipment] = useState<string | null>(null);
   const { isTablet } = useLayout();
@@ -70,20 +71,21 @@ export default function App() {
     <ChatScreen
       sessionId={sessionId}
       onSession={setSessionId}
-      onCapture={() => setCapturing(true)}
+      onCapture={(mode) => setCapture(mode)}
       equipment={equipment}
     />
   );
 
-  const body = capturing ? (
+  const body = capture ? (
     <CaptureScreen
+      initialMode={capture}
       onDone={(unit) => {
         // The confirmed unit labels the next session, which is what makes a
         // history row identifiable by the job rather than by its first sentence.
         if (unit) setEquipment(unit);
-        setCapturing(false);
+        setCapture(null);
       }}
-      onCancel={() => setCapturing(false)}
+      onCancel={() => setCapture(null)}
     />
   ) : isTablet ? (
     // Tablet: the session list keeps its width beside the answer rather than
@@ -115,11 +117,11 @@ export default function App() {
             <PrototypeBanner />
 
             <View style={s.shell}>
-              {isTablet && !capturing && (
+              {isTablet && !capture && (
                 <NavRail
                   active={tab}
                   onChange={setTab}
-                  onCapture={() => setCapturing(true)}
+                  onCapture={() => setCapture('camera')}
                 />
               )}
 
@@ -139,7 +141,7 @@ export default function App() {
               </View>
             </View>
 
-            {!isTablet && !capturing && (
+            {!isTablet && !capture && (
               <TabBar
                 active={tab}
                 onChange={(t) => {
