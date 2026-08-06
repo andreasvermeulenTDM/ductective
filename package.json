@@ -22,6 +22,7 @@
     "ingest": "node --env-file=.env ingest/run.mjs",
     "ingest:parse": "node ingest/parse.mjs",
     "ingest:smoke": "node --env-file=.env ingest/smoke.mjs",
+    "ingest:smoke:scoped": "node --env-file=.env ingest/smoke-scoped.mjs",
     "serve": "node --env-file=.env scripts/serve.mjs"
   },
   "dependencies": {
