@@ -959,3 +959,30 @@ No `CONTRACT MISMATCH` and no `BLOCKED ON KNOWLEDGE` items this round. Nothing
 deferred to Frontend (rendering `meta.budget` is optional, not owed). Commits:
 `4bb576c` adapter, `5da1480` metrics, `60322d3` ledger, `5cb1ded` core meta,
 `a9a127a` serve/summarizer — pushed per instruction without a PR.
+
+---
+
+## Addendum — automatic model fallback (owner request, 10 Aug 2026)
+
+Free-tier quota is per **model** per day, so `complete()` now walks a chain when
+the pinned model's daily bucket is spent: `GEMINI_MODEL_CHAIN` (default
+`gemini-3.6-flash → gemini-3.5-flash → gemini-flash-latest`, the three verified
+callable on this account). Semantics:
+
+- **Daily** exhaustion (`…PerDay…` in the 429 detail) memoizes the model out of
+  the chain until local midnight; a **per-minute** throttle chains for that one
+  request but does not memoize.
+- **Loud, per the eval charter's pinned-model rule:** every response's meta
+  carries `model` (which actually answered) and `modelFallback: true|false`;
+  transcripts can never pass a fallback answer as the pinned model.
+- **An explicit `model` argument never chains** — M12/ST-16 comparison runs
+  measure exactly what they name or fail trying.
+- All buckets empty → a single clear 429 (`chainExhausted: true`), which the app
+  renders as the usual quota error.
+- Non-quota errors never chain: a 400 or a safety block on one model is a result,
+  not a routing signal.
+
+Five mocked-fetch tests pin these behaviors (`lib/providers/gemini.test.mjs`).
+Eval note for ST-16: rounds intended as pinned-model measurements should either
+set `GEMINI_MODEL_CHAIN` to a single model or treat any `modelFallback: true`
+transcript as a separate bucket in the report — the harness sees the flag.
