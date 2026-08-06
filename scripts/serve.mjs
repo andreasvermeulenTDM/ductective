@@ -21,15 +21,83 @@
  */
 
 import { createServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { diagnose, DiagnoseError } from '../lib/diagnose.mjs';
 import { resolveUnit } from '../lib/units.mjs';
 import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
+import { budget, recordModelCall, appendRequestLog } from '../lib/ledger.mjs';
+import { estimateCostUsd, modelCallHappened, quotaConsumedByError } from '../lib/metrics.mjs';
 
 const PORT = Number(process.env.DIAGNOSE_PORT || 8787);
 const LIMIT = 32 * 1024;
 // /identify-unit carries a base64 JPEG: 8 MiB binary ≈ 10.9 MiB base64, plus
 // JSON envelope. Every other route keeps the tight text limit.
 const IMAGE_LIMIT = Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 64 * 1024;
+
+// ---------------------------------------------------------------------------
+// ST-09 — cost/cache/latency instrumentation. Observes, never alters: no
+// response kind, gate, or retrieval semantics change here, and a ledger
+// failure is a warning, never a failed diagnosis.
+//
+// State lives in two files beside the server — the dev path ST-09 allows
+// (the Edge Function, when H9 unblocks it, needs its own durable store):
+//   quota-ledger.json   — model calls per day against the 20/day free tier
+//   request-log.jsonl   — one line of numbers per request; `npm run metrics`
+//                         (scripts/summarize-metrics.mjs) turns a batch into
+//                         p50/p95 and mean cost with/without cache hits.
+// Neither file ever carries symptom text or image bytes.
+// ---------------------------------------------------------------------------
+const HERE = dirname(fileURLToPath(import.meta.url));
+const LEDGER_FILE = process.env.QUOTA_LEDGER_FILE || join(HERE, 'quota-ledger.json');
+const REQUEST_LOG_FILE = process.env.REQUEST_LOG_FILE || join(HERE, 'request-log.jsonl');
+
+/**
+ * Attach `meta.budget` (the day ledger line), count the model call if one
+ * happened, and append the request-log entry. Mutating `result.meta` is the
+ * point: every /diagnose and /identify-unit response carries the running
+ * day-count against the 20/day budget.
+ */
+function instrument(route, result, extra = {}) {
+  const cost = estimateCostUsd(result.meta?.usage);
+  try {
+    const spent = modelCallHappened(result);
+    const b = spent ? recordModelCall(LEDGER_FILE, { usage: result.meta.usage }) : budget(LEDGER_FILE);
+    result.meta.budget = b;
+    appendRequestLog(REQUEST_LOG_FILE, {
+      ts: new Date().toISOString(),
+      route,
+      status: 200,
+      latencyMs: result.meta.latencyMs,
+      retrievalMs: result.meta.latency?.retrievalMs ?? null,
+      generationMs: result.meta.latency?.generationMs ?? null,
+      usage: result.meta.usage,
+      attempts: result.meta.attempts ?? 0,
+      modelCall: spent,
+      costUsd: cost.withCacheUsd,
+      costNoCacheUsd: cost.withoutCacheUsd,
+      day: b.day,
+      dayUsed: b.used,
+      ...extra,
+    });
+    return { b, cost };
+  } catch (e) {
+    console.warn(`[instrumentation] ${e.message}`);
+    return { b: null, cost };
+  }
+}
+
+/** The log-line tail: tokens, cache hits, retries, projected cost, day count. */
+function usageSuffix(meta, cost, b) {
+  const u = meta?.usage ?? {};
+  return (
+    `  tok=${u.inputTokens ?? 0}+${u.outputTokens ?? 0}` +
+    (u.cachedContentTokenCount ? ` cached=${u.cachedContentTokenCount}` : '') +
+    ((meta?.attempts ?? 0) > 1 ? ` retries=${meta.attempts - 1}` : '') +
+    ` ~$${cost.withCacheUsd.toFixed(4)}` +
+    (b ? ` day=${b.used}/${b.limit}` : '')
+  );
+}
 
 const send = (res, status, body) => {
   const payload = JSON.stringify(body);
@@ -83,12 +151,14 @@ const server = createServer(async (req, res) => {
     // the log, per the story's no-image-in-logs criterion.
     if (route === '/identify-unit') {
       const out = await identifyUnit({ image: body.image, mimeType: body.mimeType });
+      const { b, cost } = instrument(route, out, { kind: 'identify', identified: out.identified });
       const plate = out.identified ? `${out.manufacturer} / ${out.model}` : 'unreadable';
       console.log(
         `identify ${plate}  conf=${out.confidence} ${out.meta.latencyMs}ms  ` +
           `in=${Math.round(out.meta.image.originalBytes / 1024)}kB sent=${Math.round(out.meta.image.sentBytes / 1024)}kB` +
           (out.meta.image.resized ? ' (downscaled)' : '') +
-          (out.unit ? `  unit=${out.unit.status} docs=${out.unit.documentIds.length}` : '')
+          (out.unit ? `  unit=${out.unit.status} docs=${out.unit.documentIds.length}` : '') +
+          usageSuffix(out.meta, cost, b)
       );
       return send(res, 200, out);
     }
@@ -98,12 +168,18 @@ const server = createServer(async (req, res) => {
     // reached from the wire.
     const { symptom, equipment, history, documentIds } = body;
     const result = await diagnose({ symptom, equipment, history, documentIds });
+    const { b, cost } = instrument(route, result, {
+      kind: result.kind,
+      ...(result.meta.scopedTo !== undefined ? { scopedTo: result.meta.scopedTo } : {}),
+      ...(result.meta.scopeFallback ? { scopeFallback: true } : {}),
+    });
     console.log(
       `${result.kind.padEnd(8)} ${result.meta.latencyMs}ms  ` +
         `retrieved=${result.meta.retrieved ?? '-'} cites=${result.citations.length}` +
         (result.meta.scopedTo !== undefined ? ` scope=${result.meta.scopedTo}` : '') +
         (result.meta.scopeFallback ? ' SCOPE-FALLBACK' : '') +
-        (result.meta.dropped ? ` dropped=${result.meta.dropped}` : '')
+        (result.meta.dropped ? ` dropped=${result.meta.dropped}` : '') +
+        usageSuffix(result.meta, cost, b)
     );
     send(res, 200, result);
   } catch (e) {
@@ -113,7 +189,29 @@ const server = createServer(async (req, res) => {
     // refusal, which would put Google's content policy in Ductective's voice.
     const body = { status, message: e.message };
     if (e.providerBlocked) { body.providerBlocked = true; body.blockReason = e.blockReason; }
-    console.error(`ERROR ${status}: ${e.message}`);
+    // ST-09: a provider block or a failed provider call still spent quota —
+    // the day ledger counts it, and the error log line shows the day count.
+    let daySuffix = '';
+    try {
+      const spent = quotaConsumedByError(e);
+      if (spent) {
+        const b = recordModelCall(LEDGER_FILE, { usage: e.usage });
+        daySuffix = `  day=${b.used}/${b.limit}`;
+      }
+      appendRequestLog(REQUEST_LOG_FILE, {
+        ts: new Date().toISOString(),
+        route: req.url ?? null,
+        status,
+        error: true,
+        quotaSpent: spent,
+        ...(e.usage ? { usage: e.usage } : {}),
+        ...(e.attempts ? { attempts: e.attempts } : {}),
+        ...(e.providerBlocked ? { providerBlocked: true, blockReason: e.blockReason } : {}),
+      });
+    } catch (instrErr) {
+      console.warn(`[instrumentation] ${instrErr.message}`);
+    }
+    console.error(`ERROR ${status}: ${e.message}${daySuffix}`);
     send(res, status, body);
   }
 });

@@ -23,7 +23,8 @@
     "ingest:parse": "node ingest/parse.mjs",
     "ingest:smoke": "node --env-file=.env ingest/smoke.mjs",
     "ingest:smoke:scoped": "node --env-file=.env ingest/smoke-scoped.mjs",
-    "serve": "node --env-file=.env scripts/serve.mjs"
+    "serve": "node --env-file=.env scripts/serve.mjs",
+    "metrics": "node --env-file-if-exists=.env scripts/summarize-metrics.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
