@@ -212,8 +212,16 @@ export const isInScope = (doc) =>
 export const documentId = (sourceUrl) =>
   'doc_' + createHash('sha256').update(sourceUrl.trim()).digest('hex').slice(0, 16);
 
+/**
+ * Rows whose Legal Status begins EXCLUDED are attributed-but-not-ingested: the
+ * file has a manifest row (so reconciliation stays clean and the decision is on
+ * record) but must never enter the knowledge base. Owner decision, 9 Aug 2026 —
+ * three owner-supplied documents declined on licence/provenance grounds.
+ */
+const isExcludedRow = (m) => /^\s*EXCLUDED/i.test(m.licenseStatus ?? '');
+
 export function documents() {
-  return reconcile().matched.map((m) => ({
+  return reconcile().matched.filter((m) => !isExcludedRow(m)).map((m) => ({
     id: documentId(m.sourceUrl),
     file: m.file,
     /** Citable name. From the manifest's intended name, which is descriptive. */

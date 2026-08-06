@@ -1,7 +1,7 @@
 {
   "mode": "vector",
   "model": "voyage-4-large",
-  "at": "2026-08-06T11:41:22.280Z",
+  "at": "2026-08-06T16:42:01.588Z",
   "correctDocs": 11,
   "correctPages": 11,
   "queries": [
@@ -468,16 +468,16 @@
           "page": 27
         },
         {
+          "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+          "page": 27
+        },
+        {
           "document": "RT-SVX34W-EN_Rooftop-IOM",
           "page": 31
         },
         {
           "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
-          "page": 27
-        },
-        {
-          "document": "50E-C2SI_Install-Startup-Service",
-          "page": 64
+          "page": 33
         },
         {
           "document": "RT-SVX21AD-EN_Rooftop-IOM",
