@@ -38,3 +38,157 @@ run that owed no components.
 
 No `CONTRACT MISMATCH`, no `BLOCKED ON BACKEND` — nothing was built to mismatch.
 Handed off to Stage 5.
+
+---
+
+# Addendum — Run B Stage 4 · 8 Aug 2026 · real nameplate capture (owner escalation)
+
+Branch `stage/frontend-camera`, cut from `main` at `1f5799d` (the ST-02/ST-04/
+ST-05 merge). One owner-escalated task, per Addendum A in `02-user-stories.md`:
+**replace the simulated nameplate capture with the real camera, wired to the
+live vision endpoint.** The owner's words: "I want to use my camera for
+capturing the nameplate — not simulated."
+
+Run B's "Frontend: nothing to do" note above still governs everything else —
+this addendum is the one exception, and it is the owner's, not this stage's.
+
+**Precondition checked.** `03-backend.md`'s Run B addendum is committed and the
+code it describes is on `main` in this worktree: `lib/vision.mjs`,
+`lib/units.mjs`, and the `/identify-unit` route in `scripts/serve.mjs`. Nothing
+backend was reimplemented; `lib/` and `scripts/` are untouched this round.
+
+**Quota rule honored: zero live Gemini calls.** Every test and every
+verification here ran against stubbed fetch/server responses covering all four
+contract shapes. **The first live photo identification is quota-gated to the
+owner's next window** (ST-07, quota day Q4) — nothing in this round has pointed
+a camera at a real plate and asked the model.
+
+## What changed, and why
+
+### Module choice (justified per SDK 54 docs, as required)
+
+- **`expo-camera` ~17.0.10** for capture. `expo-image-picker`'s camera is a
+  full-screen *system* modal; using it would discard the corner-bracketed
+  viewfinder the screen is designed around. `CameraView` renders inside the
+  frame, so the design language survives the hardware. Permissions via
+  `useCameraPermissions` (the v54 hook).
+- **`expo-image-picker` ~17.0.11** for the library path the story also
+  requires — a plate photographed from the ground before climbing.
+  `launchImageLibraryAsync({ mediaTypes: 'images' })` per v54 (the
+  `MediaTypeOptions` enum is deprecated there).
+- **`expo-image-manipulator` ~14.0.8** for client-side resize, using the v54
+  contextual API (`ImageManipulator.manipulate(uri).resize(...).renderAsync()`
+  → `saveAsync({ format: JPEG, compress: 0.7, base64: true })`), not the
+  deprecated `manipulateAsync`.
+
+All three installed with `npx expo install` so versions align to the SDK 54 pin
+(`app/AGENTS.md`). Config plugins in `app.json` carry the permission strings for
+future dev builds; Expo Go uses its own Info.plist today.
+
+### Files
+
+- **`app/lib/identify.ts`** (new) — the `/identify-unit` contract kept pure: no
+  React Native import, so `node --test` runs it (the `citations.ts` split).
+  Types for the response and the `unit` verdict verbatim from `03-backend.md`;
+  `parseIdentifyResponse` rejects anything off-contract (a malformed 200 is a
+  502-shaped failure, never a guessed reading); `postIdentify` classifies the
+  four shapes with fetch injected; `resizeTarget` mirrors the server's 1536 px
+  cap (`lib/vision.mjs` `MAX_EDGE_PX`) and never upscales a known size;
+  `confirmedUnitFrom` builds the session payload with `documentIds` verbatim.
+- **`app/lib/diagnose.ts`** — `requestIdentifyUnit(base64, cancel?)`: base URL
+  (with the existing loopback rewrite), 60 s timeout, cancel path, failures
+  thrown as the same `DiagnoseError` the app already renders.
+  `requestDiagnosis` grows the contract's optional `documentIds` field
+  (absent = omitted; `[]` sent as-is — the semantics differ on purpose). The
+  unit-required `CONTRACT MISMATCH` comment at `refusalCheck` now records its
+  closure by ST-02 instead of describing a fixed defect as current.
+- **`app/lib/store.ts`, `app/screens/ChatScreen.tsx`, `app/App.tsx`** —
+  `documentIds` threaded from the capture confirmation into every `/diagnose`
+  call in the session, per the backend hand-off list ("send `documentIds` on
+  the app path").
+- **`app/screens/CaptureScreen.tsx`** — the rewrite. Kept: corner-bracketed
+  frame (now clipping a live `CameraView`), the confirmation card, the ≤2-tap
+  correction path ("Wrong unit, let me pick", now prefilled with the read so a
+  near-miss is an edit), "Type the model instead" reachable from every state,
+  the CancelBar escape. Gone: `StateSimulator`, the fixed `READ_MODEL` text,
+  and both "Prototype:" warning captions (the second one — "the model you type
+  isn't attached to the session yet" — was already stale: `createSession`
+  persists `equipment`). New: `Choose from photos`, the in-frame permission
+  prompt, and a distinct retryable `error` state.
+
+### The response wiring, per the contract's own taxonomy
+
+| Wire | Rendered as |
+|---|---|
+| `identified: true` | Confirmation card: real manufacturer, model, **confidence class word** (never a decimal), the unit's documents ("I'll answer from"), and — for `out_of_scope`/`unrecognised` — the verdict's ready-to-render `message` |
+| `identified: false` | The honest "couldn't read that plate" **answer** (server's fixed retake copy, partial read surfaced but never resolved), with Retake + manual entry — deliberately *not* the error rendering |
+| 502 `providerBlocked: true` | An **error with retry**, in copy that names it a filter artifact — never an identification, never safety advice |
+| other 4xx/5xx / timeout / offline | Error with retry; network-shaped failures route to the existing `OfflineState` |
+
+Confirming passes `confirmedUnitFrom(result)` — `{equipment, documentIds}` —
+into exactly the seam the simulated path used (`onDone` → App state → session
+creation), so a covered unit's diagnosis is scoped to its manuals and a
+non-covered unit's `[]` yields the honest no-documentation answer downstream
+instead of another manufacturer's citations. `PermissionDenied` is wired to the
+real flow: auto-request once on arrival, in-frame re-request while
+`canAskAgain`, `Linking.openSettings()` when permanently denied — manual entry
+primary throughout.
+
+## How to verify
+
+- **Contract fidelity (mocked, no quota):** `npm test` — 12 new cases in
+  `app/lib/identify.test.mjs` pin all four shapes, the request body
+  byte-for-byte, malformed-200 rejection, `[]`-vs-`null` `documentIds`
+  semantics, and the resize math.
+- **On the device (owner, next quota window):** `npm run serve` with keys set,
+  `EXPO_PUBLIC_DIAGNOSE_URL` pointed at the LAN address, Expo Go → camera
+  button → shoot a plate. Expect: live viewfinder in the bracket frame;
+  confirmation card with the real read; confirm → ask a symptom → the serve
+  log shows `scope=N` on the diagnosis. Kill the server signal for the offline
+  state; deny the permission for the denied path. This is Run C criterion 3's
+  re-verification and **counts against quota** — it belongs in the ST-07
+  window.
+
+## Toolchain status — exact
+
+| Command | Result |
+|---|---|
+| `npm run lint` | exit 0 — **0 errors, 0 warnings** (baseline 0/0, unchanged) |
+| `npm run build` (`tsc --noEmit` in `app/`) | exit 0 — clean |
+| `npm test` | exit 0 — **123 pass / 0 fail** (baseline 111/0; +12 identify contract tests) |
+| `npm run verify:secrets` | green (shape rules only — `.env` holds no real values here) |
+
+No component/E2E renderer exists in this repo (the Run A note above still
+holds), so the changed views were **not** visually rendered by a harness —
+verification is the contract tests plus the device pass above. Accessibility
+held at the existing floor: every interactive element is a `Pressable` with
+`accessibilityRole`/`accessibilityLabel`, disabled states declared via
+`accessibilityState`, form controls labelled, the coverage notice announced as
+an alert, and the 48 dp touch floor (`MIN_TOUCH`) kept throughout.
+
+## CONTRACT MISMATCH / BLOCKED ON BACKEND
+
+**None this round.** The `/identify-unit` contract was implementable exactly as
+documented. Noted for completeness: the pre-existing sql/007 adapter
+(`meta.scopeFallback`, owner: Knowledge/project owner) means a scoped diagnosis
+may silently run unscoped until the migration is applied — visible in `meta`,
+nothing for the client to do.
+
+## OPEN QUESTIONs (defaults taken)
+
+1. **Confirming a non-covered identification.** Default: allowed, with the
+   verdict's `message` rendered on the card and `documentIds: []` passed
+   verbatim — every subsequent question gets the honest no-documentation shape
+   rather than another manufacturer's manual. The alternative (blocking
+   confirm) would dead-end a tech whose plate read correctly but whose model
+   coverage matching missed (the known YSC/YHC alias gap).
+2. **Scope is not persisted.** The `sessions` table has no `documentIds`
+   column, so a reopened session diagnoses gated-but-unscoped (equipment text
+   only). Filed here as a Run C persistence gap — a schema change is not this
+   stage's to make.
+3. **Manual entry sends no verdict.** The typed path passes
+   `documentIds: null` (server gates on `equipment`), unchanged behavior.
+   Calling `/resolve-unit` from the manual form — U4's "coverage stated at
+   selection" done properly client-side — is Run C scope.
+
+Per instruction: branch pushed, **no PR, no merge**.
