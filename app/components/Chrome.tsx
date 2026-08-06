@@ -13,7 +13,10 @@
  *    network — the half of the state that matters on a roof (E6.6).
  */
 
+import React from 'react';
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ScalePressable } from './Tactile';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { isLive } from '../lib/diagnose';
 import { RAIL_WIDTH } from '../theme/layout';
@@ -116,7 +119,7 @@ export function ErrorState({
     <View style={s.center}>
       <View style={s.errorCard}>
         <View style={s.errorHead}>
-          <Text style={s.errorGlyph}>!</Text>
+          <Ionicons name="alert-circle-outline" size={26} color={color.refusalText} />
           <Text style={s.errorTitle}>{title}</Text>
         </View>
         <Text style={s.centerText}>{detail}</Text>
@@ -166,7 +169,7 @@ export function OfflineState({
     <View style={s.center}>
       <View style={s.offlineCard}>
         <View style={s.errorHead}>
-          <Text style={s.offlineGlyph}>⚠</Text>
+          <Ionicons name="cloud-offline-outline" size={26} color={color.refusalText} />
           <Text style={s.errorTitle}>{title}</Text>
         </View>
         <Text style={s.centerText}>{detail}</Text>
@@ -214,7 +217,7 @@ export function PermissionDenied({
     <View style={s.center}>
       <View style={s.errorCard}>
         <View style={s.errorHead}>
-          <Text style={s.errorGlyph}>⃠</Text>
+          <Ionicons name="ban-outline" size={26} color={color.refusalText} />
           <Text style={s.errorTitle}>No camera access</Text>
         </View>
         <Text style={s.centerText}>
@@ -246,9 +249,9 @@ export function PermissionDenied({
 
 export type Tab = 'chat' | 'history';
 
-const TABS: { id: Tab; label: string; glyph: string }[] = [
-  { id: 'chat', label: 'Ask', glyph: '◈' },
-  { id: 'history', label: 'History', glyph: '↻' },
+const TABS: { id: Tab; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+  { id: 'chat', label: 'Ask', icon: 'chatbubble-ellipses-outline' as const },
+  { id: 'history', label: 'History', icon: 'time-outline' as const },
 ];
 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
@@ -257,7 +260,7 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) =
       {TABS.map((t) => {
         const on = t.id === active;
         return (
-          <Pressable
+          <ScalePressable
             key={t.id}
             onPress={() => onChange(t.id)}
             style={({ pressed }) => [s.tab, pressed && s.tabPressed]}
@@ -265,9 +268,11 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) =
             accessibilityState={{ selected: on }}
             accessibilityLabel={t.label}
           >
-            <Text style={[s.tabGlyph, on && s.tabOn]}>{t.glyph}</Text>
-            <Text style={[s.tabText, on && s.tabOn]}>{t.label}</Text>
-          </Pressable>
+            <View style={s.tabInner}>
+              <Ionicons name={t.icon} size={22} color={on ? color.accent : color.textSecondary} />
+              <Text style={[s.tabText, on && s.tabOn]}>{t.label}</Text>
+            </View>
+          </ScalePressable>
         );
       })}
     </View>
@@ -289,7 +294,7 @@ export function NavRail({
       {TABS.map((t) => {
         const on = t.id === active;
         return (
-          <Pressable
+          <ScalePressable
             key={t.id}
             onPress={() => onChange(t.id)}
             style={({ pressed }) => [s.railItem, on && s.railItemOn, pressed && s.tabPressed]}
@@ -297,20 +302,23 @@ export function NavRail({
             accessibilityState={{ selected: on }}
             accessibilityLabel={t.label}
           >
-            <Text style={[s.tabGlyph, on && s.tabOn]}>{t.glyph}</Text>
-            <Text style={[s.tabText, on && s.tabOn]}>{t.label}</Text>
-          </Pressable>
+            <View style={s.tabInner}>
+              <Ionicons name={t.icon} size={22} color={on ? color.accent : color.textSecondary} />
+              <Text style={[s.tabText, on && s.tabOn]}>{t.label}</Text>
+            </View>
+          </ScalePressable>
         );
       })}
 
-      <Pressable
+      <ScalePressable
         onPress={onCapture}
+        haptic="tap"
         style={({ pressed }) => [s.railCapture, pressed && s.buttonPressed]}
         accessibilityRole="button"
         accessibilityLabel="Photograph the nameplate"
       >
-        <Text style={s.railCaptureGlyph}>◉</Text>
-      </Pressable>
+        <Ionicons name="camera-outline" size={26} color={color.textOnInteractive} />
+      </ScalePressable>
     </View>
   );
 }
@@ -427,6 +435,7 @@ const s = StyleSheet.create({
   },
   tabPressed: { backgroundColor: color.surfaceRaised },
   tabGlyph: { ...type.heading, color: color.textSecondary },
+  tabInner: { alignItems: 'center', gap: 2 },
   tabText: { ...type.chip, color: color.textSecondary },
   tabOn: { color: color.accent },
 

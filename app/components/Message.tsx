@@ -23,6 +23,7 @@
  */
 
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { color, type, space, radius } from '../theme/tokens';
 import { CitationChip, UnresolvedCitationChip } from './Citation';
 import { partition } from '../lib/citations';
@@ -118,7 +119,7 @@ function AnswerTurn({
 
       {reading ? (
         <View style={s.reading}>
-          <Text style={s.readingGlyph}>◎</Text>
+          <Ionicons name="speedometer-outline" size={16} color={color.textSecondary} />
           <Text style={s.readingText}>{reading}</Text>
         </View>
       ) : null}

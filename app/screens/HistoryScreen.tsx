@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, SectionList, StyleSheet, RefreshControl } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { Loading, ErrorState, EmptyState, OfflineState } from '../components/Chrome';
+import { HistorySkeleton } from '../components/Skeleton';
+import { ScalePressable } from '../components/Tactile';
 import { looksOffline } from '../lib/net';
 import { listSessions } from '../lib/store';
 import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
@@ -52,7 +54,7 @@ export function HistoryScreen({
     );
   }
   if (error) return <ErrorState title="Couldn't load history" detail={error} onRetry={load} />;
-  if (!sessions) return <Loading label="Loading past jobs…" />;
+  if (!sessions) return <HistorySkeleton />;
 
   if (sessions.length === 0) {
     return (
@@ -78,7 +80,7 @@ export function HistoryScreen({
       }
       renderSectionHeader={({ section }) => <Text style={s.sectionLabel}>{section.title}</Text>}
       renderItem={({ item }) => (
-        <Pressable
+        <ScalePressable
           onPress={() => onOpen(item.id, item.equipment ?? null)}
           style={({ pressed }) => [s.row, item.refused && s.rowRefused, pressed && s.rowPressed]}
           accessibilityRole="button"
@@ -101,7 +103,7 @@ export function HistoryScreen({
               <Text style={s.cited}>{item.citationCount} cited</Text>
             ) : null}
           </View>
-        </Pressable>
+        </ScalePressable>
       )}
     />
   );

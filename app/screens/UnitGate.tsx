@@ -15,6 +15,7 @@
  */
 
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -79,7 +80,7 @@ export function UnitGate({ onIdentify, onCarryOver }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Photograph the data plate"
           >
-            <Text style={s.doorGlyph}>◉</Text>
+            <Ionicons name="camera-outline" size={20} color={color.accent} />
             <View style={s.doorTextWrap}>
               <Text style={s.doorText}>Shoot the data plate</Text>
               <Text style={s.doorHint}>Fastest when the plate is readable</Text>
@@ -92,7 +93,7 @@ export function UnitGate({ onIdentify, onCarryOver }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Type the unit in"
           >
-            <Text style={s.doorGlyph}>⌨</Text>
+            <Ionicons name="keypad-outline" size={20} color={color.accent} />
             <View style={s.doorTextWrap}>
               <Text style={s.doorText}>Type the unit in</Text>
               <Text style={s.doorHint}>Works offline, and with the camera denied</Text>
