@@ -115,10 +115,16 @@ added by sql/005 after Stage 5 caught it living behind a join),
 broken by a failed join (brief criterion 4).
 
 Scope (S14) derives from the manifest, never from filenames:
-`manufacturer ∈ {Trane, Carrier} ∨ docType = 'PT Chart'` → 21 in-scope documents,
-matching the brief's "18 rooftop docs + 3 PT charts" exactly.
+`manufacturer ∈ {Trane, Carrier} ∨ docType = 'PT Chart'`, minus
+`OUT_OF_SCOPE_EQUIPMENT` (chillers — brief line 64 orders them out; its own
+"18 rooftop docs" count was a miscount that included one) → **20 in-scope
+documents** (17 rooftop + 3 PT charts).
 
-**Live counts: 3,787 chunks · 3,391 in-scope · 24 documents · all vectors
+Scope is provenance outside the content hash, so ingest re-syncs it (and the
+sibling denormalised columns) onto existing chunks whenever the stored flag
+disagrees — a scope-rule change must not require a re-embed to take effect.
+
+**Live counts: 3,787 chunks · 3,328 in-scope · 24 documents · all vectors
 `voyage-4-large`** (persisted per chunk — A4: `usedMocks()` is per-process and
 cannot prove a past run was stub-free; the column can, from a cold start).
 

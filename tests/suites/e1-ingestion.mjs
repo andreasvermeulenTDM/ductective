@@ -319,20 +319,51 @@ export default defineSuite({
       needsEnv: ['EXPO_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'],
       async run(c) {
         const { supabaseAdmin } = await import('../../lib/clients.mjs');
-        const { data, error } = await supabaseAdmin().from('chunks').select('source_document, in_phase1_scope');
-        if (error) return blocked(`scope column not queryable: ${error.message}`);
+        const db = supabaseAdmin();
 
+        // Paginated census, not a sample. PostgREST caps an unpaginated select at
+        // 1,000 rows; the corpus is ~3,800 chunks. The first version of this check
+        // read the cap as the corpus and reported "found 15" — a number that was
+        // an artifact of truncation, not a fact about the data.
         const docs = new Map();
-        for (const row of data ?? []) docs.set(row.source_document, row.in_phase1_scope);
+        const mixed = new Set();
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await db
+            .from('chunks')
+            .select('source_document, in_phase1_scope')
+            .range(from, from + 999);
+          if (error) return blocked(`scope column not queryable: ${error.message}`);
+          for (const row of data ?? []) {
+            if (docs.has(row.source_document) && docs.get(row.source_document) !== row.in_phase1_scope) {
+              mixed.add(row.source_document);
+            }
+            docs.set(row.source_document, row.in_phase1_scope);
+          }
+          if (!data || data.length < 1000) break;
+        }
         const inScope = [...docs.values()].filter(Boolean).length;
+
+        // A document whose chunks disagree with each other is worse than a wrong
+        // count — it means a scope change half-propagated.
+        if (mixed.size) {
+          return fail(
+            c.fromCheck('chunk scope agreement per document', [...mixed].join('\n')),
+            `${mixed.size} document(s) carry chunks with contradictory scope flags`
+          );
+        }
 
         const ev = c.fromCheck(
           'distinct source_document by in_phase1_scope',
           `documents in scope: ${inScope}\ndocuments out of scope: ${docs.size - inScope}`
         );
-        return inScope === 21
-          ? pass(ev, '21 in-scope documents (18 rooftop + 3 PT charts)')
-          : fail(ev, `expected 21 in-scope documents, found ${inScope}`);
+        // 20, not the brief's 21: the brief's "18 Trane + Carrier rooftop docs"
+        // was a miscount that included the air-cooled chiller, which its own line
+        // 64 orders out of scope. 17 rooftop + 3 PT charts = 20 — the discrepancy
+        // is recorded in ingest/reconcile.mjs (OUT_OF_SCOPE_EQUIPMENT), not
+        // silently reconciled here.
+        return inScope === 20
+          ? pass(ev, '20 in-scope documents (17 rooftop + 3 PT charts; chiller out per brief line 64)')
+          : fail(ev, `expected 20 in-scope documents, found ${inScope}`);
       },
     },
 

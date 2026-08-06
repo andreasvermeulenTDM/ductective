@@ -237,7 +237,7 @@ export async function ingest({ log = console.log } = {}) {
 
     // What is already stored for this document?
     const { data: existing, error: eErr } = await db
-      .from('chunks').select('id, content_hash, in_scope').eq('document_id', doc.id);
+      .from('chunks').select('id, content_hash, in_phase1_scope').eq('document_id', doc.id);
     if (eErr) throw new Error(`read chunks ${doc.file}: ${eErr.message}`);
 
     /*
@@ -252,15 +252,13 @@ export async function ingest({ log = console.log } = {}) {
      * ponytail: drift on a sibling column without in_scope moving is still missed —
      * compare the full set here if that ever happens.
      */
-    if ((existing ?? []).some((r) => r.in_scope !== doc.inScope)) {
+    if ((existing ?? []).some((r) => r.in_phase1_scope !== doc.inScope)) {
       await withRetry(`chunk metadata sync ${doc.file}`, () =>
-        // `model_coverage`, not `coverage`: the live chunks table uses the brief's
-        // column names (`source_document`, `page_number`, `model_coverage`) and
-        // `sql/003` on disk does not match it. Flagged to Knowledge — a committed
-        // migration that differs from the applied schema means a clean rebuild
-        // produces a different database. Following the live schema here.
+        // Live column names come from the whole migration chain (003 renamed by
+        // 005 and 006), not any single file: source_document, page_number,
+        // model_coverage, in_phase1_scope. A clean rebuild replays the chain.
         db.from('chunks').update({
-          in_scope: doc.inScope,
+          in_phase1_scope: doc.inScope,
           manufacturer: doc.manufacturer,
           doc_type: doc.docType,
           model_coverage: doc.coverage ?? '',
