@@ -275,3 +275,25 @@ ingest ≈ hours); with one on file, the run above. Either way $0 within allowan
 3. **The four smoke misses are cross-manufacturer rank misses, not coverage
    gaps.** Default: ship vector-only; revisit only if Run B's citation-validity
    sampling (≥30 claims, ≥90%) surfaces retrieval as the limiting factor.
+
+---
+
+## §5 addendum — iterative scans, applied conditionally (sql/008 → sql/009)
+
+Post-007 the scoped smoke exposed HNSW post-filtering: a single-document filter
+could exhaust the index's candidate batch and return zero rows (R05 [vector]).
+`ALTER FUNCTION ... SET hnsw.iterative_scan` is superuser-only on Supabase
+(42501), so both functions are now `plpgsql` and set
+`hnsw.iterative_scan = relaxed_order` via transaction-local `set_config` —
+**only when `filter_document_ids` is present**. sql/008 applied it
+unconditionally and the unfiltered set measurably regressed (R02 reordered);
+sql/009 restored the exact unfiltered plan. Signatures and OUT names unchanged
+throughout.
+
+Verified live, 9 Aug 2026: scoped checks all green (single-document filters
+return rows; Trane-wide filter leaks zero Carrier chunks; null filter identical
+to pre-007), unfiltered 10/14 with criterion 7's bar met. The remaining misses
+are all cross-manufacturer rank flips at the 1/2 boundary — a class the primary
+flow no longer exercises, since unit-scoped retrieval excludes other
+manufacturers from the candidate set by construction and ST-02 gates the
+unitless path.
