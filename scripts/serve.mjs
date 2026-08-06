@@ -74,11 +74,16 @@ const server = createServer(async (req, res) => {
       return send(res, 200, verdict);
     }
 
-    const { symptom, equipment, history } = body;
-    const result = await diagnose({ symptom, equipment, history });
+    // ST-04 (OQ1 default): the client supplies documentIds from /resolve-unit's
+    // verdict. No deps are ever passed here — the unscoped test path cannot be
+    // reached from the wire.
+    const { symptom, equipment, history, documentIds } = body;
+    const result = await diagnose({ symptom, equipment, history, documentIds });
     console.log(
       `${result.kind.padEnd(8)} ${result.meta.latencyMs}ms  ` +
         `retrieved=${result.meta.retrieved ?? '-'} cites=${result.citations.length}` +
+        (result.meta.scopedTo !== undefined ? ` scope=${result.meta.scopedTo}` : '') +
+        (result.meta.scopeFallback ? ' SCOPE-FALLBACK' : '') +
         (result.meta.dropped ? ` dropped=${result.meta.dropped}` : '')
     );
     send(res, 200, result);
