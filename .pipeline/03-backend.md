@@ -516,3 +516,294 @@ an uncitable chunk impossible by construction rather than by convention.
 
 No `CONTRACT MISMATCH` and no `BLOCKED ON KNOWLEDGE` items: S6 is a planned
 dependency on Stage 2.5, not a broken or missing contract.
+
+---
+
+# Addendum — Run B Stage 3 · 8 Aug 2026 · ST-02, ST-04, ST-05
+
+Branch `stage/backend-vision` (commits `592469a`, `397b76c`, `0ddbbef`), cut from
+`main` at `ac54279`. Everything above (Run A) stands; this extends it. Vision was
+pulled to the front of the build order by Addendum A's owner escalation.
+
+**Preconditions checked.** `02-user-stories.md` is committed with per-story
+ownership. The retrieval contract consumed is `.pipeline/025-knowledge.md` **§5
+addendum (ST-03, merged to main in `542d9e3`)** — built against the document, not
+Knowledge's code, exactly as written. `sql/` untouched this round (Knowledge's
+file); zero DDL run.
+
+**Quota note, binding on Stages 5/5.5.** Zero live Gemini calls were made this
+round — today's quota is spent by owner decision. Every provider interaction in
+the new tests is a stub. **Live vision verification (criterion 7's ≥8/10) is
+quota-gated to the next window (ST-07, quota day Q4)**; what is proven now is
+the machinery: gates, downscaling math, response shapes, and the block/transport
+invariants.
+
+## What changed, and why
+
+### ST-02 — the unit-required gate, server-side ✅ (CONTRACT MISMATCH closed)
+
+The filed mismatch (`app/lib/diagnose.ts:201-205`): the server generated an
+answer the client's unit gate then discarded — wasted quota, and one client bug
+away from rendering ungrounded output. Now `diagnose()` gates **before
+retrieval and before any Gemini call**: a non-hazard request with neither
+`equipment` nor `documentIds` returns a fourth deliberate shape,
+`kind: 'unit_required'`. A unitless **hazard** request still hits the
+deterministic refusal first — the safety gate runs *before* the unit gate, so
+U7's safety escape is unchanged.
+
+Unscoped diagnosis remains legal **on test paths only** (OQ1 default):
+`ALLOW_UNSCOPED_DIAGNOSE=1` (server env, documented in `.env.example`) or an
+injected `deps.allowUnscoped`. Neither is reachable from the wire — `serve.mjs`
+never passes deps. **No app code changed** (ST-02 criterion; Run C adopts the
+shape).
+
+Evidence (all in `lib/diagnose.gate.test.mjs`, provider-call counters):
+`unitless non-hazard request gets unit_required with zero provider or retrieval
+calls` · `unit_required is none of the other three shapes` · `unitless HAZARD
+request still refuses deterministically (U7 escape preserved)` · `equipment
+context passes the gate (and empty retrieval still never calls the model)` ·
+both flag tests · `a missing symptom is still a 400`.
+
+### ST-04 — unit scope threaded through `diagnose()` ✅
+
+`/diagnose` accepts `documentIds: string[]` (the verdict from `/resolve-unit`
+or `/identify-unit`, OQ1 default) and passes it to `match_chunks` /
+`match_chunks_hybrid` as `filter_document_ids`, per the sql/007 contract. The
+contract's own trap is enforced at the caller: **at the RPC, `[]` means
+UNFILTERED**, so an empty array — "unit resolved to zero documents" — short-
+circuits to the no-documentation shape **before any RPC or model call**.
+Unknown ids are a 400 before retrieval (fail-closed, never silently unscoped).
+Unscoped calls omit the `filter_document_ids` key entirely (the pre-007 live
+function would reject the widened signature on every call otherwise).
+
+Evidence (all in `lib/diagnose.scope.test.mjs`): `documentIds reach the RPC
+arguments as filter_document_ids` · `an unscoped call does NOT carry the filter
+key at all` · `documentIds: [] short-circuits…` · `unknown document ids fail
+loudly…` · `a malformed documentIds value is a 400` · two PGRST fallback tests ·
+`any other retrieval error still fails as a 502` · `empty-after-filter produces
+the no-documentation shape, not an invented answer`.
+
+The live cross-manufacturer retest and the verdict→scoped-diagnosis transcript
+(ST-04's two live criteria) ride the Q2/Q3 batch — quota-gated, owned by the
+batch runs, not repeated here.
+
+### ST-05 — `POST /identify-unit` ✅ (machine half; accuracy is ST-07's)
+
+`lib/vision.mjs`, beside `units.mjs` (OQ2 default). Base64 JPEG in; structured
+`{identified, manufacturer, model, confidence}` out via the shipped
+`imagePart()`/`inlineData` with **server-side downscaling first** (M11), then
+**composition with `resolveUnit()`** — matching logic is not duplicated; the
+identification carries the same coverage verdict and `documentIds` that scope
+ST-04's retrieval. One mechanism serves criterion 7's "narrows retrieval" and
+U5 both.
+
+**Downscaling, and the evidence for the cap.** Pure `resizeDecision()`:
+long edge capped at **1536 px**, input capped at **8 MiB**, box-average
+resample, re-encode at q80. The 1536 figure is provider economics, cited in the
+decision comment: Gemini bills vision at 258 tokens per 768×768 tile and itself
+discards pixels beyond 3072×3072 — a 4032×3024 phone capture drops from ~20
+tiles (~5,160 tokens) to 4 (~1,032) with zero information the model would have
+kept. On a 20-requests/day budget where M12 measured ~3.5k tokens per whole
+text diagnosis, an un-downscaled photo would dominate the request. **The
+accuracy impact of 1536 px is unmeasured until ST-07's photos — if plates miss,
+raise `MAX_EDGE_PX` on that measurement, not on instinct.**
+
+**New dependency, justified:** `jpeg-js@0.4.4` (pure JS, zero transitive deps).
+Node has no built-in image codec, so server-side downscaling needs one;
+`sharp` was rejected because its native binding forecloses the Deno/Edge
+Function path (ST-11) that the transport-agnostic core exists to keep open.
+Decode is capped (`maxResolutionInMP`, `maxMemoryUsageInMB`) against
+pixel-bomb JPEGs. JPEG only — the camera path produces JPEG; one codec is one
+attack surface.
+
+No image bytes and no keys are logged (the serve log carries sizes and the
+verdict only); `npm run verify:secrets` green.
+
+## The contracts Run C builds against (additions — everything else unchanged)
+
+### `POST /diagnose` — request grows one field; responses grow one kind
+
+```
+POST /diagnose
+{
+  symptom:      string,          // required
+  equipment?:   string,          // free-text unit context; satisfies the gate,
+                                 // reaches the prompt, does NOT scope retrieval
+  documentIds?: string[],        // the resolved unit's scope (from /resolve-unit
+                                 // or /identify-unit's unit.documentIds)
+  history?:     [{role, content}]
+}
+```
+
+Semantics of `documentIds` — absent and empty are different on purpose:
+
+| value | meaning | result |
+|---|---|---|
+| absent/undefined | unitless | non-hazard ⇒ `unit_required`; hazard ⇒ `refusal` |
+| `[]` | unit resolved to zero documents | no-documentation shape, zero RPC, zero Gemini |
+| `['doc_…']` | scope retrieval to these documents | scoped diagnosis; unknown id ⇒ 400 |
+| wrong type / empty strings | malformed | 400 `{status, message}` |
+
+**The `unit_required` shape** (HTTP 200 — deliberate, machine-readable, none of
+the other three):
+
+```json
+{
+  "kind": "unit_required",
+  "body": "Which unit are you working on?\n\n…ready-to-render copy…",
+  "citations": [],
+  "meta": { "retrieved": 0, "dropped": 0, "noDocumentation": false,
+            "mode": "vector", "latencyMs": 1, "model": null }
+}
+```
+
+**`meta` additions on scoped requests:** `scopedTo: <n>` (count of documentIds
+applied) and — only while sql/007 is unapplied — `scopeFallback: true` (see
+CONTRACT MISMATCH below). A transcript without `scopeFallback` was truly scoped.
+
+**The response-shape table, updated** (was three, now three-plus-one; no shape
+is produced by another's code path):
+
+| shape | wire | producer | pinned by |
+|---|---|---|---|
+| *ours* (refusal) | 200 `kind:'refusal'`, `meta.category/trigger` | `lib/safety.mjs` gate via `lib/diagnose.mjs` | 12 probes in `lib/diagnose.test.mjs`; `unitless HAZARD request still refuses…` |
+| *theirs* (provider block) | 502 `{status, message, providerBlocked:true, blockReason}` | `lib/diagnose.mjs` blocked check; `lib/vision.mjs` identically | `a provider safety block is an ERROR with providerBlocked…` (vision.test) |
+| *transport* | 4xx/5xx `{status, message}` | `DiagnoseError` → `serve.mjs` | `a transport failure surfaces as the wire error shape…` |
+| **`unit_required`** | 200 `kind:'unit_required'` | `diagnose()` gate, pre-retrieval | `unit_required is none of the other three shapes` |
+
+Citation payload unchanged: `{source_document, page, claim, ordinal, chunk_id,
+snippet, verified:'exact'}` — scoped retrieval flows into the same validator,
+pinned by `documentIds reach the RPC arguments…` asserting document+page
+survive to the citation.
+
+### `POST /identify-unit` — new
+
+```
+POST /identify-unit
+{ "image": "<base64 JPEG>",        // data:image/jpeg;base64, prefix accepted
+  "mimeType": "image/jpeg" }       // optional; default image/jpeg
+```
+
+**Limits (enforced server-side, in order):** body cap ~10.7 MiB (base64 of the
+8 MiB binary cap + envelope headroom, 413 above); base64/JPEG validity (400);
+decoded size ≤ 8 MiB (413); type must be JPEG (415). **JPEG only** — Frontend's
+camera capture must request JPEG output (the platform default).
+
+**200 — identified** (`unit` is `/resolve-unit`'s response *verbatim*; do not
+re-implement rendering):
+
+```json
+{
+  "identified": true,
+  "manufacturer": "Trane",
+  "model": "YSC060A4",
+  "confidence": "high",
+  "unit": { "status": "covered", "documentIds": ["doc_…"], "documents": [ … ],
+            "covered": [ … ], "message": "Covered — 2 documents for this unit." },
+  "message": "Covered — 2 documents for this unit.",
+  "meta": { "latencyMs": 0, "model": "…", "usage": { … },
+            "image": { "originalBytes": 0, "sentBytes": 0,
+                        "width": 1536, "height": 1152, "resized": true } }
+}
+```
+
+`confidence` is always one of `"high" | "medium" | "low"` — **a class, never a
+decimal** (CaptureScreen renders the word). Chain `unit.documentIds` into
+`POST /diagnose` to get the scoped diagnosis.
+
+**200 — unreadable** (a deliberate answer, NOT an error — render as a re-take
+prompt): `identified: false`, `unit: null`, `confidence` per the model
+(defaults `"low"`), `message` is fixed re-take copy. Partially-read fields are
+surfaced (`manufacturer` may be non-null) but `identified` stays false and no
+unit is resolved — a partial read is never laundered into an identification.
+
+**Errors** — the standard wire shape `{status, message, providerBlocked?,
+blockReason?}`: 400 (missing/invalid/not-JPEG image), 413 (size), 415 (type),
+502 with `providerBlocked: true` (Gemini safety block — render as retryable
+error, never as a reading), other 4xx/5xx transport. A block or failure is
+**never** returned as an identification.
+
+### `POST /resolve-unit` — unchanged (contract above, Run A section). Cross-
+referenced, not duplicated, per ST-01.
+
+## How the two domain rules are enforced and tested this round
+
+- **Citations.** Unchanged structural path (index anchoring → `validateAnswer`
+  drop semantics); this round adds the scoped variants: empty scope and
+  empty-after-filter both degrade to no-documentation with **zero model calls**
+  (`documentIds: [] short-circuits…`, `empty-after-filter produces…`), and a
+  scoped answer's citations still carry document+page from the retrieved set.
+- **Refusals.** The deterministic gate stays ahead of everything new: hazard is
+  classified before the unit gate, so no unit-context requirement can be used
+  to route a hazardous request toward the model (`unitless HAZARD request still
+  refuses deterministically`). The vision path cannot refuse (it makes no
+  diagnostic claims) but inherits the block-is-never-ours invariant, tested.
+- Fixtures for Stage 5.5: every shape above is producible offline via the
+  injected-deps pattern the three test files demonstrate.
+
+## CONTRACT MISMATCH / adapter ledger
+
+1. **OPEN (adapter in place) — sql/007 not yet applied to the live instance.**
+   Owner action (Supabase SQL editor run), tracked in `025-knowledge.md` §5
+   addendum ("Status — live verification PENDING"). Until then the live
+   functions reject `filter_document_ids` with PGRST202. The adapter — one
+   commented block in `retrieve()` (`lib/diagnose.mjs`) — retries unscoped,
+   `console.warn`s, and sets `meta.scopeFallback: true` so no transcript can
+   pass as scoped when it was not. Matched on PostgREST codes
+   PGRST202/PGRST203, never message text. **Delete the block once sql/007 is
+   applied**; the two `pre-sql/007 …` tests then pin historical behavior only.
+   Owner named: Knowledge (contract) / project owner (the editor run).
+2. **CLOSED — the unit-required CONTRACT MISMATCH** (`app/lib/diagnose.ts:
+   201-205`, filed in Run A/research §2c item 6). Closed by ST-02; evidence is
+   the seven `lib/diagnose.gate.test.mjs` tests named above.
+
+No `BLOCKED ON KNOWLEDGE` items — the adapter keeps every story completable.
+
+## Deferred to Frontend (Run C) — build against this document
+
+- Render `kind: 'unit_required'` as a unit-selection prompt (UnitGate flow),
+  **not** as an error and not as a refusal; then retire the client-side-only
+  gate at `app/lib/diagnose.ts:201-205` in favour of the server shape.
+- Send `documentIds` on the app path (from `/resolve-unit` or
+  `/identify-unit`'s `unit.documentIds`).
+- Camera capture → base64 **JPEG** → `POST /identify-unit`; render the
+  confidence word; treat `identified: false` as a re-take prompt; render 502
+  `providerBlocked` as a retryable error.
+- No app code was changed this round (ST-02's own criterion).
+
+## OPEN QUESTIONs (defaults taken)
+
+1. **ST-02's shape: distinct kind vs reusing `clarify`.** Default taken:
+   distinct `kind: 'unit_required'`. ST-02's text says "distinct
+   machine-readable shape", and `clarify` is a model-authored mid-diagnosis
+   question — overloading it would make Run C's clarify UI carry gate
+   semantics and blur criterion 6's "exactly one targeted question" measurement.
+2. **JPEG-only on `/identify-unit`.** Default taken: 415 for anything else,
+   message says to send JPEG. One pure-JS codec, and the camera default is
+   JPEG. Revisit only if Run C's capture path cannot produce JPEG (it can).
+3. **ST-17 (photo turns mid-diagnosis).** The endpoint's mechanics generalise
+   (any JPEG in, structured reading out) but the prompt is nameplate-specific.
+   Left for the owner's scope call per Addendum A; nothing here precludes it.
+
+## Toolchain status — exact
+
+| Command | Result |
+|---|---|
+| `npm run lint` | exit 0 — **0 errors, 0 warnings** (baseline 0/0, unchanged) |
+| `npm run build` (`tsc --noEmit` in `app/`) | exit 0 — clean. (Fresh worktree note: requires the documented `npm --prefix app install` first; without it tsc mis-resolves Supabase types from the root tree.) |
+| `npm test` | exit 0 — **111 pass / 0 fail** (baseline 80/0; +31: 7 gate, 9 scope, 15 vision) |
+| `node --check` on `lib/diagnose.mjs`, `lib/vision.mjs`, `scripts/serve.mjs`, all three new test files | clean |
+| `npm run verify:secrets` | green (no key-shaped or literal value in tree or history) |
+
+Live calls this round: **0 Gemini, 0 Voyage, 0 Supabase** — everything stubbed.
+
+## Run B Backend story status (this addendum)
+
+| Story | State |
+|---|---|
+| ST-02 — unit-required gate | ✅ Done — mismatch closed, tests named above |
+| ST-04 — scope threading | ✅ Code + tests done; live contamination retest and verdict→scoped transcript ride Q2/Q3 (quota) |
+| ST-05 — vision endpoint | ✅ Machine half done; accuracy (≥8/10) is ST-07's, next quota window; photos are ST-06 (human-gated, still open) |
+
+Per instruction from the coordinating agent this branch is pushed without a PR;
+commits are per-story (`592469a` ST-02, `397b76c` ST-04, `0ddbbef` ST-05).
