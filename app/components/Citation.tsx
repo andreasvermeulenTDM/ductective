@@ -96,13 +96,15 @@ export function UnresolvedCitationChip({
 /**
  * The source itself.
  *
- * The mockup shows the retrieved passage quoted here, which is the right design —
- * a page number a tech has to go find is weaker verification than the sentence
- * itself. The prototype has no passage text to show: the persisted citation
- * carries `claim` (what the citation is attached to) but not the retrieved span,
- * and the corpus is gitignored and not on the device. Both gaps are recorded as
- * CONTRACT MISMATCH in `.pipeline/04-frontend-design-pass.md` rather than papered
- * over with placeholder prose.
+ * The mockup shows the retrieved passage quoted here, and as of M9 it exists:
+ * `snippet` is the retrieved chunk's text, persisted with the citation, so the
+ * passage renders with no PDF on the device. (The CONTRACT MISMATCH this comment
+ * used to record is resolved — the passage was the gap.) Rows persisted before
+ * sql/006 have no snippet; they say so instead of pretending.
+ *
+ * `verified` renders as provenance: 'exact' means the passage IS the source text
+ * (it came from the database, not the model). 'fuzzy' — reserved for a future
+ * model-copied-span design — must look visibly different, per M10.
  */
 function SourceBody({ citation, onClose }: { citation: Citation; onClose: () => void }) {
   const resolution = resolve(citation);
@@ -162,16 +164,32 @@ function SourceBody({ citation, onClose }: { citation: Citation; onClose: () => 
         </View>
       ) : null}
 
-      <View style={s.unavailable}>
-        <Text style={s.unavailableText}>
-          The page itself isn't on the device — the corpus isn't bundled with the
-          app. Open {shortDoc(citation.source_document)} at page {citation.page} to
-          verify.
-        </Text>
-      </View>
+      {citation.snippet ? (
+        <View style={s.passage}>
+          <Text style={s.passageLabel}>
+            {citation.verified === 'fuzzy' ? 'FROM THE PAGE · CLOSEST MATCH' : 'FROM THE PAGE'}
+          </Text>
+          <ScrollView style={s.snippetScroll} nestedScrollEnabled>
+            <Text style={s.snippetText}>{citation.snippet}</Text>
+          </ScrollView>
+          <Text style={s.snippetProvenance}>
+            {citation.verified === 'fuzzy'
+              ? 'Approximate match to the source page — verify the wording on the page itself.'
+              : `Verbatim from ${shortDoc(citation.source_document)} p.${citation.page}, as stored in the knowledge base.`}
+          </Text>
+        </View>
+      ) : (
+        <View style={s.unavailable}>
+          <Text style={s.unavailableText}>
+            This citation was saved before passages were stored. Open{' '}
+            {shortDoc(citation.source_document)} at page {citation.page} to verify.
+          </Text>
+        </View>
+      )}
 
       <Text style={s.protoWarn}>
-        Prototype — this citation has not been checked against the document.
+        The passage is verbatim from the manual; whether it supports the claim
+        attached to it has not been scored yet — that is Run B's eval.
       </Text>
 
       <Pressable
@@ -362,6 +380,9 @@ const s = StyleSheet.create({
     marginBottom: space.md,
   },
   passageLabel: { ...type.overline, color: color.textSecondary },
+  snippetScroll: { maxHeight: 260 },
+  snippetText: { ...type.body, color: color.textPrimary },
+  snippetProvenance: { ...type.caption, color: color.textSecondary, marginTop: space.sm },
   passageText: { ...type.body, color: color.textPrimary },
 
   unavailable: { marginBottom: space.md },

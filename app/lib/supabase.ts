@@ -31,6 +31,14 @@ export type Citation = {
   page: number;
   claim: string | null;
   ordinal: number;
+  /** M9 — the supporting passage, from the retrieved chunk (never the model).
+      Absent on rows persisted before sql/006; the sheet says so rather than
+      pretending. */
+  snippet?: string | null;
+  chunk_id?: string | null;
+  /** 'exact' = the snippet IS the source text. 'fuzzy' is reserved for a future
+      model-copied-span design and must render visibly differently. */
+  verified?: 'exact' | 'fuzzy' | null;
 };
 
 export type Message = {

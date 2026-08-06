@@ -414,20 +414,55 @@ covered — otherwise every Carrier unit ever built is covered by the 48/50LC ma
 
 15 unit tests, no key required.
 
-### BLOCKED ON KNOWLEDGE — the chiller tagging now reaches the technician
+### The chiller tagging — fixed at source, 6 Aug
 
-`TEMP-SVX001A-EN_AirCooled-Chiller-25-120ton-IOM` is tagged `in_scope = true`.
-`00-brief.md` says chillers are ingested but tagged **out** of Phase 1 answer scope.
-Reported as item 4 of D1; U4 turns it from a retrieval nuisance into a promise:
+U4 turned D1's item 4 from a retrieval nuisance into a promise made to a technician:
+`Trane / chiller` resolved **`covered`**, and the covered-families message
+**advertised "Air-cooled chiller 25-120 tons"** as Phase 1 coverage.
 
-- `Trane / chiller` resolves **`covered`**, with a document.
-- The covered-families message **advertises "Air-cooled chiller 25-120 tons"** to
-  the tech as Phase 1 coverage.
+Fixed in the scope rule rather than by patching rows. `ingest/reconcile.mjs`
+implemented only the manufacturer half of a definition its own comment states as
+"Trane + Carrier **rooftop** docs", so every Trane document was in scope, chiller
+included. `00-brief.md:64` is explicit: *"Ingest the Daikin, Mitsubishi, chiller,
+and EPA documents but tag them out of scope."*
 
-This is data, not logic — no change here fixes it, and hard-coding an exclusion
-would paper over the tagging rather than correct it. U4 is the story whose whole
-purpose is to prevent proceeding on a unit the system cannot properly support, so
-it should not ship to a tech until the tag is corrected and the corpus re-ingested.
+A coverage pattern, not a document-id denylist, so a second chiller added to the
+manifest needs no code edit — the same reasoning that derives scope from manifest
+columns rather than filenames. In scope went 21 → **20** (17 Trane + Carrier
+rooftop, plus 3 PT charts).
+
+> The brief's "18 Trane + Carrier rooftop docs" is a miscount — there are exactly 18
+> such documents and one is this chiller. Line 64 names chillers directly, so it
+> governs. Recorded rather than silently reconciled.
+
+### A second defect found while fixing the first: metadata never reached chunks
+
+The scope fix would have appeared to work and changed nothing. `content_hash` covers
+the chunk text, so a scope correction changes no hash, re-inserts nothing, and never
+touched the denormalised `in_scope` on existing chunks — while `match_chunks` filters
+on the **chunk's** `in_scope`, not the document's.
+
+`ingest/run.mjs` now detects that drift and re-syncs the denormalised columns.
+Reported in the summary even at zero, because a metadata-only correction that
+re-embeds nothing is otherwise indistinguishable from a run that did nothing:
+
+```
+metadata resynced: 63   ← scope/provenance corrected on existing chunks
+inserted: 0 · unchanged: 3787 · tokens billed: 0 · 7.9s
+```
+
+**Verified after the run:** all 63 chiller chunks are `in_scope = false`, and the
+chiller no longer appears in the top 5 for the Trane Precedent query — it was ranked
+1st on one phrasing before.
+
+### FLAGGED TO KNOWLEDGE — `sql/003` does not match the applied schema
+
+Hit while writing the re-sync. The live `chunks` table uses `source_document`,
+`page_number` and `model_coverage`; committed `sql/003_chunks.sql` declares `page`
+and `coverage`. S6's criterion is that the migration is "committed and re-runnable
+from clean" — as it stands a clean rebuild produces a **different database** from
+the one running, and `match_chunks` is written against the live names. Backend
+followed the live schema. Reconciling the file is Knowledge's.
 
 ### OPEN QUESTION — model numbers are not in the corpus
 

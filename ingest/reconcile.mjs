@@ -166,8 +166,27 @@ export function reconcile() {
 export const IN_SCOPE_MANUFACTURERS = ['Trane', 'Carrier'];
 export const IN_SCOPE_DOCTYPES = ['PT Chart'];
 
+/**
+ * Equipment outside Phase 1 answer scope whatever the manufacturer.
+ *
+ * The definition above says "Trane + Carrier **rooftop** docs"; the rule implemented
+ * only the manufacturer half, so `TEMP-SVX001A-EN_AirCooled-Chiller` — a Trane
+ * document — was tagged in scope. `00-brief.md:64` is explicit: "Ingest the Daikin,
+ * Mitsubishi, **chiller**, and EPA documents but tag them out of scope."
+ *
+ * Left as a coverage pattern rather than a document-id denylist so a second chiller
+ * added to the manifest is handled without a code edit — the same reason scope is
+ * derived from manifest columns rather than filenames.
+ *
+ * (The brief's "18 Trane + Carrier rooftop docs" is a miscount: there are exactly 18
+ * such documents and one of them is this chiller. Line 64 names chillers directly,
+ * so it governs. Recorded rather than silently reconciled.)
+ */
+export const OUT_OF_SCOPE_EQUIPMENT = /\bchillers?\b/i;
+
 export const isInScope = (doc) =>
-  IN_SCOPE_MANUFACTURERS.includes(doc.manufacturer) || IN_SCOPE_DOCTYPES.includes(doc.docType);
+  !OUT_OF_SCOPE_EQUIPMENT.test(`${doc.coverage ?? ''} ${doc.docType ?? ''}`) &&
+  (IN_SCOPE_MANUFACTURERS.includes(doc.manufacturer) || IN_SCOPE_DOCTYPES.includes(doc.docType));
 
 /**
  * Every document that resolved, with its manifest provenance and scope flag.
