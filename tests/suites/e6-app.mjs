@@ -276,6 +276,14 @@ export default defineSuite({
       what: 'component tests cover message, citation, and refusal rendering',
       requires: 'frontend',
       async run(c) {
+        // Run-aware gate. The frontend artifact existing is not the same thing as
+        // Run C's frontend having landed: Run A's Stage 4 is a prescribed
+        // nothing-to-do handoff, and opening this Run C criterion against it
+        // would manufacture a FAIL for work no run has started.
+        const artifact = c.read('.pipeline/04-frontend.md') ?? '';
+        if (/nothing to do/i.test(artifact) && /Run A/i.test(artifact)) {
+          return blocked('Run C AC — Stage 4 in Run A is a nothing-to-do handoff; component tests are Run C frontend work');
+        }
         const found = appSources(c).filter((f) => /\.(test|spec)\.tsx?$/.test(f));
         const ev = c.fromCheck(
           'scan app/ for component test files',

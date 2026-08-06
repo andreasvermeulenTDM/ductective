@@ -210,8 +210,31 @@ export default defineSuite({
       story: 'E1.3',
       what: 'documents are keyed by a stable ID, so a rename cannot mis-cite',
       requires: 'knowledge',
-      async run(_c) {
-        return blocked('document-identity scheme not yet defined — Stage 2.5 owns it');
+      needsEnv: ['EXPO_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'],
+      async run(c) {
+        // Was a placeholder blocked() until Stage 2.5 defined the scheme. It has:
+        // id = 'doc_' + sha256(SourceURL)[:16]. The check re-derives every live
+        // document's id from its stored source_url — if any id had instead been
+        // derived from a filename, or hand-assigned, the recomputation would not
+        // match, and a rename could silently re-point that document's citations.
+        const { createHash } = await import('node:crypto');
+        const { supabaseAdmin } = await import('../../lib/clients.mjs');
+        const { data, error } = await supabaseAdmin()
+          .from('documents')
+          .select('id, source_url, file_name');
+        if (error) return blocked(`documents not queryable: ${error.message}`);
+        if (!data?.length) return blocked('documents table is empty — nothing ingested yet');
+
+        const derive = (u) => 'doc_' + createHash('sha256').update(u.trim()).digest('hex').slice(0, 16);
+        const bad = data.filter((d) => d.id !== derive(d.source_url));
+        const ev = c.fromCheck(
+          "re-derive id from source_url for every documents row; compare to stored id",
+          `${data.length} documents checked\n` +
+            (bad.length ? bad.map((d) => `MISMATCH ${d.file_name}: ${d.id}`).join('\n') : 'all ids derive from SourceURL')
+        );
+        return bad.length === 0
+          ? pass(ev, `${data.length} ids derive from SourceURL, none from a filename`)
+          : fail(ev, `${bad.length} document id(s) do not derive from their SourceURL — a rename can mis-cite`);
       },
     },
 
@@ -231,8 +254,39 @@ export default defineSuite({
       story: 'E1.5',
       what: 'every flagged document has exactly one disposition',
       requires: 'knowledge',
-      async run() {
-        return blocked('depends on E1.4 output, which does not exist yet');
+      needsEnv: ['EXPO_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'],
+      async run(c) {
+        // Was a placeholder blocked() until E1.4's output existed. It does: every
+        // ingested document row carries its disposition and reason. Two things to
+        // hold: any non-clean disposition must state WHY (a caveat without a
+        // reason is a flag nobody can act on), and excluded documents — which are
+        // deliberately never upserted — must be accounted for in the artifact
+        // rather than silently absent from both places.
+        const { supabaseAdmin } = await import('../../lib/clients.mjs');
+        const { data, error } = await supabaseAdmin()
+          .from('documents')
+          .select('file_name, disposition, disposition_reason');
+        if (error) return blocked(`documents not queryable: ${error.message}`);
+        if (!data?.length) return blocked('documents table is empty — nothing ingested yet');
+
+        const flagged = data.filter((d) => d.disposition !== 'ingest');
+        const unreasoned = flagged.filter((d) => !d.disposition_reason?.trim());
+
+        const artifact = c.read('.pipeline/025-knowledge.md') ?? '';
+        const excludedRecorded = /excluded:\s*[1-9]/i.test(artifact) || /EXCLUDED/.test(artifact);
+
+        const ev = c.fromCheck(
+          'documents.disposition/_reason for every live row; artifact for exclusions',
+          `${data.length} rows · ${flagged.length} flagged · ${unreasoned.length} without a reason\n` +
+            `artifact records exclusions: ${excludedRecorded}`
+        );
+        if (unreasoned.length) {
+          return fail(ev, `${unreasoned.length} flagged document(s) carry no reason: ${unreasoned.map((d) => d.file_name).join(', ')}`);
+        }
+        if (!excludedRecorded) {
+          return fail(ev, 'excluded documents are absent from the DB by design but unrecorded in the artifact — they have vanished from both places');
+        }
+        return pass(ev, `${flagged.length} flagged, every one with a stated reason; exclusions recorded in the artifact`);
       },
     },
 
