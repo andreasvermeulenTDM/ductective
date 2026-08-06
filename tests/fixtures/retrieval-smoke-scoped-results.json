@@ -1,0 +1,639 @@
+{
+  "model": "voyage-4-large",
+  "at": "2026-08-06T16:26:12.482Z",
+  "passes": true,
+  "rows": [
+    {
+      "id": "R01",
+      "mode": "vector",
+      "query": "Trane Precedent rooftop unit tripping on high head pressure, what should I check",
+      "target": {
+        "id": "doc_5598ef14bee007cb",
+        "label": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM"
+      },
+      "mfr": "Trane",
+      "mfrDocCount": 8,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 36,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 34,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 31,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 34,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 4,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 38,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 9,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 32,
+            "manufacturer": "Trane"
+          }
+        ],
+        "mfr": [
+          "RT-SVX056D-GB_Airfinity-Rooftop-IOM p.42",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.56",
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.36",
+          "RT-SVX21AD-EN_Rooftop-IOM p.67",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.9",
+          "RT-SVX34W-EN_Rooftop-IOM p.78",
+          "RT-SVX34W-EN_Rooftop-IOM p.87",
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.47"
+        ]
+      }
+    },
+    {
+      "id": "R01",
+      "mode": "hybrid",
+      "query": "Trane Precedent rooftop unit tripping on high head pressure, what should I check",
+      "target": {
+        "id": "doc_5598ef14bee007cb",
+        "label": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM"
+      },
+      "mfr": "Trane",
+      "mfrDocCount": 8,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 36,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 38,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 34,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 8,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 37,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 34,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 4,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_5598ef14bee007cb",
+            "document": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM",
+            "page": 22,
+            "manufacturer": "Trane"
+          }
+        ],
+        "mfr": [
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.9",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.112",
+          "RT-SVX056D-GB_Airfinity-Rooftop-IOM p.46",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.134",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.60",
+          "RT-SVX056D-GB_Airfinity-Rooftop-IOM p.5",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.143",
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.40"
+        ]
+      }
+    },
+    {
+      "id": "R02",
+      "mode": "vector",
+      "query": "Carrier 48LC low suction pressure and the evaporator coil is freezing up",
+      "target": {
+        "id": "doc_d01ded774029c13b",
+        "label": "48-50LC-04-06_Single-Package-Rooftop-Service"
+      },
+      "mfr": "Carrier",
+      "mfrDocCount": 9,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 29,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 33,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 28,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 35,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 40,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 31,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 31,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 27,
+            "manufacturer": "Carrier"
+          }
+        ],
+        "mfr": [
+          "48HJ-32SI_Install-Startup-Service p.55",
+          "50E-C2SI_Install-Startup-Service p.67",
+          "48-50PGPM_Single-Package-Rooftop-Service p.39",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.29",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.33",
+          "48HJ-32SI_Install-Startup-Service p.54",
+          "48-50PGPM_Single-Package-Rooftop-Service p.45",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.28"
+        ]
+      }
+    },
+    {
+      "id": "R02",
+      "mode": "hybrid",
+      "query": "Carrier 48LC low suction pressure and the evaporator coil is freezing up",
+      "target": {
+        "id": "doc_d01ded774029c13b",
+        "label": "48-50LC-04-06_Single-Package-Rooftop-Service"
+      },
+      "mfr": "Carrier",
+      "mfrDocCount": 9,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 33,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 28,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 31,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 29,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 17,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 28,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 18,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_d01ded774029c13b",
+            "document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 40,
+            "manufacturer": "Carrier"
+          }
+        ],
+        "mfr": [
+          "48-50PGPM_Single-Package-Rooftop-Service p.45",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.33",
+          "48-50PGPM_Single-Package-Rooftop-Service p.41",
+          "48HJ-32SI_Install-Startup-Service p.54",
+          "48-50PGPM_Single-Package-Rooftop-Service p.39",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.28",
+          "48-50PGPM_Single-Package-Rooftop-Service p.46",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.31"
+        ]
+      }
+    },
+    {
+      "id": "R05",
+      "mode": "vector",
+      "query": "what do the diagnostic LED flash codes on the control board mean",
+      "target": {
+        "id": "doc_5e197be11c5d32bb",
+        "label": "48-50A-19PD_WeatherMaker-Product-Data"
+      },
+      "mfr": "Trane",
+      "mfrDocCount": 8,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 84,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 84,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 97,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 92,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 7,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 6,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 84,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 85,
+            "manufacturer": "Carrier"
+          }
+        ],
+        "mfr": [
+          "RT-SVX21AD-EN_Rooftop-IOM p.74",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.47",
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.51",
+          "RT-SVX21AD-EN_Rooftop-IOM p.73",
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.55",
+          "RT-SVX21AD-EN_Rooftop-IOM p.71",
+          "RT-SVX21AD-EN_Rooftop-IOM p.58",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.64"
+        ]
+      }
+    },
+    {
+      "id": "R05",
+      "mode": "hybrid",
+      "query": "what do the diagnostic LED flash codes on the control board mean",
+      "target": {
+        "id": "doc_5e197be11c5d32bb",
+        "label": "48-50A-19PD_WeatherMaker-Product-Data"
+      },
+      "mfr": "Trane",
+      "mfrDocCount": 8,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 84,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 97,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 84,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 92,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 107,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 95,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 7,
+            "manufacturer": "Carrier"
+          },
+          {
+            "document_id": "doc_5e197be11c5d32bb",
+            "document": "48-50A-19PD_WeatherMaker-Product-Data",
+            "page": 112,
+            "manufacturer": "Carrier"
+          }
+        ],
+        "mfr": [
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.55",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.64",
+          "RT-SVX21AD-EN_Rooftop-IOM p.74",
+          "RT-SVX21AD-EN_Rooftop-IOM p.71",
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.54",
+          "RT-SVX21AD-EN_Rooftop-IOM p.74",
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.51",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.59"
+        ]
+      }
+    },
+    {
+      "id": "R11",
+      "mode": "vector",
+      "query": "Symbio 800 controller alarm code on an IntelliPak rooftop",
+      "target": {
+        "id": "doc_ee8e112bb4e43975",
+        "label": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM"
+      },
+      "mfr": "Trane",
+      "mfrDocCount": 8,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 72,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 65,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 1,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 12,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 12,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 3,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 72,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 124,
+            "manufacturer": "Trane"
+          }
+        ],
+        "mfr": [
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.39",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.72",
+          "RT-SVX34W-EN_Rooftop-IOM p.87",
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.33",
+          "RT-SVX34W-EN_Rooftop-IOM p.86",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.65",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.1",
+          "RT-SVX34W-EN_Rooftop-IOM p.89"
+        ]
+      }
+    },
+    {
+      "id": "R11",
+      "mode": "hybrid",
+      "query": "Symbio 800 controller alarm code on an IntelliPak rooftop",
+      "target": {
+        "id": "doc_ee8e112bb4e43975",
+        "label": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM"
+      },
+      "mfr": "Trane",
+      "mfrDocCount": 8,
+      "singleOk": true,
+      "singleRows": 8,
+      "mfrOk": true,
+      "mfrRows": 8,
+      "leaks": [],
+      "nofilterOk": true,
+      "returned": {
+        "single": [
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 72,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 12,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 129,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 124,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 12,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 5,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 65,
+            "manufacturer": "Trane"
+          },
+          {
+            "document_id": "doc_ee8e112bb4e43975",
+            "document": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM",
+            "page": 1,
+            "manufacturer": "Trane"
+          }
+        ],
+        "mfr": [
+          "RT-SVX34W-EN_Rooftop-IOM p.87",
+          "RT-SVX34W-EN_Rooftop-IOM p.37",
+          "RT-SVX34W-EN_Rooftop-IOM p.88",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.72",
+          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.12",
+          "RT-SVX34W-EN_Rooftop-IOM p.89",
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.10",
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.9"
+        ]
+      }
+    }
+  ]
+}
