@@ -237,8 +237,38 @@ export async function ingest({ log = console.log } = {}) {
 
     // What is already stored for this document?
     const { data: existing, error: eErr } = await db
-      .from('chunks').select('id, content_hash').eq('document_id', doc.id);
+      .from('chunks').select('id, content_hash, in_scope').eq('document_id', doc.id);
     if (eErr) throw new Error(`read chunks ${doc.file}: ${eErr.message}`);
+
+    /*
+     * Denormalised chunk metadata is a copy, and a copy only written on insert goes
+     * stale the moment its manifest row changes. `content_hash` covers the text, so
+     * a scope correction changes no hash, re-inserts nothing, and never reaches the
+     * chunks — while `match_chunks` filters on the *chunk's* `in_scope`, not the
+     * document's. A scope fix would appear to have worked and changed no retrieval.
+     *
+     * Detected on `in_scope` because that is the field that moves retrieval; the
+     * other denormalised columns are re-synced with it since they share a source.
+     * ponytail: drift on a sibling column without in_scope moving is still missed —
+     * compare the full set here if that ever happens.
+     */
+    if ((existing ?? []).some((r) => r.in_scope !== doc.inScope)) {
+      await withRetry(`chunk metadata sync ${doc.file}`, () =>
+        // `model_coverage`, not `coverage`: the live chunks table uses the brief's
+        // column names (`source_document`, `page_number`, `model_coverage`) and
+        // `sql/003` on disk does not match it. Flagged to Knowledge — a committed
+        // migration that differs from the applied schema means a clean rebuild
+        // produces a different database. Following the live schema here.
+        db.from('chunks').update({
+          in_scope: doc.inScope,
+          manufacturer: doc.manufacturer,
+          doc_type: doc.docType,
+          model_coverage: doc.coverage ?? '',
+          license_status: doc.licenseStatus,
+        }).eq('document_id', doc.id)
+      );
+      stats.resynced = (stats.resynced ?? 0) + (existing ?? []).length;
+    }
 
     const have = new Map((existing ?? []).map((r) => [r.content_hash, r.id]));
     const want = new Map(chunks.map((c) => [c.content_hash, c]));
@@ -301,6 +331,9 @@ if (isMain(import.meta.url)) {
     console.log(`  inserted         : ${s.inserted}`);
     console.log(`  unchanged        : ${s.unchanged}   ← not re-embedded, and not paid for again`);
     console.log(`  deleted (stale)  : ${s.deleted}`);
+    // Reported even at zero: a metadata correction that re-embeds nothing would
+    // otherwise be indistinguishable from a run that did nothing at all.
+    console.log(`  metadata resynced: ${s.resynced ?? 0}   ← scope/provenance corrected on existing chunks`);
     console.log(`\n  embedding model  : ${EMBED_MODEL}`);
     console.log(`  tokens billed    : ${s.tokens.toLocaleString()}`);
     console.log(`  cost this run    : $${s.costUsd.toFixed(4)}   (list price; inside Voyage's 200M free allowance)`);

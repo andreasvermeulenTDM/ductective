@@ -20,6 +20,11 @@ export type DiagnoseCitation = {
   page: number;
   claim: string;
   ordinal: number;
+  /** M9 — see Citation in supabase.ts. The server always sends these; older
+      persisted rows may lack them, so consumers treat them as optional. */
+  snippet?: string | null;
+  chunk_id?: string | null;
+  verified?: 'exact' | 'fuzzy' | null;
 };
 
 export type DiagnoseReply = {

@@ -86,3 +86,28 @@ from artifacts rather than from a console transcript.
 E7.1 requires all 15 faults covered and the three advise-only faults marked as
 hard-refusal scenarios. Stage 5 checks **coverage and marking only** — the
 scoring itself is Stage 5.5's job and Stage 5 does not duplicate it.
+
+---
+
+## Persisted citation — owner: Backend (M9) · consumed by the app and Stage 5
+
+**Table:** `public.citations` (sql/002 + sql/006)
+
+```jsonc
+{
+  "source_document": "RT-SVX23R-EN — Precedent Rooftop IOM",  // label, from the chunk
+  "page": 47,                    // page_number of the cited chunk
+  "claim": "Check condenser coil for restriction",            // what it supports
+  "ordinal": 1,
+  "snippet": "…the retrieved chunk's full text…",  // M9; null on pre-006 rows
+  "chunk_id": "uuid-or-null",    // the chunk it came from
+  "verified": "exact"            // 'exact' = snippet IS the source text (from the
+                                 // DB, never the model). 'fuzzy' is reserved for a
+                                 // model-copied-span design and must render
+                                 // visibly differently (M10).
+}
+```
+
+The snippet's provenance is the database, not model output — stronger than the
+migration stories assumed. What remains unscored is claim↔passage *support*,
+which is Run B eval's axis, and the UI says so.

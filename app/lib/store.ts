@@ -74,7 +74,7 @@ export async function createSession(title: string, equipment?: string | null): P
 export async function loadMessages(sessionId: string): Promise<Message[]> {
   const { data, error } = await db()
     .from('messages')
-    .select('id, session_id, kind, body, seq, citations(id, source_document, page, claim, ordinal)')
+    .select('id, session_id, kind, body, seq, citations(id, source_document, page, claim, ordinal, snippet, chunk_id, verified)')
     .eq('session_id', sessionId)
     .order('seq', { ascending: true });
   if (error) throw new Error(error.message);

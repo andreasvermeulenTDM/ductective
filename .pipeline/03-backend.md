@@ -360,6 +360,119 @@ the wrong direction to err in.
 
 ---
 
+## U4 — coverage stated at selection ✅ (backend half)
+
+`lib/units.mjs`, exposed as `POST /resolve-unit`. Needed nothing from Stage 2.5:
+`public.documents` already carries `manufacturer`, `coverage`, `doc_type` and
+`in_scope`, so resolution is an ordinary select. (U5's retrieval filter is the part
+that does need Knowledge — filed as R1.)
+
+### Contract
+
+```
+POST /resolve-unit    { manufacturer, model }
+
+200 {
+  status:      'covered' | 'out_of_scope' | 'unrecognised',
+  documentIds: string[],   // empty unless covered; feeds U5's filter once R1 lands
+  documents:   [{ id, manufacturer, coverage, doc_type, in_scope, disposition }],
+  covered:     [{ manufacturer, families: string[] }],   // what IS covered
+  message:     string      // plain-language, ready to render
+}
+```
+
+Its own endpoint rather than a field on `/diagnose`, because the app must state
+coverage at unit selection — before there is a symptom to diagnose.
+
+### Two properties of the real corpus that drive the matching
+
+- **Carrier names families `48/50XX`** — six of nine Carrier documents. A tech types
+  "48LC"; the coverage string reads "48/50LC single package rooftop 4-6 ton".
+  Stripping punctuation yields `4850lc`, which contains `50lc` but *not* `48lc`, so
+  the obvious normalisation fails silently across most of the Carrier corpus.
+  Expanded explicitly, and "48LC", "50LC" and "48/50LC" all resolve to the same
+  document.
+- **PT charts are `in_scope` but are not units.** Their coverage is a refrigerant.
+  They are excluded from unit matching — otherwise asking about a Daikin while
+  holding R-454B gauges would resolve as supported. They remain available to
+  retrieval.
+
+Manufacturer matching is containment in both directions so "Daikin" finds "Daikin
+Applied". That is what keeps *ingested-but-out-of-scope* distinguishable from
+*never heard of it*, which U4 requires. A manufacturer match alone never counts as
+covered — otherwise every Carrier unit ever built is covered by the 48/50LC manual.
+
+### Verified live
+
+| Input | Verdict | Docs |
+|---|---|---|
+| Trane / Precedent | `covered` | 3 |
+| Carrier / 48LC | `covered` | 1 |
+| Daikin / Rebel | `out_of_scope` | 0 |
+| Lennox / KGA092 | `unrecognised` | 0 |
+| Trane / Voyager | `unrecognised`, leads with Trane's families | 0 |
+
+15 unit tests, no key required.
+
+### The chiller tagging — fixed at source, 6 Aug
+
+U4 turned D1's item 4 from a retrieval nuisance into a promise made to a technician:
+`Trane / chiller` resolved **`covered`**, and the covered-families message
+**advertised "Air-cooled chiller 25-120 tons"** as Phase 1 coverage.
+
+Fixed in the scope rule rather than by patching rows. `ingest/reconcile.mjs`
+implemented only the manufacturer half of a definition its own comment states as
+"Trane + Carrier **rooftop** docs", so every Trane document was in scope, chiller
+included. `00-brief.md:64` is explicit: *"Ingest the Daikin, Mitsubishi, chiller,
+and EPA documents but tag them out of scope."*
+
+A coverage pattern, not a document-id denylist, so a second chiller added to the
+manifest needs no code edit — the same reasoning that derives scope from manifest
+columns rather than filenames. In scope went 21 → **20** (17 Trane + Carrier
+rooftop, plus 3 PT charts).
+
+> The brief's "18 Trane + Carrier rooftop docs" is a miscount — there are exactly 18
+> such documents and one is this chiller. Line 64 names chillers directly, so it
+> governs. Recorded rather than silently reconciled.
+
+### A second defect found while fixing the first: metadata never reached chunks
+
+The scope fix would have appeared to work and changed nothing. `content_hash` covers
+the chunk text, so a scope correction changes no hash, re-inserts nothing, and never
+touched the denormalised `in_scope` on existing chunks — while `match_chunks` filters
+on the **chunk's** `in_scope`, not the document's.
+
+`ingest/run.mjs` now detects that drift and re-syncs the denormalised columns.
+Reported in the summary even at zero, because a metadata-only correction that
+re-embeds nothing is otherwise indistinguishable from a run that did nothing:
+
+```
+metadata resynced: 63   ← scope/provenance corrected on existing chunks
+inserted: 0 · unchanged: 3787 · tokens billed: 0 · 7.9s
+```
+
+**Verified after the run:** all 63 chiller chunks are `in_scope = false`, and the
+chiller no longer appears in the top 5 for the Trane Precedent query — it was ranked
+1st on one phrasing before.
+
+### FLAGGED TO KNOWLEDGE — `sql/003` does not match the applied schema
+
+Hit while writing the re-sync. The live `chunks` table uses `source_document`,
+`page_number` and `model_coverage`; committed `sql/003_chunks.sql` declares `page`
+and `coverage`. S6's criterion is that the migration is "committed and re-runnable
+from clean" — as it stands a clean rebuild produces a **different database** from
+the one running, and `match_chunks` is written against the live names. Backend
+followed the live schema. Reconciling the file is Knowledge's.
+
+### OPEN QUESTION — model numbers are not in the corpus
+
+A Precedent is sold as YSC/YHC series, and no `coverage` string contains those
+tokens. A tech typing "YSC060" gets `unrecognised` with Trane's families offered —
+honest, and per U4's "do not guess", but it will read as a miss to anyone who knows
+the equipment. *Default taken:* no alias table in Backend. Series-to-family aliases
+are corpus metadata and belong with Knowledge's manifest, not hard-coded next to the
+matcher. Raise with Knowledge if the eval scenario set exercises model numbers.
+
 ## Contracts for Frontend
 
 **None this pass.** S1 adds no API surface. The contract Stage 4 waits on is S4's
