@@ -22,6 +22,7 @@
 
 import { createServer } from 'node:http';
 import { diagnose, DiagnoseError } from '../lib/diagnose.mjs';
+import { resolveUnit } from '../lib/units.mjs';
 
 const PORT = Number(process.env.DIAGNOSE_PORT || 8787);
 const LIMIT = 32 * 1024;
@@ -56,12 +57,24 @@ async function readBody(req) {
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.url === '/health') return send(res, 200, { ok: true, model: process.env.GEMINI_MODEL ?? 'default' });
-  if (req.method !== 'POST' || !req.url.startsWith('/diagnose')) {
-    return send(res, 404, { status: 404, message: 'POST /diagnose' });
+  const route = req.method === 'POST' ? (req.url ?? '').split('?')[0] : null;
+  if (route !== '/diagnose' && route !== '/resolve-unit') {
+    return send(res, 404, { status: 404, message: 'POST /diagnose or POST /resolve-unit' });
   }
 
   try {
-    const { symptom, equipment, history } = await readBody(req);
+    const body = await readBody(req);
+
+    // U4 — coverage before any question. Deliberately its own call rather than a
+    // field on /diagnose: the app has to be able to state coverage at unit
+    // selection, which is before there is a symptom to diagnose.
+    if (route === '/resolve-unit') {
+      const verdict = await resolveUnit({ manufacturer: body.manufacturer, model: body.model });
+      console.log(`resolve  ${verdict.status.padEnd(14)} ${body.manufacturer ?? '?'} / ${body.model ?? '?'}  docs=${verdict.documentIds.length}`);
+      return send(res, 200, verdict);
+    }
+
+    const { symptom, equipment, history } = body;
     const result = await diagnose({ symptom, equipment, history });
     console.log(
       `${result.kind.padEnd(8)} ${result.meta.latencyMs}ms  ` +
