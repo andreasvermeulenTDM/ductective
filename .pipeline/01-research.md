@@ -461,3 +461,15 @@ explicitly the owner's call, and the owner has accepted free-tier management.
 - **OQ5 — Model-number aliases (YSC/YHC → Precedent)** remain unresolved from
   `.pipeline/03-backend.md:467-474`. *Default:* unchanged — corpus metadata,
   Knowledge's manifest, raised only if eval scenarios exercise series numbers.
+
+---
+
+## Post-scriptum — M12 superseded the same day (8 Aug, after this artifact)
+
+The M12 status above reads the 5 Aug UNMEASURED output; a full run completed
+hours after this artifact was written. **The gate is now MEASURED**: 12/15
+faults, 47 claims — span verification **80.9%** (stop condition 1 fired, and is
+moot for the shipped source-index design), fabrication **0/47**, provider blocks
+**0/15**, ~3.5k/260 tokens per answer. Verdict and retirement of M6–M8-as-written:
+`spike/m12/README.md` §"THE GATE HAS RUN". Stage 2 should treat span-copying
+designs as closed, not open.
