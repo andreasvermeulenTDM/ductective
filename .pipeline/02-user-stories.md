@@ -653,3 +653,42 @@ a filed item (ST-02 ← CONTRACT MISMATCH; ST-11 ← Edge cap constraint) behind
    computed from measured token counts plus a cold/warm pair, with the method
    stated. This is the honest available measurement, flagged rather than
    presented as an A/B toggle.
+
+---
+
+## Addendum A — owner device-test feedback, 8 Aug 2026
+
+First hands-on session on the physical device (Expo Go, live server). Five items,
+triaged by the lead; the owner's words are the requirement.
+
+**Fixed same-day** (outside story flow, on `stage/device-feedback`):
+- Preset tap now sends immediately — filling the box and waiting read as broken.
+- Double submission on send: `onSubmitEditing` and the button both fired in one
+  tick and the async `busy` guard let both through; a synchronous ref now gates.
+- History showed 20 mock-era demo sessions; purged. History is live data only.
+
+**Priority change — ST-05/ST-06/ST-07 (nameplate vision) escalate.** The owner's
+first unprompted ask was the real camera: "I want to use my camera for capturing
+the nameplate — not simulated." Vision moves to the front of Run B's build order
+after ST-02 (the unit gate it depends on). The simulated CaptureScreen is now an
+active irritant, not a placeholder.
+
+**Two NEW stories, owner-sourced, needing scope decisions:**
+
+### ST-17 · Photo turns mid-diagnosis *(candidate — needs owner scope call)*
+"It should allow me to take pictures of parts / what I see as I'm going through
+the steps. The chat should ask for some." A photo as a *turn* in the diagnosis —
+model sees the part, adjusts the steps. Server-side this is the vision path ST-05
+builds, generalised from nameplates to arbitrary part photos; UI-side it is a
+camera affordance in the chat composer. **Proposed scope: server capability in
+Run B (same endpoint, no nameplate-specific prompt), UI in Run C** — it is chat
+UI, and Run C owns the chat screen.
+
+### ST-18 · The core asks — for photos and for clarification, proactively
+"The chat should ask for some [photos]. It should also ask for any clarifying
+questions." The clarify *capability* exists (ST-08 verifies it); the owner is
+asking about *disposition* — the core should reach for a photo or a question
+when it would change the diagnosis, not only when the symptom is unparseable.
+Prompt-design work in the diagnose core + an eval axis (does it ask when it
+should?). **Proposed scope: Run B prompt iteration, measured by ST-15/16's
+harness rather than shipped blind.**

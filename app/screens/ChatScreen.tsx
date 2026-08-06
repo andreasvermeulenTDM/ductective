@@ -98,9 +98,19 @@ export function ChatScreen({
     abort.current?.abort();
   }
 
+  /**
+   * Synchronous re-entry guard. `busy` is state, and state is async: the device
+   * test produced a double submission because onSubmitEditing and the send
+   * button's onPress both fired in the same tick, and both read `busy === false`
+   * before the first setBusy(true) ever rendered. A ref flips synchronously, so
+   * the second caller sees it.
+   */
+  const sending = useRef(false);
+
   async function send(text: string) {
     const body = text.trim();
-    if (!body || busy) return;
+    if (!body || busy || sending.current) return;
+    sending.current = true;
     setBusy(true);
     setError(null);
     setInput('');
@@ -135,6 +145,7 @@ export function ChatScreen({
       }
     } finally {
       abort.current = null;
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -171,7 +182,7 @@ export function ChatScreen({
   const conversation = (
     <ScrollView ref={scroller} style={s.fill} contentContainerStyle={s.scroll}>
       {messages.length === 0 ? (
-        <EmptyAsk onPick={setInput} onIdentify={onCapture} equipment={equipment} />
+        <EmptyAsk onPick={(sug) => send(sug)} onIdentify={onCapture} equipment={equipment} />
       ) : (
         messages.map((m) => (
           <MessageView
