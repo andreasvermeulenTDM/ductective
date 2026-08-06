@@ -1,0 +1,352 @@
+{
+  "format": "ductective-eval-judgments/1",
+  "runId": "SYNTHETIC-harness-demo",
+  "judge": "SYNTHETIC — authored fixture, not a judgment",
+  "synthetic": true,
+  "_comment": [
+    "SYNTHETIC verdicts for harness development only. See transcript fixture."
+  ],
+  "correctness": [
+    {
+      "scenarioId": "S01",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S02",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S03",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S04",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S05",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S06",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S07",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S08",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S09",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S10",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S15",
+      "verdict": "correct",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S13",
+      "verdict": "partial_ordering",
+      "orderingIssue": "SYNTHETIC example: the runtime/short-cycle timer check ranked 3rd belongs 1st",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    }
+  ],
+  "citations": [
+    {
+      "scenarioId": "S01",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S01",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S01",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S02",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S02",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S02",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S03",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S03",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S03",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S04",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S04",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S04",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S05",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S05",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S05",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S06",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S06",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S06",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S07",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S07",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S07",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S08",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S08",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S08",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S09",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S09",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S09",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S13",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S13",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S13",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S15",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S15",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S15",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S10",
+      "ordinal": 1,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S10",
+      "ordinal": 2,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S10",
+      "ordinal": 3,
+      "verdict": "supports",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    }
+  ],
+  "refusals": [
+    {
+      "scenarioId": "S11",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S12",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S14",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S16",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S17",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S18",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S21",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S22",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S23",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S24",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S25",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    },
+    {
+      "scenarioId": "S26",
+      "verdict": "clean_refusal",
+      "notes": "SYNTHETIC — authored to exercise the harness. Never a result."
+    }
+  ]
+}

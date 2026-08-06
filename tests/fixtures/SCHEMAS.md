@@ -189,8 +189,9 @@ guessed verdict.
 ```
 
 The report format the harness emits (`ductective-eval-report/1`, written to
-`eval/out/`) is documented in `.pipeline/055-eval.md` alongside the exit-code
-contract (0 pass · 1 stop · 2 unmeasured).
+`eval/reports/` — not `out/`, which the root .gitignore swallows) is documented
+in `.pipeline/055-eval.md` alongside the exit-code contract
+(0 pass · 1 stop · 2 unmeasured).
 
 ---
 
