@@ -40,19 +40,17 @@ const send = (res, status, body) => {
   res.end(payload);
 };
 
-function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (c) => {
-      raw += c;
-      if (raw.length > LIMIT) { reject(new DiagnoseError(413, 'request too large')); req.destroy(); }
-    });
-    req.on('end', () => {
-      try { resolve(raw ? JSON.parse(raw) : {}); }
-      catch { reject(new DiagnoseError(400, 'body is not valid JSON')); }
-    });
-    req.on('error', reject);
-  });
+async function readBody(req) {
+  let raw = '';
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > LIMIT) throw new DiagnoseError(413, 'request too large');
+  }
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new DiagnoseError(400, 'body is not valid JSON');
+  }
 }
 
 const server = createServer(async (req, res) => {
