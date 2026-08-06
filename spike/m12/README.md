@@ -125,3 +125,41 @@ This exists because the first two runs produced 78.6% (11/14) and 25.0% (1/4) sp
 verification. Both are quotable-looking percentages computed from almost nothing,
 and either could have been written into the stage artifact as "the number". Exit
 codes: `0` clean, `1` a stop condition fired, `2` not measurable.
+
+---
+
+## THE GATE HAS RUN — 8 Aug 2026, gemini-3.6-flash, live pgvector chunks
+
+12/15 faults produced results (2×502 transient, 1×429 at the tail), 47 claims —
+past both coverage floors. The four numbers, finally:
+
+| # | Number | Result |
+|---|---|---|
+| 1 | Span verification | **80.9%** (38/47) — below the ~95% bar; ⛔ stop condition 1 FIRED |
+| 2 | Chunk-id fabrication | **0.0%** (0/47) — zero across every run ever made |
+| 3 | Provider block rate | **0/15** — zero across every run ever made, incl. all three advise-only faults |
+| 4 | Tokens | 42,128 in / 3,136 out for 12 answers ≈ 3.5k/260 per answer — far under the $0.04 baseline |
+
+### Verdict, and why the fired stop condition does not stop the project
+
+Stop condition 1 prescribes a Pro comparison before redesigning. **That path is
+closed by owner decision** (free tier only; Pro has no free-tier allowance).
+
+It is also **moot for the shipped design**. Production (`lib/diagnose.mjs`) never
+adopted model-copied spans: it uses source-index anchoring, and M9 made the
+persisted snippet the retrieved chunk's own text — provenance from the database,
+not from the model. The failure mode the 95% bar guards against (paraphrased
+quotes breaking verification) does not exist on that path.
+
+Read as evidence, 80.9% **retroactively vindicates the variant**: Flash drifts on
+character-exact copying roughly 1 claim in 5, so a citation design depending on
+faithful copying would have been rebuilt on Pro or redesigned. The design that
+shipped depends on the model choosing the right source index — and that axis
+(claim↔source support) is exactly what Run B eval scores against its ≥90% bar
+on ≥30 claims.
+
+**M6–M8 as originally written are retired.** Their intent lives on in the shipped
+equivalents: the source-index envelope (M6′), structured output (M7′), and
+validateAnswer() + DB-sourced snippets (M8′/M9). Numbers 2–4 all support the
+shipped design: no fabricated sources, no safety-filter interference, cost far
+inside budget.
