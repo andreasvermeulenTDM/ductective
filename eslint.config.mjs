@@ -52,7 +52,7 @@ export default tseslint.config(
   // The Expo app: TypeScript and TSX.
   // ---------------------------------------------------------------------------
   {
-    files: ['app/**/*.{ts,tsx,mts}'],
+    files: ['app/**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2024,
@@ -76,13 +76,5 @@ export default tseslint.config(
        */
       '@typescript-eslint/no-require-imports': 'off',
     },
-  },
-
-  // ---------------------------------------------------------------------------
-  // App unit tests run under Node, not Metro — different globals entirely.
-  // ---------------------------------------------------------------------------
-  {
-    files: ['app/**/*.test.mts'],
-    languageOptions: { globals: globals.node },
   },
 );
