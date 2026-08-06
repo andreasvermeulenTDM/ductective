@@ -75,3 +75,6 @@ spike/m12/out/
 
 # Parsed-page cache — regenerable, and derived from the gitignored corpus
 ingest/.cache/
+
+# Agent worktrees — transient per-agent clones, never tracked
+.claude/worktrees/
