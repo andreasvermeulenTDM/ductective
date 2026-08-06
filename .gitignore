@@ -78,3 +78,10 @@ ingest/.cache/
 
 # Agent worktrees — transient per-agent clones, never tracked
 .claude/worktrees/
+
+# ST-09 — runtime instrumentation written by `npm run serve`. Machine-local
+# state: the quota ledger belongs to whichever machine spent the quota, and
+# the request log is raw material ST-10 summarizes, not a deliverable.
+scripts/quota-ledger.json
+scripts/quota-ledger.json.corrupt
+scripts/request-log.jsonl
