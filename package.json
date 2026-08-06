@@ -25,7 +25,8 @@
     "serve": "node --env-file=.env scripts/serve.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.111.0"
+    "@supabase/supabase-js": "^2.111.0",
+    "jpeg-js": "^0.4.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

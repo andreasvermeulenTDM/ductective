@@ -23,9 +23,13 @@
 import { createServer } from 'node:http';
 import { diagnose, DiagnoseError } from '../lib/diagnose.mjs';
 import { resolveUnit } from '../lib/units.mjs';
+import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
 
 const PORT = Number(process.env.DIAGNOSE_PORT || 8787);
 const LIMIT = 32 * 1024;
+// /identify-unit carries a base64 JPEG: 8 MiB binary ≈ 10.9 MiB base64, plus
+// JSON envelope. Every other route keeps the tight text limit.
+const IMAGE_LIMIT = Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 64 * 1024;
 
 const send = (res, status, body) => {
   const payload = JSON.stringify(body);
@@ -41,11 +45,11 @@ const send = (res, status, body) => {
   res.end(payload);
 };
 
-async function readBody(req) {
+async function readBody(req, limit = LIMIT) {
   let raw = '';
   for await (const chunk of req) {
     raw += chunk;
-    if (raw.length > LIMIT) throw new DiagnoseError(413, 'request too large');
+    if (raw.length > limit) throw new DiagnoseError(413, 'request too large');
   }
   try {
     return raw ? JSON.parse(raw) : {};
@@ -58,12 +62,12 @@ const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.url === '/health') return send(res, 200, { ok: true, model: process.env.GEMINI_MODEL ?? 'default' });
   const route = req.method === 'POST' ? (req.url ?? '').split('?')[0] : null;
-  if (route !== '/diagnose' && route !== '/resolve-unit') {
-    return send(res, 404, { status: 404, message: 'POST /diagnose or POST /resolve-unit' });
+  if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/identify-unit') {
+    return send(res, 404, { status: 404, message: 'POST /diagnose, /resolve-unit or /identify-unit' });
   }
 
   try {
-    const body = await readBody(req);
+    const body = await readBody(req, route === '/identify-unit' ? IMAGE_LIMIT : LIMIT);
 
     // U4 — coverage before any question. Deliberately its own call rather than a
     // field on /diagnose: the app has to be able to state coverage at unit
@@ -72,6 +76,21 @@ const server = createServer(async (req, res) => {
       const verdict = await resolveUnit({ manufacturer: body.manufacturer, model: body.model });
       console.log(`resolve  ${verdict.status.padEnd(14)} ${body.manufacturer ?? '?'} / ${body.model ?? '?'}  docs=${verdict.documentIds.length}`);
       return send(res, 200, verdict);
+    }
+
+    // ST-05 — nameplate photo in, identification + coverage verdict out.
+    // The log line carries sizes and the verdict only: image bytes never touch
+    // the log, per the story's no-image-in-logs criterion.
+    if (route === '/identify-unit') {
+      const out = await identifyUnit({ image: body.image, mimeType: body.mimeType });
+      const plate = out.identified ? `${out.manufacturer} / ${out.model}` : 'unreadable';
+      console.log(
+        `identify ${plate}  conf=${out.confidence} ${out.meta.latencyMs}ms  ` +
+          `in=${Math.round(out.meta.image.originalBytes / 1024)}kB sent=${Math.round(out.meta.image.sentBytes / 1024)}kB` +
+          (out.meta.image.resized ? ' (downscaled)' : '') +
+          (out.unit ? `  unit=${out.unit.status} docs=${out.unit.documentIds.length}` : '')
+      );
+      return send(res, 200, out);
     }
 
     // ST-04 (OQ1 default): the client supplies documentIds from /resolve-unit's
