@@ -807,3 +807,155 @@ Live calls this round: **0 Gemini, 0 Voyage, 0 Supabase** — everything stubbed
 
 Per instruction from the coordinating agent this branch is pushed without a PR;
 commits are per-story (`592469a` ST-02, `397b76c` ST-04, `0ddbbef` ST-05).
+
+---
+
+# Addendum — Run B Stage 3 · 6 Aug 2026 · ST-09 (cost, cache, latency — M15/M16)
+
+Branch `stage/backend-st09`, cut from `main` at `bc2f1d5`. Everything above
+stands; this extends it — **additively**. No response kind, gate, or retrieval
+semantic changed; every diff on the answer path is a new `meta` field or a
+timing capture around an existing call.
+
+**Precondition.** `02-user-stories.md` committed with ownership; ST-09's own
+dependency line is "None. Blocks Q1–Q4 usefulness" — it is cost-tracking rails,
+exempt from the retrieval-contract wait (and `025-knowledge.md` is merged
+regardless; nothing here touches ingestion, chunking, or embedding code —
+`retrieve()` gained a timing wrapper and reads the `tokens` field `embed()`
+already returned). Zero DDL, zero live provider calls (owner quota decision;
+every provider interaction in the new tests is a stub).
+
+## What landed, against ST-09's criteria
+
+| Criterion | Where |
+|---|---|
+| Adapter surfaces `cachedContentTokenCount` | `lib/providers/gemini.mjs` — `usage` now carries it under Google's own field name (was read nowhere; a quota day ran blind on cache behaviour). Also `attempts`, because a retried/failed call still spent RPD. Stub-body unit tests in `lib/providers/gemini.test.mjs` |
+| serve.mjs logs route, duration, tokens, cached, retries, projected cost | `scripts/serve.mjs` log-line tail: `tok=3500+900 cached=2100 retries=1 ~$0.0031 day=3/20`. Rates are named constants with source comments in `lib/metrics.mjs`. No symptom text and no image bytes in any log or file |
+| Batch summarizer (the tool ST-10 runs) | `npm run metrics` → `scripts/summarize-metrics.mjs`, math in `lib/metrics.mjs` (`summarize`): p50/p95 for total/retrieval/generation latency, mean cost with/without cache, cache-hit vs -miss groups, token totals, day-ledger table |
+| Structural caching preserved | Untouched — constant `SYSTEM` still first, zero prompt reordering (grep the diff: no change in `buildPrompt`/`SYSTEM`/`VISION_SYSTEM`) |
+| Zero live calls; lands before Q1 | 0 Gemini, 0 Voyage, 0 Supabase this round; all 33 new tests are stubbed |
+
+Plus the task's ledger requirement: a **per-day request ledger persisted
+server-side** — a JSON file beside the server (`scripts/quota-ledger.json`),
+which is the dev path ST-09 explicitly allows and is hereby declared as such.
+The Edge Function path (H9, still blocked) will need its own durable store;
+`lib/ledger.mjs` is transport-agnostic (path-injected) so that wrapper reuses
+the same code against a mounted file or is replaced at the transport, not in
+the core.
+
+## Contract additions Run C builds against (additive — nothing removed or renamed)
+
+Every `POST /diagnose` and `POST /identify-unit` **200** response's `meta` now
+always carries:
+
+```
+meta: {
+  …everything previously documented, unchanged…,
+  usage: {                      // ALWAYS present now — explicit zeros on paths
+    inputTokens: number,        //   that never called the model (refusal,
+    outputTokens: number,       //   unit_required, empty scope, no-doc)
+    totalTokens: number,
+    cachedContentTokenCount: number,  // Gemini's own field name, verbatim
+    embedTokens: number         // Voyage query-embed spend (0 on /identify-unit)
+  },
+  latency: { retrievalMs: number, generationMs: number },
+  attempts: number,             // provider attempts; 0 = model never called
+  budget: { day: 'YYYY-MM-DD', used: number, limit: 20, remaining: number }
+}
+```
+
+- `latency` phases are 0 where the phase never ran; `latencyMs` (unchanged)
+  remains the total. On `/identify-unit`, `retrievalMs` is the unit-resolution
+  database lookup; the remainder of `latencyMs` is image preprocessing.
+- `budget` counts **model calls, not HTTP requests**, against the Gemini
+  free-tier 20/day RPD — a refusal or `unit_required` spends none and does not
+  increment. `remaining` can go negative on an overrun day (honest, not
+  clamped). It is attached by the serve transport; core-level callers (tests
+  with injected deps) see everything except `budget`.
+- **Citation payload, refusal shape, error shape, and all four kinds:
+  unchanged.** The refusal/`unit_required`/no-doc shapes gained only the
+  usage/latency/attempts zeros above. Frontend may render `meta.budget` (e.g. a
+  dev-mode quota indicator) but nothing requires it.
+
+Error responses are unchanged on the wire (`{status, message,
+providerBlocked?, blockReason?}`). Internally, errors that consumed quota now
+carry `modelCallAttempted: true`, `attempts`, and (for provider blocks)
+`usage`/`model`, so the transport ledger counts them — pinned by tests; not part
+of the wire contract.
+
+## How the two domain rules fare
+
+Untouched, and pinned: the 12 refusal probes, gate tests, scope tests, and
+vision invariants all run against the instrumented code unmodified (123-test
+baseline green throughout). The instrumentation tests additionally pin that a
+refusal reports zero spend and `model: null` — i.e. the ledger cannot be used
+to argue a refusal "cost" anything, and no instrumentation path can convert an
+error into an answer (`instrument()` runs only on already-produced 200s; its
+own failures warn and never alter the response).
+
+## Files
+
+- `lib/providers/gemini.mjs` — `cachedContentTokenCount` + `attempts` surfaced
+- `lib/metrics.mjs` — rate constants (sourced), `estimateCostUsd`,
+  `normalizeUsage`/`zeroUsage`, `percentile`/`summarize`, ledger predicates
+- `lib/ledger.mjs` — day ledger + JSONL appender (file-backed, path-injected;
+  corrupt file preserved as `.corrupt`, never crashes a quota day)
+- `lib/diagnose.mjs`, `lib/vision.mjs` — meta instrumentation only
+- `scripts/serve.mjs` — ledger/log wiring, extended log lines
+- `scripts/summarize-metrics.mjs` + `npm run metrics`
+- `.gitignore` (+3 machine-local state files), `.env.example`
+  (`QUOTA_LEDGER_FILE`, `REQUEST_LOG_FILE`)
+- Tests: `lib/providers/gemini.test.mjs` (4), `lib/metrics.test.mjs` (11),
+  `lib/ledger.test.mjs` (7), `lib/instrumentation.test.mjs` (11)
+
+## Verified end to end, zero quota
+
+`node scripts/serve.mjs` (no keys), refusal + `unit_required` POSTs:
+
+```
+refusal  1ms  retrieved=- cites=0  tok=0+0 ~$0.0000 day=0/20
+unit_required 2ms  retrieved=0 cites=0  tok=0+0 ~$0.0000 day=0/20
+```
+
+Both responses carried the full `meta.usage`/`latency`/`attempts`/`budget`
+block; two JSONL entries appended; ledger correctly **not** incremented (no
+model call). With two synthetic model-call entries + `recordModelCall`, `npm
+run metrics` produced the p50/p95 table, mean cost with/without cache
+($0.003134 vs $0.003381 on the fixture), hit/miss split, and the day table
+(`2026-08-06 2/20 requests`). The DoD's "every field in one stub-driven log
+line" is the model-path suffix, unit-pinned via `usageSuffix` inputs in
+`lib/instrumentation.test.mjs` + the adapter tests.
+
+## OPEN QUESTIONs (defaults taken)
+
+1. **Ledger day boundary.** Google resets free-tier RPD at midnight Pacific;
+   the ledger rolls at **local server midnight** (default taken — simplest
+   honest thing for a single dev machine; within a session the running count is
+   exact either way). Revisit only if a quota day ever straddles the offset.
+2. **Rates for the pinned model.** Constants are the published Gemini
+   Flash-tier rates ($0.30/$2.50/$0.075 per MTok) and Voyage large-tier list
+   rate ($0.18/MTok — an upper bound; the account's 200M free allowance makes
+   marginal embed cost $0). Default taken: project at list rates. **Re-check
+   the constants whenever `DEFAULT_MODEL` or `EMBED_MODEL` bumps** — the
+   comment on the constants says the same.
+3. **What counts against 20/day.** Model calls (including blocked and failed
+   ones — they spent quota), not HTTP requests. Known undercount: an error
+   thrown *before* the adapter (e.g. retrieval 502) after a hypothetical future
+   model call would not be counted — no such path exists today.
+
+## Toolchain — exact
+
+| Command | Result |
+|---|---|
+| `npm run lint` | exit 0 — **0 errors, 0 warnings** (baseline 0/0, unchanged) |
+| `npm run build` | exit 0 — clean (`tsc --noEmit` in `app/`) |
+| `npm test` | exit 0 — **156 pass / 0 fail** (baseline 123/0; +33: 4 adapter, 11 metrics, 7 ledger, 11 instrumentation) |
+| `node --check` | clean on `lib/providers/gemini.mjs`, `lib/metrics.mjs`, `lib/ledger.mjs`, `lib/diagnose.mjs`, `lib/vision.mjs`, `scripts/serve.mjs`, `scripts/summarize-metrics.mjs` |
+| `npm run verify:secrets` | green |
+
+Live calls this round: **0 Gemini, 0 Voyage, 0 Supabase.**
+
+No `CONTRACT MISMATCH` and no `BLOCKED ON KNOWLEDGE` items this round. Nothing
+deferred to Frontend (rendering `meta.budget` is optional, not owed). Commits:
+`4bb576c` adapter, `5da1480` metrics, `60322d3` ledger, `5cb1ded` core meta,
+`a9a127a` serve/summarizer — pushed per instruction without a PR.
