@@ -966,8 +966,14 @@ deferred to Frontend (rendering `meta.budget` is optional, not owed). Commits:
 
 Free-tier quota is per **model** per day, so `complete()` now walks a chain when
 the pinned model's daily bucket is spent: `GEMINI_MODEL_CHAIN` (default
-`gemini-3.6-flash → gemini-3.5-flash → gemini-flash-latest`, the three verified
-callable on this account). Semantics:
+`gemini-3.6-flash → gemini-3.5-flash → gemini-3.5-flash-lite →
+gemini-3.1-flash-lite` — concrete models verified callable on this account,
+quality-ordered, full Flash before the lite tiers; 10 Aug probe). `-latest`
+aliases are excluded by design: `gemini-flash-lite-latest` answered as
+`modelVersion: gemini-3.5-flash-lite`, so an alias shares its concrete model's
+quota bucket and a chain slot for it re-probes a bucket that just 429'd.
+`gemini-2.5-flash-lite` is listed but NOT_FOUND on this account — listed ≠
+callable, again. Semantics:
 
 - **Daily** exhaustion (`…PerDay…` in the 429 detail) memoizes the model out of
   the chain until local midnight; a **per-minute** throttle chains for that one
