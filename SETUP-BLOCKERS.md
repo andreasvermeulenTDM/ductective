@@ -25,7 +25,7 @@ top of them.**
 | H4 | Supabase CLI available | Migrations, deploying Edge Functions | ✅ **Resolved via `npx`** |
 | H5 | Deno CLI installed | Running Edge Functions locally | ⏸️ **Deferred by decision** |
 | H6 | Docker Desktop installed | `supabase start` (local stack) | ⏸️ **Deferred by decision** |
-| H7 | Physical iOS or Android device + Expo Go | Acceptance criteria 2 and 3 | ⬜ Not done |
+| H7 | Physical iOS or Android device + Expo Go | Acceptance criteria 2 and 3 | 🟡 **Criterion 2 verified 8 Aug; 3 blocked on inbound 8787** |
 | H8 | Re-download `RT-SVX096C-EN_02282025.pdf` and `04-3817.pdf` | Corpus completeness | ⬜ Not done |
 
 Update the status column as you go. An agent that needs a blocked item must stop
@@ -190,10 +190,19 @@ irm https://deno.land/install.ps1 | iex
 Docker Desktop installs from docker.com/products/docker-desktop. It must be
 *running*, not merely installed, before `supabase start` will work.
 
-**H7 — device.** Install Expo Go from the App Store or Play Store. Phone and
-laptop must be on the same network. Acceptance criteria 2 and 3 in
-`.pipeline/00-brief.md` can only be confirmed by you holding the phone — no agent
-can claim them.
+**H7 — device. 🟡 Half done, 8 Aug 2026.** The owner ran the app on the test
+iPhone via Expo Go: it loaded and showed the **LIVE POC** banner — **criterion 2
+verified**, in live mode. Submitting a question returned an error, and the server
+log shows the request **never arrived** (serve.mjs logs every request including
+failures; none from the device). Metro on 8081 served the bundle to the phone,
+so the network path works — the prime suspect is Windows Firewall allowing
+node.exe on 8081 (approved at first Expo run) but not inbound 8787.
+
+Next session: (1) on the phone's browser open `http://10.0.0.168:8787` — JSON
+means reachable, timeout means firewall; (2) if firewall, allow inbound TCP 8787
+(admin PowerShell): `New-NetFirewallRule -DisplayName "Ductective diagnose" -Direction Inbound -Protocol TCP -LocalPort 8787 -Action Allow`;
+(3) ask one refusal question (red card, zero quota) — that closes the round-trip
+half of criterion 3; a cited answer on a fresh-quota day closes it fully.
 
 **H8 — corpus gaps.** `data/manifest.csv` has 27 rows; `HVAC Data/` has 25 PDFs.
 Missing: Trane `RT-SVX096C-EN_02282025.pdf` (Foundation rooftop IOM) and EPA
