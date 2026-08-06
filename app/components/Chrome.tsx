@@ -15,6 +15,7 @@
 
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
+import { isLive } from '../lib/diagnose';
 import { RAIL_WIDTH } from '../theme/layout';
 
 /**
@@ -23,10 +24,17 @@ import { RAIL_WIDTH } from '../theme/layout';
  * demoing this to a technician.
  */
 export function PrototypeBanner() {
+  // The banner's own rule is "while mockDiagnostics is the answer source" — so
+  // when the diagnose server is wired in, the text must follow. Claiming answers
+  // are canned over a live refusal is the same defect class as claiming live over
+  // a mock: the label lies about provenance. POC honesty: live answers are still
+  // unvalidated by a technician, and the banner says so rather than going away.
   return (
     <View style={s.banner}>
       <Text style={s.bannerText}>
-        DESIGN PROTOTYPE · answers are canned, citations unverified
+        {isLive
+          ? 'LIVE POC · answers from the knowledge base · not yet technician-validated'
+          : 'DESIGN PROTOTYPE · answers are canned, citations unverified'}
       </Text>
     </View>
   );
