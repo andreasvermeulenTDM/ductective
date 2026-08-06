@@ -153,3 +153,88 @@ real commercial tech can hold on a roof.
 - 10 real nameplate photos collected for criterion 3.
 - Ideally: the commercial RTU tech from plan §7 item 1 recruited, since P1.5
   validation runs against this build.
+
+---
+
+## Amendment 1 — unit first: capture becomes a precondition, not an input
+
+*Dated 5 August 2026. Stage 0 amendment. **Drafted by the Frontend agent at the
+owner's request; not in force until the owner signs off** — see "Sign-off" below.
+Appended, not edited in place, so the artifact stays an audit trail.*
+
+**What changes.** The app establishes *which unit the technician is standing in
+front of* — by photographing the data plate or by typing it — and only then takes
+questions. Capture moves from an optional composer action to a gate.
+
+This contradicts the **In scope** list above, which names nameplate capture as an
+input *alongside* text. Downstream agents should treat that line as amended, not
+contradicted: the two entry paths are now **camera or manual entry**, and free-text
+symptom entry follows unit selection rather than standing beside it.
+
+**Why this is an amendment and not an `OPEN QUESTION`.** The rule above reserves
+`OPEN QUESTION` for a decision an agent could reasonably default. This one changes
+the product's shape and its acceptance criteria, and it is justified by the domain
+rule rather than by usability: `CLAUDE.md` names a citation that does not support
+its claim as worse than an uncited one, and an answer citing the wrong unit's
+manual is exactly that. The gate exists to make that failure unreachable.
+
+**The cost is real and is recorded, not minimised.** It adds friction to a quick
+question. `docs/phase1-story-map.md` Addendum C §"This is a flow change" states the
+trade plainly, and open question 4 there resolves it as "no just-ask escape in
+Phase 1". That is the expensive half of this decision and it should be revisited
+against E7.4's technician validation, not treated as settled forever.
+
+**What it buys, beyond safety.** Retrieval narrows before the first query.
+`documents.in_scope` and the E1.7/E2.3 scope tags can filter to one unit's manuals
+from the outset, which should *raise* precision against Run A brief AC 7's 10-of-12
+bar and reduce the `48-50FC` / `48-50FE` sibling-manual confusion Stage 1 flagged.
+
+### Criteria affected
+
+| Criterion | Change |
+|---|---|
+| **3** | Nameplate identification is now the entry path, not an alternative input. Manual entry is a **co-equal front door** and must be completable with the camera permanently denied. |
+| **6** | Nine states become **twelve**: unit selection joins chat, camera, and history as a surface needing loading / empty / error / offline coverage. |
+| **8** | A resumed session must not re-ask for its unit — the unit is carried on the session. |
+| *new* | No route reaches the diagnostic core with `equipment` unset. Verified by attempting each bypass, not by inspection. |
+
+### Two contradictions this amendment must settle before U1 is built
+
+Recorded here rather than left for a stage agent to resolve silently.
+
+**1. U1 and U7 conflict as written.** U1 disables the composer until a unit is
+confirmed; U7 requires safety refusals to stay reachable "at any point, with or
+without a unit". If the composer is the only way to say anything, a technician
+cannot reach a refusal at the front door — which is the guardrail regression U7
+exists to prevent.
+
+*Proposed default:* the unit-selection screen accepts free text, and anything
+matching a refusal category is refused there, before a unit exists. A refusal
+needs no equipment context to be correct. **Owner decision required.**
+
+**2. U2 assigns Frontend a criterion it cannot own.** "Partial and near-miss model
+numbers resolve" is listed **Owner: Frontend**, but matching a partial model
+against the corpus is retrieval work — the same resolution U4 assigns to Backend.
+As written, Frontend would have to invent a coverage matcher, which is the
+mis-citation risk this amendment exists to remove.
+
+*Proposed default:* that criterion moves to **Backend**, delivered with a
+documented resolution contract; Frontend renders its result and its
+unrecognised-unit state. **Owner decision required.**
+
+### Already built against this, before sign-off
+
+`U2`'s first criterion and the frontend half of `U5`'s header shipped in
+`93e0cab`: manual entry is reachable without opening the camera, and the chosen
+unit is visible from selection onward. Both are improvements under the *current*
+brief too — neither imposes the gate — so they were not held behind this
+amendment. **No gate has been built.** U1 and U7 remain blocked on sign-off.
+
+### Sign-off
+
+- [ ] Owner accepts the flow change
+- [ ] Owner resolves contradiction 1 (refusals at the front door)
+- [ ] Owner resolves contradiction 2 (who owns model resolution)
+
+Until all three are checked, stage agents should treat the **In scope** list above
+as the operative one.
