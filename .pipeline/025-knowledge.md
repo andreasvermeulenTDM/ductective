@@ -407,3 +407,48 @@ Reconciliation after the batch: **96 files, 96 rows, 0 orphans, 0 unattributed.*
 corpus. Pre-existing and unrelated to this batch, but it lands on the camera path,
 so it is written up as **High** in `.pipeline/backlog.md` with a proposed fix
 rather than bundled into a corpus commit.
+
+### Ingestion result — Phase 1 scope (`npm run ingest -- --only-in-scope`, 7 Aug 2026)
+
+| | |
+|---|---|
+| Documents processed | 24 (the in-scope set) |
+| Chunks in the in-scope corpus | **3,912** |
+| Inserted | **584** — the four new rooftops |
+| Unchanged, not re-embedded, not re-billed | 3,328 |
+| Deleted (stale) | 0 |
+| Tokens billed | 236,555 |
+| Cost | **$0.043** at list price (inside Voyage's 200M free allowance) |
+| Wall clock | 70 min (free tier: 3 req/min, 10k tokens/min) |
+
+Per document: 48TC 220 · Precedent `RT-SVX075A` 116 · 50V 150 · application guide
+98. The 3,328 unchanged chunks are the content hash doing its job — a re-ingest
+after adding four documents re-embedded only those four.
+
+**Verified live after ingestion:**
+
+- **New manuals retrieve.** `Carrier 48TC` resolves to its own document and returns
+  8 chunks from it (pages 44–90); `Carrier 50V` likewise (pages 71–79). Both
+  resolved to *nothing* before this batch.
+- **Scoped retrieval unchanged** — `ingest:smoke:scoped` green on all four probes
+  in both modes, 0 cross-manufacturer leaks.
+- **ST-12 + ST-14 re-run on the new corpus: 116 assertions, 18 wire probes, all
+  green, ledger 0 → 0.** This is the assertion that mattered most. Three of ST-14's
+  five out-of-scope manufacturers — Lennox, York, Goodman — now *have* documents in
+  the corpus, and all five still resolve to zero documents and return the honest
+  no-documentation answer. Coverage honesty survived the corpus growing.
+- Full suite **255 pass**.
+
+The server was restarted onto the current tree before probing. The stale-server
+finding from the ST-12 run recurred — the process listening on 8787 had been
+started the previous evening, before any of this work — which is the second time
+that trap has appeared and is the argument for the `/health` commit endpoint
+already filed in `backlog.md`.
+
+### Remaining: the 55 out-of-scope documents
+
+Registered, provenance-complete, and **not yet embedded**. They cannot be reached
+from a Phase 1 diagnosis, so they change nothing a technician sees; embedding them
+is a multi-hour unattended run on the free tier, tracked as follow-up work rather
+than left implicit. Run `npm run ingest` (no flag) to complete them. The content
+hash means that run re-embeds none of the 3,912 chunks already stored.
