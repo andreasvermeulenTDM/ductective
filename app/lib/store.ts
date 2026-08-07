@@ -61,6 +61,21 @@ export async function listSessions(): Promise<Session[]> {
   return data ?? [];
 }
 
+/**
+ * Delete a job and everything under it.
+ *
+ * One statement: `messages` and `citations` both declare `on delete cascade`
+ * (sql/002), so the database removes the turns and their citations. Deleting them
+ * from the client instead would leave orphans behind on any partial failure.
+ *
+ * The prototype RLS policy is `for all`, so DELETE is already permitted for the
+ * anon role on `user_id is null` rows — no migration needed for this.
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  const { error } = await db().from('sessions').delete().eq('id', sessionId);
+  if (error) throw new Error(error.message);
+}
+
 export async function createSession(title: string, equipment?: string | null): Promise<Session> {
   const { data, error } = await db()
     .from('sessions')

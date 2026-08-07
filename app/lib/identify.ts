@@ -79,7 +79,41 @@ export type ConfirmedUnit = {
    * falls back to gating on the equipment text alone.
    */
   documentIds: string[] | null;
+  /**
+   * The coverage verdict's status, carried so the app can *say* whether it holds
+   * documentation for this unit before the first question — rather than letting the
+   * technician discover it in the answer. `null` when no verdict was obtained
+   * (offline manual entry), which renders as "not checked", never as "covered".
+   */
+  status?: UnitVerdict['status'] | null;
+  /**
+   * The resolved documents' coverage strings — the manifest's own words about what
+   * each manual covers. Drives the equipment-class suggestions in `starters.ts`, so
+   * the suggestion and the retrieval scope are derived from the same source.
+   */
+  coverage?: string[];
 };
+
+/**
+ * Split a typed unit into the manufacturer and model the server matches on.
+ *
+ * `/resolve-unit` matches the two fields independently, and its manufacturer test is
+ * containment in either direction. Sending the whole typed string as both fields
+ * therefore *looks* fine and quietly fails for any multi-word manufacturer: the
+ * corpus carries "Goodman / Amana" and "Daikin Applied", and neither contains nor is
+ * contained by "Goodman AMEC960603". Measured — "Trane YSC072E3" resolved and
+ * "Goodman AMEC960603" came back unrecognised with its manual sitting in the corpus.
+ *
+ * First token is the make, the rest is the model, which is how a data plate reads and
+ * how the input's own placeholder asks for it. A single token is used for both, since
+ * a lone "48TCA06" is a model and a lone "Trane" is a make and we cannot tell which.
+ */
+export function splitUnitText(typed: string): { manufacturer: string; model: string } {
+  const text = typed.trim().replace(/\s+/g, ' ');
+  const cut = text.indexOf(' ');
+  if (cut < 0) return { manufacturer: text, model: text };
+  return { manufacturer: text.slice(0, cut), model: text.slice(cut + 1) };
+}
 
 // --- client-side resize target ----------------------------------------------
 
@@ -173,6 +207,8 @@ export function confirmedUnitFrom(result: IdentifyResult): ConfirmedUnit | null 
   return {
     equipment: `${result.manufacturer} ${result.model}`,
     documentIds: result.unit.documentIds,
+    status: result.unit.status,
+    coverage: (result.unit.documents ?? []).map((d) => d.coverage).filter(Boolean),
   };
 }
 

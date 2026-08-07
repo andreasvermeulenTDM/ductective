@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "app", "run", "web"],
       "port": 8081
+    },
+    {
+      "name": "ductective-web-review",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "app", "run", "web", "--", "--port", "8082"],
+      "port": 8082
     }
   ]
 }

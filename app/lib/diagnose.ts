@@ -14,7 +14,7 @@
  */
 
 import { NativeModules, Platform } from 'react-native';
-import { postIdentify, type IdentifyResult } from './identify';
+import { postIdentify, type IdentifyResult, type UnitVerdict } from './identify';
 
 export type DiagnoseCitation = {
   source_document: string;
@@ -236,6 +236,39 @@ export async function refusalCheck(
 ): Promise<DiagnoseReply | null> {
   const reply = await requestDiagnosis(symptom, null, cancel);
   return reply.kind === 'refusal' ? reply : null;
+}
+
+/**
+ * Resolve a typed unit to its coverage — `POST /resolve-unit` (U4).
+ *
+ * The camera path gets a verdict for free inside `/identify-unit`; manual entry
+ * never asked for one, so a typed unit reached the composer with `documentIds: null`
+ * and the app could not say whether it held documentation for it. That is the
+ * question U4 exists to answer *before* the first symptom, and the technician who
+ * typed the model deserves the same answer as the one who photographed it.
+ *
+ * Resolves rather than throws on failure: a coverage lookup that fails must not
+ * block the technician from asking, it just means the app cannot state coverage yet.
+ */
+export async function requestResolveUnit(
+  manufacturer: string,
+  model: string,
+  cancel?: AbortSignal
+): Promise<UnitVerdict | null> {
+  if (!BASE) return null;
+  try {
+    const res = await fetch(`${BASE}/resolve-unit`, {
+      method: 'POST',
+      headers: serverHeaders(),
+      body: JSON.stringify({ manufacturer, model }),
+      signal: cancel,
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as UnitVerdict;
+    return json && typeof json.status === 'string' ? json : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

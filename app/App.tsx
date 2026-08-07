@@ -27,9 +27,10 @@ import {
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
 
-import { color, space } from './theme/tokens';
+import { color, space, MIN_TOUCH } from './theme/tokens';
 import { useLayout, SESSION_LIST_WIDTH } from './theme/layout';
 import { PrototypeBanner, TabBar, NavRail, type Tab } from './components/Chrome';
+import { ScalePressable } from './components/Tactile';
 import { ChatScreen } from './screens/ChatScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { CaptureScreen } from './screens/CaptureScreen';
@@ -69,6 +70,13 @@ export default function App() {
    * Run C gap, not silently persisted here.
    */
   const [documentIds, setDocumentIds] = useState<string[] | null>(null);
+  /**
+   * The confirmed unit's coverage verdict — whether we hold documentation for it,
+   * and what those manuals cover. Drives the coverage line and the unit-aware
+   * suggestions. Null when unknown (a reopened session, or a lookup that failed),
+   * which renders as "not checked" rather than as either answer.
+   */
+  const [coverage, setCoverage] = useState<{ status: string | null; docs: string[] } | null>(null);
   /** A question typed at the gate, waiting for a unit to be grounded against. */
   const [carried, setCarried] = useState<string | null>(null);
   const { isTablet } = useLayout();
@@ -78,6 +86,24 @@ export default function App() {
     setSessionId(id);
     setEquipment(unit);
     setDocumentIds(null); // scope isn't persisted on the session row
+    setCoverage(null);    // nor is the verdict — unknown, not "uncovered"
+    setTab('chat');
+  }
+
+  /**
+   * Back to a clean slate — the logo's job.
+   *
+   * Everything a session carries is cleared together. Clearing the unit but keeping
+   * the session id (or vice versa) produces a half-state where the composer is open
+   * against a job it no longer knows the unit for.
+   */
+  function goHome() {
+    setSessionId(null);
+    setEquipment(null);
+    setDocumentIds(null);
+    setCoverage(null);
+    setCarried(null);
+    setCapture(null);
     setTab('chat');
   }
 
@@ -88,6 +114,7 @@ export default function App() {
       onCapture={(mode) => setCapture(mode)}
       equipment={equipment}
       documentIds={documentIds}
+      coverage={coverage}
       carriedQuestion={carried}
       onCarriedConsumed={() => setCarried(null)}
     />
@@ -115,6 +142,7 @@ export default function App() {
         if (unit) {
           setEquipment(unit.equipment);
           setDocumentIds(unit.documentIds);
+          setCoverage({ status: unit.status ?? null, docs: unit.coverage ?? [] });
         }
         setCapture(null);
       }}
@@ -161,13 +189,24 @@ export default function App() {
               <View style={s.fill}>
                 {!isTablet && (
                   <View style={s.header}>
-                    <Image
-                      source={LOCKUP}
-                      style={s.lockup}
-                      resizeMode="contain"
-                      accessibilityRole="image"
-                      accessibilityLabel="Ductective"
-                    />
+                    {/* The lockup is the way home. A logo that does nothing is a
+                        dead end on every screen it appears on, and this app has no
+                        back affordance of its own. */}
+                    <ScalePressable
+                      onPress={goHome}
+                      haptic="tap"
+                      style={s.lockupTouch}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ductective — start a new job"
+                      accessibilityHint="Clears the current unit and question"
+                    >
+                      <Image
+                        source={LOCKUP}
+                        style={s.lockup}
+                        resizeMode="contain"
+                        accessibilityIgnoresInvertColors
+                      />
+                    </ScalePressable>
                   </View>
                 )}
                 {body}
@@ -200,6 +239,8 @@ const s = StyleSheet.create({
   shell: { flex: 1, flexDirection: 'row' },
 
   header: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
+  /** Real touch height around a short lockup — the image alone is ~31dp tall. */
+  lockupTouch: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: MIN_TOUCH },
   lockup: { width: LOCKUP_WIDTH, height: LOCKUP_WIDTH / LOCKUP_ASPECT },
 
   split: { flex: 1, flexDirection: 'row' },
