@@ -348,6 +348,8 @@ export function ChatScreen({
             style={s.input}
             multiline
             accessibilityLabel="Symptom description"
+            returnKeyType="send"
+            submitBehavior="blurAndSubmit"
             onSubmitEditing={() => send(input)}
           />
           <ScalePressable

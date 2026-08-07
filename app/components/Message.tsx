@@ -81,6 +81,16 @@ function UserTurn({ body }: { body: string }) {
  * render in a row under the answer rather than inline after the claim they
  * support, because the contract carries no positional anchor to place them by.
  */
+/** Split a step's text at its "Reading:" marker so the tail can render muted. */
+function splitReading(rest: string): { text: string; muted: boolean }[] {
+  const i = rest.search(/Reading:/);
+  if (i < 0) return [{ text: rest, muted: false }];
+  return [
+    { text: rest.slice(0, i), muted: false },
+    { text: rest.slice(i), muted: true },
+  ];
+}
+
 function AnswerTurn({
   body,
   citations,
@@ -109,7 +119,16 @@ function AnswerTurn({
                 </View>
                 <Text style={s.stepBody}>
                   {step.headline ? <Text style={s.stepHeadline}>{step.headline} </Text> : null}
-                  {step.rest}
+                  {/* P3: the tech scans for ACTIONS; the reading is the follow-up.
+                      De-emphasising it gives the verbs visual priority without
+                      losing the measurement. */}
+                  {splitReading(step.rest).map((part, j) =>
+                    part.muted ? (
+                      <Text key={j} style={s.stepReading}>{part.text}</Text>
+                    ) : (
+                      <Text key={j}>{part.text}</Text>
+                    )
+                  )}
                 </Text>
               </View>
             ))}
@@ -247,6 +266,7 @@ const s = StyleSheet.create({
   stepNumberText: { ...type.chip, color: color.accent },
   stepBody: { ...type.body, color: color.textPrimary, flex: 1 },
   stepHeadline: { fontFamily: type.bodyStrong.fontFamily, color: color.textPrimary },
+  stepReading: { color: color.textSecondary },
 
   reading: {
     flexDirection: 'row',
