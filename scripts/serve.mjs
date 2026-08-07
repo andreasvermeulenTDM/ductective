@@ -205,7 +205,9 @@ const server = createServer(async (req, res) => {
   }
 
   try {
-    const body = await readBody(req, route === '/identify-unit' ? IMAGE_LIMIT : LIMIT);
+    // /diagnose can now carry a photo of the part (ST-17), so it takes the image
+    // limit too. /resolve-unit keeps the tight text limit — it has no image field.
+    const body = await readBody(req, route === '/resolve-unit' ? LIMIT : IMAGE_LIMIT);
 
     // U4 — coverage before any question. Deliberately its own call rather than a
     // field on /diagnose: the app has to be able to state coverage at unit
@@ -236,8 +238,8 @@ const server = createServer(async (req, res) => {
     // ST-04 (OQ1 default): the client supplies documentIds from /resolve-unit's
     // verdict. No deps are ever passed here — the unscoped test path cannot be
     // reached from the wire.
-    const { symptom, equipment, history, documentIds } = body;
-    const result = await diagnose({ symptom, equipment, history, documentIds });
+    const { symptom, equipment, history, documentIds, image, mimeType } = body;
+    const result = await diagnose({ symptom, equipment, history, documentIds, image, mimeType });
     const { b, cost } = instrument(route, result, {
       kind: result.kind,
       ...(result.meta.scopedTo !== undefined ? { scopedTo: result.meta.scopedTo } : {}),

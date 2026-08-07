@@ -169,9 +169,11 @@ export async function answerExisting(
   equipment?: string | null,
   /** Retrieval scope from the capture flow's verdict — see requestDiagnosis. */
   documentIds?: string[] | null,
-  cancel?: AbortSignal
+  cancel?: AbortSignal,
+  /** ST-17 — a photo of the part, as an observation. Never a citable source. */
+  photoBase64?: string | null
 ): Promise<Message> {
-  const result = await generateReply(input, equipment, documentIds, cancel);
+  const result = await generateReply(input, equipment, documentIds, cancel, photoBase64);
   return appendMessage(sessionId, replySeq, result.kind, result.body, result.citations);
 }
 
@@ -179,9 +181,10 @@ async function generateReply(
   input: string,
   equipment?: string | null,
   documentIds?: string[] | null,
-  cancel?: AbortSignal
+  cancel?: AbortSignal,
+  photoBase64?: string | null
 ) {
-  if (isLive) return requestDiagnosis(input, equipment, cancel, documentIds);
+  if (isLive) return requestDiagnosis(input, equipment, cancel, documentIds, photoBase64);
   const mock = mockReply(input);
   return { ...mock, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
 }

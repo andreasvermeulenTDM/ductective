@@ -155,7 +155,13 @@ export async function requestDiagnosis(
    * `equipment` alone — while `[]` means "unit resolved to zero documents" and
    * gets the honest no-documentation answer. Pass the verdict verbatim.
    */
-  documentIds?: string[] | null
+  documentIds?: string[] | null,
+  /**
+   * ST-17 — a base64 JPEG of the part the technician is looking at, not the plate.
+   * The server treats it as an observation: it may inform what the answer says it
+   * can see, and it can never be the source a step cites.
+   */
+  photoBase64?: string | null
 ): Promise<DiagnoseReply> {
   if (!BASE) throw new DiagnoseError(0, 'No EXPO_PUBLIC_DIAGNOSE_URL configured');
 
@@ -172,6 +178,8 @@ export async function requestDiagnosis(
         symptom,
         equipment: equipment ?? undefined,
         documentIds: documentIds ?? undefined,
+        image: photoBase64 ?? undefined,
+        mimeType: photoBase64 ? 'image/jpeg' : undefined,
       }),
       signal: controller.signal,
     });

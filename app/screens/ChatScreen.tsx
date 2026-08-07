@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { resizeTarget } from '../lib/identify';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
 import { ScalePressable, fireHaptic } from '../components/Tactile';
 import { ConversationSkeleton } from '../components/Skeleton';
@@ -70,6 +73,15 @@ export function ChatScreen({
   const [error, setError] = useState<Error | null>(null);
   const [offline, setOffline] = useState(false);
   const [citation, setCitation] = useState<Citation | null>(null);
+  /**
+   * ST-17 — a photo of the part, attached to the next question.
+   *
+   * Held beside the composer rather than sent on capture, so the technician can say
+   * what they are showing me. A photo with no words is a guessing game; the pairing
+   * is the point.
+   */
+  const [photo, setPhoto] = useState<{ uri: string; base64: string } | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const scroller = useRef<ScrollView>(null);
   const abort = useRef<AbortController | null>(null);
   const { canShowSourceBeside } = useLayout();
@@ -161,7 +173,11 @@ export function ChatScreen({
       setMessages((prev) => [...prev, user]);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
 
-      const reply = await answerExisting(sid, seq + 1, body, equipment, documentIds, controller.signal);
+      const attached = photo;
+      setPhoto(null); // consumed by this turn, whatever the outcome
+      const reply = await answerExisting(
+        sid, seq + 1, body, equipment, documentIds, controller.signal, attached?.base64 ?? null
+      );
       if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
       setOffline(false);
@@ -177,6 +193,45 @@ export function ChatScreen({
       abort.current = null;
       sending.current = false;
       setBusy(false);
+    }
+  }
+
+  /**
+   * Attach a photo of the part to the next question (ST-17).
+   *
+   * Resized before it is held, using the same target the nameplate path uses — a
+   * 4 MB capture over rooftop LTE that the server downscales anyway is a latency
+   * bug, and the technician pays for it twice on a slow connection.
+   */
+  async function attachPhoto() {
+    if (attaching || busy) return;
+    setAttaching(true);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        setError(new Error('Camera access is off for Ductective. Turn it on in Settings to attach a photo.'));
+        return;
+      }
+      const shot = await ImagePicker.launchCameraAsync({ quality: 0.7, base64: false, exif: false });
+      if (shot.canceled || !shot.assets?.[0]) return;
+      const asset = shot.assets[0];
+
+      const { resize, width } = resizeTarget(asset.width ?? 0, asset.height ?? 0);
+      const out = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        resize ? [{ resize: { width } }] : [],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (!out.base64) {
+        setError(new Error("Couldn't read that photo. Try again."));
+        return;
+      }
+      void fireHaptic('shutter');
+      setPhoto({ uri: out.uri, base64: out.base64 });
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setAttaching(false);
     }
   }
 
@@ -350,16 +405,46 @@ export function ChatScreen({
         </View>
       )}
 
+      {/* An attached photo, shown before it is sent — a picture the technician
+          cannot see attached is one they cannot tell is the wrong picture. */}
+      {photo && (
+        <View style={s.attachment}>
+          <Image source={{ uri: photo.uri }} style={s.thumb} accessibilityIgnoresInvertColors />
+          <Text style={s.attachmentText}>
+            Photo attached. Say what I'm looking at and I'll work it into the diagnosis.
+          </Text>
+          <ScalePressable
+            onPress={() => setPhoto(null)}
+            hitSlop={12}
+            scaleTo={0.85}
+            style={s.removeAttachment}
+            accessibilityRole="button"
+            accessibilityLabel="Remove the attached photo"
+          >
+            <Ionicons name="close" size={18} color={color.textSecondary} />
+          </ScalePressable>
+        </View>
+      )}
+
       <View style={s.composer}>
         <ScalePressable
-          onPress={() => onCapture('camera')}
+          onPress={equipment ? attachPhoto : () => onCapture('camera')}
           haptic="tap"
-          style={({ pressed }) => [s.capture, pressed && s.capturePressed]}
+          disabled={attaching || busy}
+          style={({ pressed }) => [s.capture, pressed && s.capturePressed, (attaching || busy) && s.sendDisabled]}
           accessibilityRole="button"
-          accessibilityLabel="Photograph the nameplate"
-          accessibilityHint="Identifies the unit from its data plate"
+          // The same button does the job the technician actually needs at each
+          // point: identify the unit when there isn't one, photograph the part
+          // once there is. Before this it re-ran nameplate capture mid-diagnosis,
+          // which is never what someone pointing at a scorched contactor wants.
+          accessibilityLabel={equipment ? 'Photograph the part' : 'Photograph the nameplate'}
+          accessibilityHint={
+            equipment
+              ? 'Attaches a photo of what you are looking at to your next question'
+              : 'Identifies the unit from its data plate'
+          }
         >
-          <Ionicons name="camera-outline" size={22} color={color.accent} />
+          <Ionicons name={equipment ? 'camera' : 'camera-outline'} size={22} color={color.accent} />
         </ScalePressable>
 
         <View style={s.inputWrap}>
@@ -670,6 +755,27 @@ const s = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.borderStrong,
+  },
+
+  attachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginHorizontal: space.lg,
+    marginBottom: space.sm,
+    padding: space.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+  },
+  thumb: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: color.surfaceRaised },
+  attachmentText: { ...type.caption, color: color.textPrimary, flex: 1 },
+  removeAttachment: {
+    minWidth: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   composer: {
