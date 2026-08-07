@@ -25,7 +25,7 @@ import { execFileSync } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { diagnose, DiagnoseError } from '../lib/diagnose.mjs';
+import { diagnose, DiagnoseError, MAX_PHOTOS } from '../lib/diagnose.mjs';
 import { resolveUnit } from '../lib/units.mjs';
 import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
 import { budget, recordModelCall, appendRequestLog } from '../lib/ledger.mjs';
@@ -96,6 +96,13 @@ const LIMIT = 32 * 1024;
 // /identify-unit carries a base64 JPEG: 8 MiB binary ≈ 10.9 MiB base64, plus
 // JSON envelope. Every other route keeps the tight text limit.
 const IMAGE_LIMIT = Math.ceil((MAX_IMAGE_BYTES * 4) / 3) + 64 * 1024;
+/**
+ * /diagnose can carry up to MAX_PHOTOS images in one question (ST-17), so its body
+ * ceiling is a multiple of the single-image one. The per-image rules are unchanged
+ * and still enforced individually — this only stops a legitimate three-photo
+ * question being cut off at the transport before `normalizePhotos` can judge it.
+ */
+const DIAGNOSE_LIMIT = Math.ceil((MAX_IMAGE_BYTES * 4) / 3) * MAX_PHOTOS + 64 * 1024;
 
 // ---------------------------------------------------------------------------
 // ST-09 — cost/cache/latency instrumentation. Observes, never alters: no
@@ -205,9 +212,11 @@ const server = createServer(async (req, res) => {
   }
 
   try {
-    // /diagnose can now carry a photo of the part (ST-17), so it takes the image
-    // limit too. /resolve-unit keeps the tight text limit — it has no image field.
-    const body = await readBody(req, route === '/resolve-unit' ? LIMIT : IMAGE_LIMIT);
+    // Three ceilings, one per route's actual payload: /resolve-unit is text only,
+    // /identify-unit carries one plate photo, /diagnose up to MAX_PHOTOS of the part.
+    const limit =
+      route === '/resolve-unit' ? LIMIT : route === '/identify-unit' ? IMAGE_LIMIT : DIAGNOSE_LIMIT;
+    const body = await readBody(req, limit);
 
     // U4 — coverage before any question. Deliberately its own call rather than a
     // field on /diagnose: the app has to be able to state coverage at unit
@@ -238,8 +247,8 @@ const server = createServer(async (req, res) => {
     // ST-04 (OQ1 default): the client supplies documentIds from /resolve-unit's
     // verdict. No deps are ever passed here — the unscoped test path cannot be
     // reached from the wire.
-    const { symptom, equipment, history, documentIds, image, mimeType } = body;
-    const result = await diagnose({ symptom, equipment, history, documentIds, image, mimeType });
+    const { symptom, equipment, history, documentIds, image, images, mimeType } = body;
+    const result = await diagnose({ symptom, equipment, history, documentIds, image, images, mimeType });
     const { b, cost } = instrument(route, result, {
       kind: result.kind,
       ...(result.meta.scopedTo !== undefined ? { scopedTo: result.meta.scopedTo } : {}),

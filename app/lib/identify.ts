@@ -131,6 +131,16 @@ export const MAX_EDGE_PX = 1536;
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 /**
+ * Photos a single question may carry. Mirrors `MAX_PHOTOS` in `lib/diagnose.mjs`,
+ * which is the enforcing copy — this one exists to stop the picker offering a
+ * selection the server will reject.
+ *
+ * Three, because a fault is usually one or two pictures (the board's code and the
+ * component it points at) and each one is real tokens on every retry of that turn.
+ */
+export const MAX_PHOTOS_PER_TURN = 3;
+
+/**
  * What to resize a capture to before upload. Pure; never upscales.
  * Width alone is returned because expo-image-manipulator preserves aspect
  * ratio when given a single dimension.

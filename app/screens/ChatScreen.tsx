@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Image,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Image, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { resizeTarget } from '../lib/identify';
+import { launchImageLibraryAsync, launchCameraAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { resizeTarget, base64Bytes, MAX_UPLOAD_BYTES, MAX_PHOTOS_PER_TURN } from '../lib/identify';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
 import { ScalePressable, fireHaptic } from '../components/Tactile';
 import { ConversationSkeleton } from '../components/Skeleton';
@@ -80,7 +80,7 @@ export function ChatScreen({
    * what they are showing me. A photo with no words is a guessing game; the pairing
    * is the point.
    */
-  const [photo, setPhoto] = useState<{ uri: string; base64: string } | null>(null);
+  const [photos, setPhotos] = useState<{ uri: string; base64: string }[]>([]);
   const [attaching, setAttaching] = useState(false);
   const scroller = useRef<ScrollView>(null);
   const abort = useRef<AbortController | null>(null);
@@ -173,10 +173,10 @@ export function ChatScreen({
       setMessages((prev) => [...prev, user]);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
 
-      const attached = photo;
-      setPhoto(null); // consumed by this turn, whatever the outcome
+      const attached = photos;
+      setPhotos([]); // consumed by this turn, whatever the outcome
       const reply = await answerExisting(
-        sid, seq + 1, body, equipment, documentIds, controller.signal, attached?.base64 ?? null
+        sid, seq + 1, body, equipment, documentIds, controller.signal, attached.map((p) => p.base64)
       );
       if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
@@ -197,42 +197,79 @@ export function ChatScreen({
   }
 
   /**
-   * Attach a photo of the part to the next question (ST-17).
-   *
-   * Resized before it is held, using the same target the nameplate path uses — a
-   * 4 MB capture over rooftop LTE that the server downscales anyway is a latency
-   * bug, and the technician pays for it twice on a slow connection.
+   * Resize and encode one picked asset, using the same path the nameplate flow
+   * uses (`ImageManipulator.manipulate` — SDK 54's current API, not the deprecated
+   * `manipulateAsync`). Shipping a 4 MB capture over rooftop LTE that the server
+   * downscales anyway is a latency bug the technician pays for twice.
    */
-  async function attachPhoto() {
+  async function encodeAsset(uri: string, width: number, height: number) {
+    const target = resizeTarget(width, height);
+    let context = ImageManipulator.manipulate(uri);
+    if (target.resize) context = context.resize({ width: target.width });
+    const rendered = await context.renderAsync();
+    const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
+    if (!saved.base64) throw new Error("Couldn't encode that photo.");
+    if (base64Bytes(saved.base64) > MAX_UPLOAD_BYTES) {
+      throw new Error('That photo is too large to send even after resizing.');
+    }
+    return { uri: saved.uri, base64: saved.base64 };
+  }
+
+  /**
+   * Attach photos of what the technician is looking at (ST-17).
+   *
+   * Both doors: the library (the owner's word was "upload", and a tech has usually
+   * already shot the panel before they think to ask) and the camera for something
+   * in front of them right now. Multi-select on the library path, because a fault is
+   * often two pictures — the board's code and the component it points at — and
+   * making that two round trips loses the pairing that makes them useful.
+   */
+  async function attachPhotos(source: 'library' | 'camera') {
     if (attaching || busy) return;
+    const room = MAX_PHOTOS_PER_TURN - photos.length;
+    if (room <= 0) {
+      setError(new Error(`That's the limit of ${MAX_PHOTOS_PER_TURN} photos for one question.`));
+      return;
+    }
     setAttaching(true);
     try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        setError(new Error('Camera access is off for Ductective. Turn it on in Settings to attach a photo.'));
-        return;
-      }
-      const shot = await ImagePicker.launchCameraAsync({ quality: 0.7, base64: false, exif: false });
-      if (shot.canceled || !shot.assets?.[0]) return;
-      const asset = shot.assets[0];
+      const picked =
+        source === 'camera'
+          ? await (async () => {
+              const perm = await requestCameraPermissionsAsync();
+              if (!perm.granted) throw new Error('Camera access is off for Ductective. Turn it on in Settings.');
+              return launchCameraAsync({ quality: 1, exif: false });
+            })()
+          : await launchImageLibraryAsync({
+              mediaTypes: 'images',
+              quality: 1,
+              allowsMultipleSelection: true,
+              selectionLimit: room,
+            });
 
-      const { resize, width } = resizeTarget(asset.width ?? 0, asset.height ?? 0);
-      const out = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        resize ? [{ resize: { width } }] : [],
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-      );
-      if (!out.base64) {
-        setError(new Error("Couldn't read that photo. Try again."));
-        return;
+      if (picked.canceled || !picked.assets?.length) return;
+
+      const encoded: { uri: string; base64: string }[] = [];
+      for (const a of picked.assets.slice(0, room)) {
+        encoded.push(await encodeAsset(a.uri, a.width ?? 0, a.height ?? 0));
       }
-      void fireHaptic('shutter');
-      setPhoto({ uri: out.uri, base64: out.base64 });
+      void fireHaptic(source === 'camera' ? 'shutter' : 'tap');
+      setPhotos((prev) => [...prev, ...encoded].slice(0, MAX_PHOTOS_PER_TURN));
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
       setAttaching(false);
     }
+  }
+
+  /** Which door — asked only when both are available. */
+  function choosePhotoSource() {
+    if (attaching || busy) return;
+    Alert.alert('Add a photo', 'Show me what you are looking at.', [
+      { text: 'Choose from library', onPress: () => attachPhotos('library') },
+      { text: 'Take a photo', onPress: () => attachPhotos('camera') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
   /** Regenerate the missing reply for an already-saved question. */
@@ -407,28 +444,35 @@ export function ChatScreen({
 
       {/* An attached photo, shown before it is sent — a picture the technician
           cannot see attached is one they cannot tell is the wrong picture. */}
-      {photo && (
+      {photos.length > 0 && (
         <View style={s.attachment}>
-          <Image source={{ uri: photo.uri }} style={s.thumb} accessibilityIgnoresInvertColors />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.thumbRow}>
+            {photos.map((p, i) => (
+              <View key={p.uri} style={s.thumbWrap}>
+                <Image source={{ uri: p.uri }} style={s.thumb} accessibilityIgnoresInvertColors />
+                <ScalePressable
+                  onPress={() => setPhotos((prev) => prev.filter((x) => x.uri !== p.uri))}
+                  hitSlop={10}
+                  scaleTo={0.85}
+                  style={s.removeThumb}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove photo ${i + 1}`}
+                >
+                  <Ionicons name="close" size={14} color={color.textOnInteractive} />
+                </ScalePressable>
+              </View>
+            ))}
+          </ScrollView>
           <Text style={s.attachmentText}>
-            Photo attached. Say what I'm looking at and I'll work it into the diagnosis.
+            {photos.length === 1 ? '1 photo attached' : `${photos.length} photos attached`} — say what
+            I'm looking at and I'll work it into the diagnosis.
           </Text>
-          <ScalePressable
-            onPress={() => setPhoto(null)}
-            hitSlop={12}
-            scaleTo={0.85}
-            style={s.removeAttachment}
-            accessibilityRole="button"
-            accessibilityLabel="Remove the attached photo"
-          >
-            <Ionicons name="close" size={18} color={color.textSecondary} />
-          </ScalePressable>
         </View>
       )}
 
       <View style={s.composer}>
         <ScalePressable
-          onPress={equipment ? attachPhoto : () => onCapture('camera')}
+          onPress={equipment ? choosePhotoSource : () => onCapture('camera')}
           haptic="tap"
           disabled={attaching || busy}
           style={({ pressed }) => [s.capture, pressed && s.capturePressed, (attaching || busy) && s.sendDisabled]}
@@ -437,14 +481,14 @@ export function ChatScreen({
           // point: identify the unit when there isn't one, photograph the part
           // once there is. Before this it re-ran nameplate capture mid-diagnosis,
           // which is never what someone pointing at a scorched contactor wants.
-          accessibilityLabel={equipment ? 'Photograph the part' : 'Photograph the nameplate'}
+          accessibilityLabel={equipment ? 'Add photos' : 'Photograph the nameplate'}
           accessibilityHint={
             equipment
-              ? 'Attaches a photo of what you are looking at to your next question'
+              ? 'Attach photos from your library or camera to your next question'
               : 'Identifies the unit from its data plate'
           }
         >
-          <Ionicons name={equipment ? 'camera' : 'camera-outline'} size={22} color={color.accent} />
+          <Ionicons name={equipment ? 'images-outline' : 'camera-outline'} size={22} color={color.accent} />
         </ScalePressable>
 
         <View style={s.inputWrap}>
@@ -758,9 +802,7 @@ const s = StyleSheet.create({
   },
 
   attachment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
+    gap: space.sm,
     marginHorizontal: space.lg,
     marginBottom: space.sm,
     padding: space.sm,
@@ -769,14 +811,21 @@ const s = StyleSheet.create({
     borderColor: color.accentBorder,
     backgroundColor: color.accentSurface,
   },
-  thumb: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: color.surfaceRaised },
-  attachmentText: { ...type.caption, color: color.textPrimary, flex: 1 },
-  removeAttachment: {
-    minWidth: MIN_TOUCH,
-    minHeight: MIN_TOUCH,
+  thumbRow: { gap: space.sm, paddingRight: space.sm },
+  thumbWrap: { width: 64, height: 64 },
+  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: color.surfaceRaised },
+  removeThumb: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: color.interactiveFill,
   },
+  attachmentText: { ...type.caption, color: color.textPrimary },
 
   composer: {
     flexDirection: 'row',
