@@ -120,9 +120,6 @@ const BASE = CONFIGURED ? loopbackToDevHost(CONFIGURED) : undefined;
 /** True when a backend is configured. `store.ts` falls back to mocks when false. */
 export const isLive = Boolean(BASE);
 
-/** Where requests are actually going, for the connection detail in error states. */
-export const diagnoseHost = BASE ?? null;
-
 /**
  * Reasoning over retrieved IOM context is not fast. The brief measures against a
  * 150s Edge Function ceiling, so the client must not give up well before the

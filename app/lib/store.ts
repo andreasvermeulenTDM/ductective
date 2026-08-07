@@ -170,20 +170,3 @@ async function generateReply(
   const mock = mockReply(input);
   return { ...mock, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
 }
-
-export async function submitSymptom(
-  sessionId: string,
-  nextSeq: number,
-  input: string,
-  equipment?: string | null,
-  documentIds?: string[] | null,
-  cancel?: AbortSignal
-): Promise<{ user: Message; reply: Message }> {
-  const user = await appendMessage(sessionId, nextSeq, 'user', input);
-
-  const result = await generateReply(input, equipment, documentIds, cancel);
-
-  const reply = await appendMessage(sessionId, nextSeq + 1, result.kind, result.body, result.citations);
-
-  return { user, reply };
-}
