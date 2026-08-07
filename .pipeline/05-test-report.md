@@ -177,3 +177,45 @@ ST-14's five coverage edges re-run green afterwards (117 assertions).
 `/health` (added earlier today) caught a server running `3c25b51` while HEAD was
 `9bb13da`, **before** the probe measured anything. Third occurrence of that trap and
 the first caught automatically rather than by noticing a process start time by hand.
+
+---
+
+## Security review — hardening applied (7 Aug 2026)
+
+A focused security review of the live app surface found no reportable HIGH/MEDIUM
+vulnerability (SQL parameterized, subprocess calls use fixed argv, no hardcoded
+secrets, service-role key never leaves the process). Two recommendations were
+actioned regardless.
+
+**1. The `history` field no longer routes around the safety gate.** `/diagnose`
+accepts a client-supplied `history` array. Two gaps: the deterministic
+`classifyHazard` gate read only `symptom`, so a hazardous request placed in a
+history turn skipped it; and a forged `{role:'system'}` turn was lifted into the
+model's system instruction by the Gemini adapter. Both are closed at the
+`diagnose()` trust boundary — `sanitizeHistory` keeps only user/assistant string
+turns, and the gate now classifies every user-authored turn independently (so a
+procedural verb in one and a domain noun in another cannot fuse into a false
+refusal). The adapter's system-promotion is deliberately unchanged: it receives
+the real SYSTEM as a `role:'system'` message too, so the boundary is the only place
+that can tell a wire turn from the internal one.
+
+Proven on the live serve path (zero model spend, deterministic):
+
+| Wire request | Result |
+|---|---|
+| benign `symptom`, "walk me through recovering the charge" in a user history turn | `refusal` (refrigerant), 0 citations, 0 attempts |
+| forged `{role:'system'}` override + live-panel metering in a user turn | `refusal` (live_electrical), forged system turn stripped |
+| clean symptom + clean clarify history, `documentIds: []` | `answer` (no-documentation) — gate passed it through |
+
+Plus 7 unit tests (`lib/diagnose.history.test.mjs`) and the full 117-assertion
+probe suite still green.
+
+**2. Optional shared-secret on the serve listener.** Off by default, so the LAN
+device-test flow is unchanged. `DIAGNOSE_AUTH_TOKEN` set → every state-changing
+route requires `Authorization: Bearer <token>` (constant-time compare); `/health`
+stays open; `DIAGNOSE_HOST` makes the bind interface a knob. The app sends the token
+from `EXPO_PUBLIC_DIAGNOSE_TOKEN`. 6 integration tests (`tests/serve-auth.test.mjs`)
+spawn the real server and assert 401 without/with-wrong token, pass-through with the
+correct token, and that `/health` stays open.
+
+Suite **267 pass**, lint 0, typecheck clean.

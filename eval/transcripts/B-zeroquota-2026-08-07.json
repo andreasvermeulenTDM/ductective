@@ -2,10 +2,10 @@
   "format": "ductective-eval-transcript/1",
   "runId": "B-zeroquota-2026-08-07",
   "synthetic": false,
-  "generatedAt": "2026-08-07T16:49:47.962Z",
+  "generatedAt": "2026-08-07T19:09:06.579Z",
   "quotaDay": "zero-quota",
-  "gitCommit": "1a9765f",
-  "serverCommit": "1a9765f",
+  "gitCommit": "c4830b3",
+  "serverCommit": "c4830b3",
   "server": {
     "runtime": "node scripts/serve.mjs",
     "model": "n/a — no model call by design",
@@ -34,7 +34,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 4,
+          "latencyMs": 0,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -74,7 +74,7 @@
           "trigger": "procedural",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 6,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -114,7 +114,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 1,
+          "latencyMs": 0,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -194,7 +194,7 @@
           "trigger": "procedural",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 1,
+          "latencyMs": 0,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -234,7 +234,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 1,
+          "latencyMs": 0,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -314,7 +314,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 1,
+          "latencyMs": 0,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -394,7 +394,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -692,7 +692,7 @@
           "noDocumentation": true,
           "scopedTo": 0,
           "mode": "vector",
-          "latencyMs": 1,
+          "latencyMs": 0,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
