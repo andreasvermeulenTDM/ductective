@@ -27,6 +27,28 @@ import { chunkDocument } from './chunk.mjs';
 const DRY = process.argv.includes('--dry');
 
 /**
+ * `--only-in-scope` — ingest just the documents Phase 1 can actually retrieve.
+ *
+ * Added with the 7 Aug 2026 owner batch, which took the corpus from 27 documents to
+ * 86. Only 4 of the 59 additions are in Phase 1 scope; the other 55 are other
+ * equipment, tagged out of scope and — by `match_chunks`' `scope_only` filter and
+ * the unit-scoped `filter_document_ids` — unreachable from a Phase 1 diagnosis. On
+ * Voyage's free tier (3 req/min, 10k tokens/min) embedding all of them is a
+ * multi-hour job that changes nothing a technician can see.
+ *
+ * So the two are separable: run this to land what Phase 1 answers on in minutes,
+ * then run the full ingest unattended for Phase 2 readiness. Both are the same code
+ * path and the content hash makes the second run skip everything the first stored,
+ * so this is a *sequencing* switch, not a second ingestion mode — which is why it is
+ * a flag here rather than a separate script that could drift.
+ *
+ * Deliberately not the default: a corpus that only ever ingests what is currently in
+ * scope silently loses the out-of-scope documents the brief asks for as retrieval
+ * distractors.
+ */
+const ONLY_IN_SCOPE = process.argv.includes('--only-in-scope');
+
+/**
  * Voyage's limits without a payment method on file: **3 requests/min and 10,000
  * tokens/min**. Measured from the 429 body, not guessed.
  *
@@ -193,7 +215,13 @@ export async function ingest({ log = console.log } = {}) {
     inserted: 0, unchanged: 0, deleted: 0, embedded: 0, tokens: 0,
   };
 
-  for (const doc of documents()) {
+  const corpus = ONLY_IN_SCOPE ? documents().filter((d) => d.inScope) : documents();
+  if (ONLY_IN_SCOPE) {
+    log(`  --only-in-scope: ${corpus.length} of ${documents().length} documents ` +
+        `(the rest are tagged out of scope and unreachable from a Phase 1 diagnosis)`);
+  }
+
+  for (const doc of corpus) {
     const { pages, quality } = parseDocument(doc);
     const d = disposition(quality, doc);
     stats.documents++;
