@@ -1,0 +1,33 @@
+{
+  "format": "ductective-citation-check/1",
+  "generatedAt": "2026-08-07T16:48:05.271Z",
+  "transcripts": [
+    {
+      "file": "eval/transcripts/B-st13-reachability-2026-08-07.json",
+      "runId": "B-st13-reachability-2026-08-07",
+      "synthetic": false,
+      "entries": 1,
+      "citedAnswers": 1,
+      "claims": 4
+    }
+  ],
+  "citedAnswers": 1,
+  "claimsChecked": 4,
+  "realClaimsChecked": 4,
+  "uncitedClaims": 0,
+  "resolution": {
+    "checked": true,
+    "resolved": 4,
+    "reason": null
+  },
+  "criticalDefects": 0,
+  "defects": [],
+  "triageSummary": {
+    "note": "TRIAGE ONLY — bands do not separate supported from unsupported claims; see the fan-belt counterexample in 05-test-report.md. Never use as a sampling filter.",
+    "high": 2,
+    "low": 2,
+    "none": 0
+  },
+  "verdict": "PASS",
+  "mechanicalDefects": []
+}

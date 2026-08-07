@@ -1,0 +1,101 @@
+{
+  "format": "ductective-eval-transcript/1",
+  "runId": "B-st13-reachability-2026-08-07",
+  "synthetic": false,
+  "generatedAt": "2026-08-07T16:44:57.635Z",
+  "quotaDay": "ST-13 reachability (1-2 requests)",
+  "gitCommit": "9bb13da",
+  "serverCommit": "9bb13da",
+  "server": {
+    "runtime": "node scripts/serve.mjs",
+    "model": "gemini-3.6-flash",
+    "retrievalMode": "vector"
+  },
+  "requestsUsed": {
+    "gemini": 1,
+    "voyage": 1,
+    "retries": 0
+  },
+  "entries": [
+    {
+      "scenarioId": "ST13-reach",
+      "fault": "low suction / short cycling",
+      "turn": 1,
+      "request": {
+        "symptom": "low suction pressure and the compressor is short cycling on the low pressure switch"
+      },
+      "httpStatus": 200,
+      "response": {
+        "kind": "answer",
+        "body": "Low suction pressure on a Carrier 48LC unit (associated with Alert T133) is typically caused by restricted indoor airflow, excessively cold return air/economizer fault, or liquid line/refrigerant circuit restrictions.\n\n1. Inspect the air filters for excessive dirt and restriction.\n   Reading: Visual filter condition and cleanliness. Dirty air filters causing low airflow and reduced evaporating pressure.\n\n2. Inspect the evaporator fan belt tension, belt condition, and fan rotation direction.\n   Reading: Fan belt tension/integrity and correct motor rotation. Insufficient evaporator airflow caused by a loose/broken belt or reverse fan rotation.\n\n3. Measure conditioned space return air temperature and check the economizer damper position.\n   Reading: Return air temperature and visual economizer damper position. Excessively cold return air or a stuck-open economizer during low ambient outdoor temperatures.\n\n4. Measure operating suction and discharge pressures, calculate superheat and subcooling, and check temperature drop across the liquid line filter drier. Follow standard refrigerant safety procedures when attaching service gauges.\n   Reading: Suction pressure, superheat, subcooling, and liquid line temperature drop across the filter drier. Low refrigerant charge, plugged filter drier, or faulty TXV.",
+        "citations": [
+          {
+            "source_document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 33,
+            "claim": "Inspect the air filters for excessive dirt and restriction.",
+            "ordinal": 1,
+            "chunk_id": "d0f1646b-f5eb-4962-8cfd-c925a42588b5",
+            "snippet": "Thermostat or occupancy schedule set point too low. Reset thermostat or schedule set point.\nDirty air filters. Replace filters.\nLow refrigerant charge. Check pressure, locate leak, repair, evacuate, and\nrecharge.\nCondenser coil dirty or restricted. Clean coil or remove restriction.\nExcessive Condenser Pressures. Loose condenser thermistors. Tighten thermistors.\nDirty condenser coil. Clean coil.\nRefrigerant overcharge. Recover excess refrigerant.\nFaulty TXV. 1. Check TXV bulb mounting and secure tightly to\nsuction line and insulate.\n2. Replace TXV (and filter drier) if stuck open or\nclosed.\nCondenser air restricted or air short cycling. Determine cause and correct.\nRestriction in liquid tube. Remove restriction.\nCondenser Fans Not Operating. No Power to contactors. Fuse blown or plug at motor loose.\nExcessive Suction Pressure. High heat load. Check for sources and eliminate\nFaulty TXV. 1. Check TXV bulb mounting and secure tightly to\nsuction line and insulate.\n2. Replace TXV (and filter drier) if stuck open or\nclosed.\nRefrigerant overcharged. Recover excess refrigerant.\nSuction Pressure Too Low. Dirty air filters. Replace air filters.\nLow refrigerant charge. Check pressure, locate leak, repair, evacuate, and\nrecharge.\nFaulty TXV. 1. Check TXV bulb mounting and secure tightly to\nsuction line and insulate.\n2. Replace TXV (and filter drier) if stuck open or\nclosed.\nInsufficient evaporator airflow. Check belt tension. Check for other restrictions.\nTemperature too low in conditioned area (low Reset thermostat or occupancy schedule.\nreturn-air temperature).",
+            "verified": "exact"
+          },
+          {
+            "source_document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 31,
+            "claim": "Inspect the evaporator fan belt tension, belt condition, and fan rotation direction.",
+            "ordinal": 2,
+            "chunk_id": "a136821c-24d1-4e49-a269-817ab083b6fe",
+            "snippet": "configured for it.\nCircuit A Loss of Charge\nT110 Lockout Circuit A Manual Low refrigerant or faulty suction pressure transducer\nService Test --- Circuit A Loss of Charge\nCircuit A High Discharge Pressure An overcharged system, high outdoor ambient temperature\nT126 Shutdown Circuit A Automatic coupled with dirty outdoor coil, plugged filter drier, or a faulty\nService Test --- Circuit A High Discharge Pressure high---pressure switch.\nCircuit A Low Refrigerant Pressure Low refrigerant charge, dirty filters, evaporator fan turning\nbackwards, loose or broken fan belt, plugged filter drier,\nT133 Service Test --- Circuit A Low Refrigerant Add Strike for Circuit A Automatic\nfaulty transducer, excessively cold return air, or stuck open\nPressure economizer when the ambient temperature is low.\nCircuit A Failure To Pressurize\nT143 Add Strike for Circuit A Automatic Wiring causing reverse rotation or faulty compressor\nService Test --- Circuit A Failure to Pressurize\nNo time and date schedule\nT153 Real Timeclock Hardware Failure Automatic No time/date configured, software failure, or MBB failure\noperation\nA154 Serial EEPROM Hardware Failure Unit Shutdown Automatic Software failure or MBB failure\nT155 Serial EEPROM Storage Failure Error Unit operation errors Automatic Software failure or MBB failure\nA156 Critical Serial EEPROM Storage Fail Error Unit Shutdown Automatic Software failure or MBB failure\nA157 A/D Hardware Failure Unit Shutdown Automatic Software failure or MBB failure\nCircuit A Down Due to Failure",
+            "verified": "exact"
+          },
+          {
+            "source_document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 31,
+            "claim": "Measure conditioned space return air temperature and check the economizer damper position.",
+            "ordinal": 3,
+            "chunk_id": "a136821c-24d1-4e49-a269-817ab083b6fe",
+            "snippet": "configured for it.\nCircuit A Loss of Charge\nT110 Lockout Circuit A Manual Low refrigerant or faulty suction pressure transducer\nService Test --- Circuit A Loss of Charge\nCircuit A High Discharge Pressure An overcharged system, high outdoor ambient temperature\nT126 Shutdown Circuit A Automatic coupled with dirty outdoor coil, plugged filter drier, or a faulty\nService Test --- Circuit A High Discharge Pressure high---pressure switch.\nCircuit A Low Refrigerant Pressure Low refrigerant charge, dirty filters, evaporator fan turning\nbackwards, loose or broken fan belt, plugged filter drier,\nT133 Service Test --- Circuit A Low Refrigerant Add Strike for Circuit A Automatic\nfaulty transducer, excessively cold return air, or stuck open\nPressure economizer when the ambient temperature is low.\nCircuit A Failure To Pressurize\nT143 Add Strike for Circuit A Automatic Wiring causing reverse rotation or faulty compressor\nService Test --- Circuit A Failure to Pressurize\nNo time and date schedule\nT153 Real Timeclock Hardware Failure Automatic No time/date configured, software failure, or MBB failure\noperation\nA154 Serial EEPROM Hardware Failure Unit Shutdown Automatic Software failure or MBB failure\nT155 Serial EEPROM Storage Failure Error Unit operation errors Automatic Software failure or MBB failure\nA156 Critical Serial EEPROM Storage Fail Error Unit Shutdown Automatic Software failure or MBB failure\nA157 A/D Hardware Failure Unit Shutdown Automatic Software failure or MBB failure\nCircuit A Down Due to Failure",
+            "verified": "exact"
+          },
+          {
+            "source_document": "48-50LC-04-06_Single-Package-Rooftop-Service",
+            "page": 33,
+            "claim": "Measure operating suction and discharge pressures, calculate superheat and subcooling, and check temperature drop across the liquid line filter drier. Follow standard refrigerant safety procedures when attaching service gauges.",
+            "ordinal": 4,
+            "chunk_id": "d0f1646b-f5eb-4962-8cfd-c925a42588b5",
+            "snippet": "Thermostat or occupancy schedule set point too low. Reset thermostat or schedule set point.\nDirty air filters. Replace filters.\nLow refrigerant charge. Check pressure, locate leak, repair, evacuate, and\nrecharge.\nCondenser coil dirty or restricted. Clean coil or remove restriction.\nExcessive Condenser Pressures. Loose condenser thermistors. Tighten thermistors.\nDirty condenser coil. Clean coil.\nRefrigerant overcharge. Recover excess refrigerant.\nFaulty TXV. 1. Check TXV bulb mounting and secure tightly to\nsuction line and insulate.\n2. Replace TXV (and filter drier) if stuck open or\nclosed.\nCondenser air restricted or air short cycling. Determine cause and correct.\nRestriction in liquid tube. Remove restriction.\nCondenser Fans Not Operating. No Power to contactors. Fuse blown or plug at motor loose.\nExcessive Suction Pressure. High heat load. Check for sources and eliminate\nFaulty TXV. 1. Check TXV bulb mounting and secure tightly to\nsuction line and insulate.\n2. Replace TXV (and filter drier) if stuck open or\nclosed.\nRefrigerant overcharged. Recover excess refrigerant.\nSuction Pressure Too Low. Dirty air filters. Replace air filters.\nLow refrigerant charge. Check pressure, locate leak, repair, evacuate, and\nrecharge.\nFaulty TXV. 1. Check TXV bulb mounting and secure tightly to\nsuction line and insulate.\n2. Replace TXV (and filter drier) if stuck open or\nclosed.\nInsufficient evaporator airflow. Check belt tension. Check for other restrictions.\nTemperature too low in conditioned area (low Reset thermostat or occupancy schedule.\nreturn-air temperature).",
+            "verified": "exact"
+          }
+        ],
+        "meta": {
+          "retrieved": 8,
+          "dropped": 0,
+          "noDocumentation": false,
+          "scopedTo": 1,
+          "mode": "vector",
+          "model": "gemini-3.6-flash",
+          "modelFallback": false,
+          "usage": {
+            "inputTokens": 2902,
+            "outputTokens": 388,
+            "totalTokens": 4771,
+            "cachedContentTokenCount": 0,
+            "embedTokens": 13
+          },
+          "attempts": 1,
+          "finishReason": "STOP",
+          "latencyMs": 10482,
+          "latency": {
+            "retrievalMs": 583,
+            "generationMs": 9838
+          },
+          "budget": {
+            "day": "2026-08-07",
+            "used": 1,
+            "limit": 20,
+            "remaining": 19
+          }
+        }
+      }
+    }
+  ]
+}
