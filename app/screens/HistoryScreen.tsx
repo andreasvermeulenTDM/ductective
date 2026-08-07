@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, SectionList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, SectionList, StyleSheet, RefreshControl, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { ErrorState, EmptyState, OfflineState } from '../components/Chrome';
 import { HistorySkeleton } from '../components/Skeleton';
 import { ScalePressable } from '../components/Tactile';
 import { looksOffline } from '../lib/net';
-import { listSessions } from '../lib/store';
+import { listSessions, deleteSession } from '../lib/store';
 import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
 
 /**
@@ -39,6 +40,39 @@ export function HistoryScreen({
   }, []);
 
   useEffect(() => { if (isConfigured) load(); }, [load]);
+
+  /**
+   * Delete a job, after asking.
+   *
+   * Deletion is irreversible and cascades to every turn and citation, so it gets a
+   * destructive-styled confirm rather than an undo — an undo toast that a technician
+   * walks away from is not a safety net. The row disappears optimistically because
+   * the alternative is a full reload that loses the scroll position mid-list; a
+   * failure puts it straight back and says so.
+   */
+  function confirmDelete(session: Session) {
+    Alert.alert(
+      'Delete this job?',
+      `"${session.title}" and everything in it. This can't be undone.`,
+      [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const before = sessions;
+            setSessions((prev) => (prev ?? []).filter((x) => x.id !== session.id));
+            try {
+              await deleteSession(session.id);
+            } catch (e) {
+              setSessions(before);
+              setError(e instanceof Error ? e.message : String(e));
+            }
+          },
+        },
+      ]
+    );
+  }
 
   if (!isConfigured) return <ErrorState title="Not connected" detail={CONFIG_HINT} />;
 
@@ -82,9 +116,12 @@ export function HistoryScreen({
       renderItem={({ item }) => (
         <ScalePressable
           onPress={() => onOpen(item.id, item.equipment ?? null)}
+          onLongPress={() => confirmDelete(item)}
+          delayLongPress={400}
           style={({ pressed }) => [s.row, item.refused && s.rowRefused, pressed && s.rowPressed]}
           accessibilityRole="button"
           accessibilityLabel={describe(item)}
+          accessibilityHint="Long press to delete this job"
         >
           <View style={s.rowHead}>
             <Text style={s.title} numberOfLines={2}>{item.title}</Text>
@@ -102,6 +139,20 @@ export function HistoryScreen({
             ) : item.citationCount !== undefined && item.citationCount > 0 ? (
               <Text style={s.cited}>{item.citationCount} cited</Text>
             ) : null}
+
+            {/* An explicit control as well as the long press. A gesture nobody is
+                told about is not a feature, and gloves make long-press unreliable. */}
+            <View style={s.spacer} />
+            <ScalePressable
+              onPress={() => confirmDelete(item)}
+              hitSlop={12}
+              scaleTo={0.85}
+              style={s.deleteTouch}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete job: ${item.title}`}
+            >
+              <Ionicons name="trash-outline" size={18} color={color.textSecondary} />
+            </ScalePressable>
           </View>
         </ScalePressable>
       )}
@@ -176,7 +227,14 @@ const s = StyleSheet.create({
   title: { ...type.bodyStrong, color: color.textPrimary, flex: 1 },
   when: { ...type.caption, color: color.textSecondary },
 
-  meta: { flexDirection: 'row', gap: space.sm, alignItems: 'center', flexWrap: 'wrap' },
+  meta: { flexDirection: 'row', gap: space.sm, alignItems: 'center' },
+  spacer: { flex: 1 },
+  deleteTouch: {
+    minWidth: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   unitBadge: {
     paddingHorizontal: space.sm,
     paddingVertical: space.xs,

@@ -10,14 +10,16 @@ import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { fireHaptic } from '../components/Tactile';
 import { OfflineState, PermissionDenied } from '../components/Chrome';
 import { looksOffline } from '../lib/net';
-import { DiagnoseError, isLive, requestIdentifyUnit } from '../lib/diagnose';
+import { DiagnoseError, isLive, requestIdentifyUnit, requestResolveUnit } from '../lib/diagnose';
 import {
   base64Bytes,
   confirmedUnitFrom,
   MAX_UPLOAD_BYTES,
   resizeTarget,
+  splitUnitText,
   type ConfirmedUnit,
   type IdentifyResult,
+  type UnitDocument,
 } from '../lib/identify';
 
 /**
@@ -146,6 +148,39 @@ export function CaptureScreen({
   const [result, setResult] = useState<IdentifyResult | null>(null);
   /** The last failure — the 'error' state renders from it. */
   const [failure, setFailure] = useState<{ message: string; providerBlocked: boolean } | null>(null);
+
+  /** True while a typed unit's coverage is being looked up. */
+  const [resolving, setResolving] = useState(false);
+
+  /**
+   * Confirm a typed unit, resolving its coverage first (U4).
+   *
+   * The camera path gets a verdict inside `/identify-unit`; typing one used to hand
+   * back `documentIds: null`, which left the session ungrounded *and* left the app
+   * unable to say whether it held documentation. Resolving here fixes both, and the
+   * whole model string goes to the server as both fields — `resolveUnit` matches
+   * manufacturer and model independently, so "Trane YSC072E3" resolves whichever
+   * half the technician happened to type first.
+   *
+   * A failed lookup never blocks: it falls back to exactly the old behaviour.
+   */
+  async function confirmTyped() {
+    const typed = model.trim();
+    if (!typed || resolving) return;
+    setResolving(true);
+    try {
+      const { manufacturer, model: modelPart } = splitUnitText(typed);
+      const verdict = await requestResolveUnit(manufacturer, modelPart);
+      onDone({
+        equipment: typed,
+        documentIds: verdict?.documentIds ?? null,
+        status: verdict?.status ?? null,
+        coverage: (verdict?.documents ?? []).map((d: UnitDocument) => d.coverage).filter(Boolean),
+      });
+    } finally {
+      setResolving(false);
+    }
+  }
 
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
@@ -386,18 +421,18 @@ export function CaptureScreen({
 
         <View style={s.actions}>
           <Pressable
-            onPress={() => onDone({ equipment: model.trim(), documentIds: null })}
-            disabled={!model.trim()}
+            onPress={confirmTyped}
+            disabled={!model.trim() || resolving}
             style={({ pressed }) => [
               s.primary,
               pressed && s.primaryPressed,
-              !model.trim() && s.primaryDisabled,
+              (!model.trim() || resolving) && s.primaryDisabled,
             ]}
             accessibilityRole="button"
             accessibilityLabel="Use this model and continue"
-            accessibilityState={{ disabled: !model.trim() }}
+            accessibilityState={{ disabled: !model.trim() || resolving }}
           >
-            <Text style={s.primaryText}>Use this unit</Text>
+            <Text style={s.primaryText}>{resolving ? 'Checking coverage…' : 'Use this unit'}</Text>
           </Pressable>
           <Pressable
             onPress={() => setState('idle')}

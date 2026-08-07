@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { resizeTarget } from '../lib/identify';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
 import { ScalePressable, fireHaptic } from '../components/Tactile';
 import { ConversationSkeleton } from '../components/Skeleton';
@@ -11,7 +14,7 @@ import { Message as MessageView } from '../components/Message';
 import { ErrorState, OfflineNotice, SessionHeader } from '../components/Chrome';
 import { CitationSheet, SourcePanel } from '../components/Citation';
 import { looksOffline } from '../lib/net';
-import { STARTERS } from '../lib/mockDiagnostics';
+import { startersFor } from '../lib/starters';
 import { answerExisting, askQuestion, createSession, loadMessages } from '../lib/store';
 import { DiagnoseError } from '../lib/diagnose';
 import { isConfigured, CONFIG_HINT, type Citation, type Message } from '../lib/supabase';
@@ -42,6 +45,7 @@ export function ChatScreen({
   onCapture,
   equipment,
   documentIds,
+  coverage,
   carriedQuestion,
   onCarriedConsumed,
 }: {
@@ -49,6 +53,8 @@ export function ChatScreen({
   onSession: (id: string) => void;
   onCapture: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
+  /** The unit's coverage verdict, for the "do we have this unit" line. */
+  coverage?: { status: string | null; docs: string[] } | null;
   /**
    * The confirmed unit's retrieval scope, from the capture flow's coverage
    * verdict. Null for manually-typed units and reopened sessions (the row
@@ -67,12 +73,34 @@ export function ChatScreen({
   const [error, setError] = useState<Error | null>(null);
   const [offline, setOffline] = useState(false);
   const [citation, setCitation] = useState<Citation | null>(null);
+  /**
+   * ST-17 — a photo of the part, attached to the next question.
+   *
+   * Held beside the composer rather than sent on capture, so the technician can say
+   * what they are showing me. A photo with no words is a guessing game; the pairing
+   * is the point.
+   */
+  const [photo, setPhoto] = useState<{ uri: string; base64: string } | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const scroller = useRef<ScrollView>(null);
   const abort = useRef<AbortController | null>(null);
   const { canShowSourceBeside } = useLayout();
 
+  /**
+   * Sessions this screen created itself, which must never be re-fetched.
+   *
+   * The device test showed a tapped suggestion appearing twice. The cause is a race,
+   * not a double tap: sending the first message creates a session and calls
+   * `onSession(id)`, which changes the `sessionId` prop, which fires the load effect
+   * below — so the optimistic turn already in state and the same row read back from
+   * Postgres both render. Marking a locally-created id here makes the effect skip a
+   * session whose messages we are already holding.
+   */
+  const ownSession = useRef<string | null>(null);
+
   useEffect(() => {
     if (!sessionId) { setMessages([]); return; }
+    if (ownSession.current === sessionId) return; // ours; state is already correct
     setLoading(true);
     loadMessages(sessionId)
       .then((m) => { setMessages(m); setOffline(false); })
@@ -131,6 +159,9 @@ export function ChatScreen({
       if (!sid) {
         const created = await createSession(body, equipment);
         sid = created.id;
+        // Claim it before publishing the id, so the load effect that the prop
+        // change triggers sees the mark and leaves our optimistic turns alone.
+        ownSession.current = sid;
         onSession(sid);
       }
       // Two steps, not one: the question is persisted and shown before the answer
@@ -142,7 +173,11 @@ export function ChatScreen({
       setMessages((prev) => [...prev, user]);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
 
-      const reply = await answerExisting(sid, seq + 1, body, equipment, documentIds, controller.signal);
+      const attached = photo;
+      setPhoto(null); // consumed by this turn, whatever the outcome
+      const reply = await answerExisting(
+        sid, seq + 1, body, equipment, documentIds, controller.signal, attached?.base64 ?? null
+      );
       if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
       setOffline(false);
@@ -158,6 +193,45 @@ export function ChatScreen({
       abort.current = null;
       sending.current = false;
       setBusy(false);
+    }
+  }
+
+  /**
+   * Attach a photo of the part to the next question (ST-17).
+   *
+   * Resized before it is held, using the same target the nameplate path uses — a
+   * 4 MB capture over rooftop LTE that the server downscales anyway is a latency
+   * bug, and the technician pays for it twice on a slow connection.
+   */
+  async function attachPhoto() {
+    if (attaching || busy) return;
+    setAttaching(true);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        setError(new Error('Camera access is off for Ductective. Turn it on in Settings to attach a photo.'));
+        return;
+      }
+      const shot = await ImagePicker.launchCameraAsync({ quality: 0.7, base64: false, exif: false });
+      if (shot.canceled || !shot.assets?.[0]) return;
+      const asset = shot.assets[0];
+
+      const { resize, width } = resizeTarget(asset.width ?? 0, asset.height ?? 0);
+      const out = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        resize ? [{ resize: { width } }] : [],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (!out.base64) {
+        setError(new Error("Couldn't read that photo. Try again."));
+        return;
+      }
+      void fireHaptic('shutter');
+      setPhoto({ uri: out.uri, base64: out.base64 });
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setAttaching(false);
     }
   }
 
@@ -194,7 +268,12 @@ export function ChatScreen({
   const conversation = (
     <ScrollView ref={scroller} style={s.fill} contentContainerStyle={s.scroll}>
       {messages.length === 0 ? (
-        <EmptyAsk onPick={(sug) => send(sug)} onIdentify={onCapture} equipment={equipment} />
+        <EmptyAsk
+          onPick={(sug) => send(sug)}
+          onIdentify={onCapture}
+          equipment={equipment}
+          coverage={coverage}
+        />
       ) : (
         messages.map((m) => (
           <MessageView
@@ -326,16 +405,46 @@ export function ChatScreen({
         </View>
       )}
 
+      {/* An attached photo, shown before it is sent — a picture the technician
+          cannot see attached is one they cannot tell is the wrong picture. */}
+      {photo && (
+        <View style={s.attachment}>
+          <Image source={{ uri: photo.uri }} style={s.thumb} accessibilityIgnoresInvertColors />
+          <Text style={s.attachmentText}>
+            Photo attached. Say what I'm looking at and I'll work it into the diagnosis.
+          </Text>
+          <ScalePressable
+            onPress={() => setPhoto(null)}
+            hitSlop={12}
+            scaleTo={0.85}
+            style={s.removeAttachment}
+            accessibilityRole="button"
+            accessibilityLabel="Remove the attached photo"
+          >
+            <Ionicons name="close" size={18} color={color.textSecondary} />
+          </ScalePressable>
+        </View>
+      )}
+
       <View style={s.composer}>
         <ScalePressable
-          onPress={() => onCapture('camera')}
+          onPress={equipment ? attachPhoto : () => onCapture('camera')}
           haptic="tap"
-          style={({ pressed }) => [s.capture, pressed && s.capturePressed]}
+          disabled={attaching || busy}
+          style={({ pressed }) => [s.capture, pressed && s.capturePressed, (attaching || busy) && s.sendDisabled]}
           accessibilityRole="button"
-          accessibilityLabel="Photograph the nameplate"
-          accessibilityHint="Identifies the unit from its data plate"
+          // The same button does the job the technician actually needs at each
+          // point: identify the unit when there isn't one, photograph the part
+          // once there is. Before this it re-ran nameplate capture mid-diagnosis,
+          // which is never what someone pointing at a scorched contactor wants.
+          accessibilityLabel={equipment ? 'Photograph the part' : 'Photograph the nameplate'}
+          accessibilityHint={
+            equipment
+              ? 'Attaches a photo of what you are looking at to your next question'
+              : 'Identifies the unit from its data plate'
+          }
         >
-          <Ionicons name="camera-outline" size={22} color={color.accent} />
+          <Ionicons name={equipment ? 'camera' : 'camera-outline'} size={22} color={color.accent} />
         </ScalePressable>
 
         <View style={s.inputWrap}>
@@ -386,55 +495,61 @@ export function ChatScreen({
 }
 
 /**
- * First run, mockup s1.
+ * First run.
  *
- * Coverage is stated before a tech can hit the edge of it — E3.6's honesty at the
- * boundary, moved forward into the empty state so it costs nobody a wasted query.
+ * The old version led with a "COVERED RIGHT NOW" panel listing two manufacturers.
+ * It was removed for two reasons: it went stale the moment the corpus opened past
+ * Trane and Carrier, and the general question ("what does this app cover?") is the
+ * wrong one to answer here — by this point a unit is selected, so the *specific*
+ * question ("do you have THIS unit?") is both answerable and the one that matters.
+ * `CoverageLine` answers that instead, from the unit's own verdict.
  */
 function EmptyAsk({
   onPick,
   onIdentify,
   equipment,
+  coverage,
 }: {
   onPick: (s: string) => void;
   onIdentify: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
-  /** A question typed at the unit gate, resumed once a unit exists (U1). */
-  carriedQuestion?: string | null;
-  onCarriedConsumed?: () => void;
+  coverage?: { status: string | null; docs: string[] } | null;
 }) {
+  const suggestions = startersFor(equipment, coverage?.docs ?? []);
+
   return (
     <View style={s.empty}>
       <View>
         <Text style={s.emptyTitle}>What's the unit doing?</Text>
         <Text style={s.emptyBody}>
-          Describe the symptom in your own words, or shoot the data plate.
+          Describe the symptom in your own words — I'll cite every step to this
+          unit's manuals.
         </Text>
       </View>
 
-      <View style={s.coverage}>
-        <Text style={s.coverageLabel}>COVERED RIGHT NOW</Text>
-        <Text style={s.coverageBody}>
-          Trane Precedent and Carrier 48/50 packaged rooftops. Anything else, I'll say
-          so instead of guessing.
-        </Text>
-        {equipment ? (
-          <View style={s.doors}>
-            <View style={s.unitChosen}>
-              <Text style={s.unitChosenLabel}>THIS JOB IS ABOUT</Text>
+      {equipment && (
+        <View style={s.unitCard}>
+          <View style={s.unitCardHead}>
+            <View style={s.unitCardText}>
+              <Text style={s.unitChosenLabel}>THIS JOB</Text>
               <Text style={s.unitChosenText}>{equipment}</Text>
             </View>
             <ScalePressable
               onPress={() => onIdentify('manual')}
-              style={({ pressed }) => [s.door, pressed && s.doorPressed]}
+              hitSlop={8}
+              style={({ pressed }) => [s.changeUnit, pressed && s.doorPressed]}
               accessibilityRole="button"
               accessibilityLabel={`Change the unit, currently ${equipment}`}
             >
-              <Ionicons name="swap-horizontal-outline" size={20} color={color.accent} />
-              <Text style={s.doorText}>Different unit</Text>
+              <Ionicons name="swap-horizontal-outline" size={18} color={color.accent} />
+              <Text style={s.changeUnitText}>Change</Text>
             </ScalePressable>
           </View>
-        ) : (
+          <CoverageLine coverage={coverage} />
+        </View>
+      )}
+
+      {!equipment && (
         <View style={s.doors}>
           <ScalePressable
             onPress={() => onIdentify('camera')}
@@ -455,25 +570,61 @@ function EmptyAsk({
             <Text style={s.doorText}>Type the unit in</Text>
           </ScalePressable>
         </View>
-        )}
+      )}
 
-        <Text style={s.orAsk}>Or just describe what it's doing:</Text>
-
-        <View style={s.starters}>
-          {STARTERS.map((sug) => (
-            <ScalePressable
-              key={sug}
-              onPress={() => onPick(sug)}
-              haptic="tap"
-              style={({ pressed }) => [s.starter, pressed && s.starterPressed]}
-              accessibilityRole="button"
-              accessibilityLabel={`Use example: ${sug}`}
-            >
-              <Text style={s.starterText}>{sug}</Text>
-            </ScalePressable>
-          ))}
-        </View>
+      <View style={s.starters}>
+        <Text style={s.orAsk}>Common on this unit</Text>
+        {suggestions.map((sug) => (
+          <ScalePressable
+            key={sug}
+            onPress={() => onPick(sug)}
+            haptic="tap"
+            style={({ pressed }) => [s.starter, pressed && s.starterPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Ask about: ${sug}`}
+          >
+            <Text style={s.starterText}>{sug}</Text>
+          </ScalePressable>
+        ))}
       </View>
+    </View>
+  );
+}
+
+/**
+ * Whether we hold documentation for *this* unit — said before the first question.
+ *
+ * The technician asked for this directly ("should show if unit is located / we have
+ * data"), and it is U4's promise made visible: the verdict already exists at unit
+ * selection, it was simply never rendered. Three states, and the third is the one
+ * worth keeping honest — an unchecked unit must not read as a covered one.
+ */
+function CoverageLine({ coverage }: { coverage?: { status: string | null; docs: string[] } | null }) {
+  if (!coverage?.status) {
+    return (
+      <View style={s.coverageRow}>
+        <Ionicons name="help-circle-outline" size={16} color={color.textSecondary} />
+        <Text style={s.coverageUnknown}>Coverage not checked for this one</Text>
+      </View>
+    );
+  }
+  if (coverage.status === 'covered') {
+    const n = coverage.docs.length;
+    return (
+      <View style={s.coverageRow}>
+        <Ionicons name="checkmark-circle" size={16} color={color.accent} />
+        <Text style={s.coverageYes}>
+          {n === 1 ? '1 manual for this unit' : `${n} manuals for this unit`}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <View style={s.coverageRow}>
+      <Ionicons name="alert-circle-outline" size={16} color={color.refusalText} />
+      <Text style={s.coverageNo}>
+        No documentation for this unit — I'll say so rather than guess
+      </Text>
     </View>
   );
 }
@@ -487,28 +638,36 @@ const s = StyleSheet.create({
   emptyTitle: { ...type.display, color: color.textPrimary },
   emptyBody: { ...type.body, color: color.textSecondary, marginTop: space.sm },
 
-  coverage: {
-    gap: space.md,
-    padding: space.lg,
-    borderRadius: space.xl,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface,
-  },
-  coverageLabel: { ...type.overline, color: color.accent },
-  coverageBody: { ...type.body, color: color.textPrimary },
-
   doors: { gap: space.sm },
-  unitChosen: {
-    gap: space.xs,
+
+  unitCard: {
+    gap: space.md,
     padding: space.lg,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.accentBorder,
     backgroundColor: color.accentSurface,
   },
+  unitCardHead: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  unitCardText: { flex: 1, gap: space.xs },
   unitChosenLabel: { ...type.overline, color: color.accent },
   unitChosenText: { ...type.heading, color: color.textPrimary },
+  changeUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.borderStrong,
+  },
+  changeUnitText: { ...type.chip, color: color.textPrimary },
+
+  coverageRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  coverageYes: { ...type.caption, color: color.accent, flex: 1 },
+  coverageNo: { ...type.caption, color: color.refusalText, flex: 1 },
+  coverageUnknown: { ...type.caption, color: color.textSecondary, flex: 1 },
 
   door: {
     minHeight: MIN_TOUCH + 8,
@@ -596,6 +755,27 @@ const s = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.borderStrong,
+  },
+
+  attachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginHorizontal: space.lg,
+    marginBottom: space.sm,
+    padding: space.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+  },
+  thumb: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: color.surfaceRaised },
+  attachmentText: { ...type.caption, color: color.textPrimary, flex: 1 },
+  removeAttachment: {
+    minWidth: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   composer: {

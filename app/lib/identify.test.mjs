@@ -24,6 +24,7 @@ import {
   parseIdentifyResponse,
   postIdentify,
   resizeTarget,
+  splitUnitText,
 } from './identify.ts';
 
 // --- fixtures: the four shapes, verbatim from 03-backend.md -----------------
@@ -205,4 +206,25 @@ test('base64Bytes estimates the decoded size for the pre-upload guard', () => {
   assert.equal(base64Bytes('AAA='), 2);
   const oneMiB = 'A'.repeat(Math.ceil((1024 * 1024 * 4) / 3));
   assert.ok(Math.abs(base64Bytes(oneMiB) - 1024 * 1024) < 4);
+});
+
+// --- splitUnitText (device-test fix, 7 Aug 2026) -----------------------------
+//
+// Sending the whole typed string as both manufacturer and model resolved "Trane
+// YSC072E3" but silently failed "Goodman AMEC960603", because the corpus carries
+// "Goodman / Amana" and the server's manufacturer test is containment. Measured
+// against the live endpoint before this split existed.
+
+test('splitUnitText takes the make off the front, the way a plate reads', () => {
+  assert.deepEqual(splitUnitText('Trane YSC072E3RHB0000'), { manufacturer: 'Trane', model: 'YSC072E3RHB0000' });
+  assert.deepEqual(splitUnitText('Goodman AMEC960603'), { manufacturer: 'Goodman', model: 'AMEC960603' });
+  assert.deepEqual(splitUnitText('Carrier 48TC A06'), { manufacturer: 'Carrier', model: '48TC A06' });
+});
+
+test('splitUnitText uses a lone token for both — a single word could be either', () => {
+  assert.deepEqual(splitUnitText('48TCA06'), { manufacturer: '48TCA06', model: '48TCA06' });
+});
+
+test('splitUnitText normalises the whitespace a phone keyboard produces', () => {
+  assert.deepEqual(splitUnitText('  Trane   YSC072  '), { manufacturer: 'Trane', model: 'YSC072' });
 });

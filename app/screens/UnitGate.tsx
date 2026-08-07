@@ -20,6 +20,7 @@ import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
+import { ScalePressable } from '../components/Tactile';
 import { Message as MessageView } from '../components/Message';
 import { looksOffline } from '../lib/net';
 import { refusalCheck, DiagnoseError, isLive, type DiagnoseReply } from '../lib/diagnose';
@@ -33,6 +34,7 @@ type Props = {
 
 export function UnitGate({ onIdentify, onCarryOver }: Props) {
   const [question, setQuestion] = useState('');
+  const [urgentOpen, setUrgentOpen] = useState(false);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<DiagnoseReply | null>(null);
   const [needsUnit, setNeedsUnit] = useState(false);
@@ -101,46 +103,64 @@ export function UnitGate({ onIdentify, onCarryOver }: Props) {
           </Pressable>
         </View>
 
-        <View style={s.coverage}>
-          <Text style={s.coverageLabel}>COVERED RIGHT NOW</Text>
-          <Text style={s.coverageBody}>
-            Trane Precedent and Carrier 48/50 packaged rooftops. Anything else, I'll
-            say so rather than guess.
-          </Text>
-        </View>
+        {/*
+          U7 — a refusal must be reachable before a unit exists.
 
-        {/* U7 — a refusal must be reachable before a unit exists. */}
+          Collapsed behind a disclosure. It is a genuine safety escape and it stays,
+          but as a permanently-open panel it competed with the two front doors for
+          attention on the screen a technician sees most, and it is the rarer path by
+          a wide margin. Closed it is one quiet line; open it is exactly what it was.
+        */}
         <View style={s.safety}>
-          <Text style={s.safetyLabel}>SOMETHING URGENT?</Text>
-          <Text style={s.safetyHint}>
-            Ask here and I'll tell you straight away if it's work I won't advise on.
-            For anything else I'll need the unit first.
-          </Text>
-
-          <TextInput
-            value={question}
-            onChangeText={setQuestion}
-            placeholder="What's happening?"
-            placeholderTextColor={color.textSecondary}
-            style={s.input}
-            multiline
-            accessibilityLabel="Ask before choosing a unit"
-          />
-
-          <Pressable
-            onPress={ask}
-            disabled={!question.trim() || checking}
-            style={({ pressed }) => [
-              s.askButton,
-              pressed && s.askPressed,
-              (!question.trim() || checking) && s.askDisabled,
-            ]}
+          <ScalePressable
+            onPress={() => setUrgentOpen((v) => !v)}
+            hitSlop={8}
+            style={s.urgentToggle}
             accessibilityRole="button"
-            accessibilityLabel="Check this before choosing a unit"
-            accessibilityState={{ disabled: !question.trim() || checking }}
+            accessibilityLabel="Ask something before choosing a unit"
+            accessibilityState={{ expanded: urgentOpen }}
           >
-            <Text style={s.askText}>{checking ? 'Checking…' : 'Ask'}</Text>
-          </Pressable>
+            <Ionicons
+              name={urgentOpen ? 'chevron-down' : 'chevron-forward'}
+              size={16}
+              color={color.textSecondary}
+            />
+            <Text style={s.urgentToggleText}>Something urgent, before I pick a unit</Text>
+          </ScalePressable>
+
+          {urgentOpen && (
+            <>
+              <Text style={s.safetyHint}>
+                I'll tell you straight away if it's work I won't advise on. For
+                anything else I'll need the unit first.
+              </Text>
+
+              <TextInput
+                value={question}
+                onChangeText={setQuestion}
+                placeholder="What's happening?"
+                placeholderTextColor={color.textSecondary}
+                style={s.input}
+                multiline
+                accessibilityLabel="Ask before choosing a unit"
+              />
+
+              <Pressable
+                onPress={ask}
+                disabled={!question.trim() || checking}
+                style={({ pressed }) => [
+                  s.askButton,
+                  pressed && s.askPressed,
+                  (!question.trim() || checking) && s.askDisabled,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Check this before choosing a unit"
+                accessibilityState={{ disabled: !question.trim() || checking }}
+              >
+                <Text style={s.askText}>{checking ? 'Checking…' : 'Ask'}</Text>
+              </Pressable>
+            </>
+          )}
         </View>
 
         {refusal && (
@@ -202,19 +222,14 @@ const s = StyleSheet.create({
   doorText: { ...type.bodyStrong, color: color.textPrimary },
   doorHint: { ...type.caption, color: color.textSecondary },
 
-  coverage: {
-    gap: space.sm,
-    padding: space.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface,
-  },
-  coverageLabel: { ...type.overline, color: color.accent },
-  coverageBody: { ...type.body, color: color.textPrimary },
-
   safety: { gap: space.sm },
-  safetyLabel: { ...type.overline, color: color.textSecondary },
+  urgentToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: MIN_TOUCH,
+  },
+  urgentToggleText: { ...type.caption, color: color.textSecondary },
   safetyHint: { ...type.caption, color: color.textSecondary },
   input: {
     minHeight: MIN_TOUCH,

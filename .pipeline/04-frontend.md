@@ -192,3 +192,86 @@ nothing for the client to do.
    selection" done properly client-side — is Run C scope.
 
 Per instruction: branch pushed, **no PR, no merge**.
+
+---
+
+## Device feedback round 2 (7 Aug 2026) — all nine items
+
+Owner tested on iPhone and returned nine items. All nine are done; the ninth
+("UX still feels clunky") is the sum of the other eight rather than a separate fix.
+
+| # | Item | Resolution |
+|---|---|---|
+| 1 | "What covered right now" should be removed | Removed from the gate **and** the chat empty state |
+| 2 | Pre-canned responses should match the unit | `app/lib/starters.ts` — class derived from the resolved documents' coverage |
+| 3 | Show if the unit is located / we have data | `CoverageLine` — "1 manual for this unit" / "No documentation" / "not checked" |
+| 4 | Pre-done responses show twice when clicked | Fixed — a session-creation race, not a double tap |
+| 5 | Take pictures during the diagnostic | ST-17 server + UI, below |
+| 6 | Logo should go home | Lockup is a button with a real touch target |
+| 7 | Clean up the home screen | Coverage panel gone, safety escape collapsed behind a disclosure |
+| 8 | Delete history | Trash control + long press, destructive confirm, optimistic with rollback |
+| 9 | UX feels clunky | The above |
+
+### The duplicate was a race, not a double tap
+
+Sending the first message creates a session and calls `onSession(id)`. That prop
+change fired the load effect, which re-read the same turn from Postgres while the
+optimistic copy was already in state — so the tapped suggestion rendered twice. The
+screen now marks sessions it created itself and the effect skips them. The earlier
+`sending` ref (from round 1) was a real fix for a different double-fire and is
+untouched.
+
+### Coverage stated per unit, and typed units now resolve
+
+The camera path always had a verdict inside `/identify-unit`; **manual entry never
+called `/resolve-unit` at all**, so a typed unit reached the composer ungrounded
+*and* the app could not say whether it held documentation for it. It resolves now,
+which fixes both.
+
+Found by running it: sending the whole typed string as both `manufacturer` and
+`model` resolved "Trane YSC072E3" and silently failed "Goodman AMEC960603" — the
+corpus carries "Goodman / Amana" and the server's manufacturer test is containment,
+so a multi-word make never matched. `splitUnitText` takes the make off the front.
+Verified against the live endpoint across seven units.
+
+### Suggestions may never be something the app refuses
+
+The starter list is chosen by equipment class, and carries a rule worth stating: a
+suggestion the safety gate would refuse is worse than no suggestion, because the app
+invites a question and then declines it. Three of the top-15 faults (F11 ignition,
+F12 rollout, F14 charge verification) sit in refusal territory, so none of them is
+offered. `starters.test.mjs` runs the real `classifyHazard` over every suggestion of
+every class, so a future edit that adds one fails CI rather than a roof.
+
+### ST-17 — photos during the diagnostic, without weakening citations
+
+The design question is the citation rule: `CLAUDE.md` requires every diagnostic
+statement to trace to a source document and page, and **a photograph is not a source
+document**. The resolution is that a photo is an *observation*, never an authority:
+
+- The prompt says so explicitly — the photo informs what the answer says it can see,
+  and every numbered step must still come from and cite a numbered source.
+- `validateAnswer` enforces it structurally, unchanged: a step whose source index
+  does not resolve is dropped whatever the model saw, and an answer that is *only*
+  photo-justified degrades to no-documentation rather than emitting an uncited claim.
+
+Ordering is deliberate and asserted: the safety gate and the coverage short-circuit
+both run **before** the image is decoded, so a hazardous question with a photo
+attached refuses without paying for image processing, and an uncovered unit is told
+so without it either. Image validation is `prepareImage`, extracted from
+`/identify-unit` so both routes run one implementation of the decode, JPEG-only and
+size rules rather than two.
+
+UI: the composer's camera button now does the job that is actually needed at each
+point — identify the unit when there isn't one, photograph the part once there is.
+Before, it re-ran nameplate capture mid-diagnosis, which is never what someone
+pointing at a scorched contactor wants. The photo is held beside the composer with a
+thumbnail and a remove control, and is sent with the next question rather than on
+capture, because a photo with no words is a guessing game.
+
+Verified live: hazard+photo refuses (no decode), uncovered+photo answers
+no-documentation (no decode), a malformed image is a clean 400 and a PNG a 415 —
+the same rules the nameplate route enforces.
+
+**Gates: 286 tests pass · lint 0 · typecheck clean · ST-12/ST-14 probes 117
+assertions green, ledger 0 → 0.**
