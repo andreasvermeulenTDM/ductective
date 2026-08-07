@@ -3,10 +3,11 @@
 Open items that are not blocking the current round's acceptance criteria. Per
 `CLAUDE.md`, Critical/High issues do **not** belong here — they block "done".
 
-**Everything filed on 7 Aug 2026 is now closed.** Kept below with its resolution
-rather than deleted: the reasoning is why the fixes look the way they do, and two
-of them were found by a tool that had been reporting noise for long enough that
-nobody read it.
+**One item is open** — a candidate claim/citation mismatch awaiting Eval's judgment,
+at the bottom of this file. Everything else filed on 7 Aug 2026 is closed, and kept
+below with its resolution rather than deleted: the reasoning is why the fixes look
+the way they do, and two of them were found by a tool that had been reporting noise
+for long enough that nobody read it.
 
 ---
 
@@ -93,3 +94,32 @@ dropped it to one real error it had been burying:
 Swept the other 88 source files for the same defect. The only other control
 character in the tree is the deliberate NUL field separator in `contentHash`,
 which is correct and was left alone.
+
+---
+
+## OPEN · Candidate claim/citation mismatch — for Eval's sampled review (filed 7 Aug 2026)
+
+Found by ST-13's reachability probe on the first real cited answer this project has
+produced. Carrier 48LC, low suction / short cycling:
+
+| | |
+|---|---|
+| **Claim** | "Inspect the evaporator fan belt tension, belt condition, and fan rotation direction." |
+| **Cited** | `48-50LC-04-06_Single-Package-Rooftop-Service` p31 — a Loss-of-Charge alert table listing refrigerant faults and a suction pressure transducer |
+| **Mechanically** | clean: resolves, `verified:'exact'`, correct page, snippet is the stored chunk |
+
+The passage says nothing about fan belts. If it holds up it is the defect `CLAUDE.md`
+names as the worse of the two — a citation that does not support the claim attached
+to it — and it is **invisible to mechanical checking**, which is why criterion 2 has
+a sampled human half at all.
+
+**Not a verdict.** One observation from one answer, and support is Eval's call, not
+Test's. Routed to ST-16's sampled review with a specific instruction: **sample the
+full claim pool, not a triage-filtered subset.** `triageOverlap` scored this exact
+citation `band: 'high'` — its most confident bucket — because generic words carry
+the overlap, so the heuristic would have hidden it.
+
+Likely owner if confirmed: Backend (source-index anchoring picking a chunk that
+retrieved well for the symptom but does not support the specific step) or Knowledge
+(chunk boundaries merging an alert table with adjacent remedy prose). Route on
+inspection of the retrieval, not on assumption.

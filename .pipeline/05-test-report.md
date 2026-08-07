@@ -76,3 +76,104 @@ capture the server's tree, not the prober's** — the transcript's `gitCommit`
 field currently records the prober's HEAD, and a `/health` endpoint reporting
 the server's own commit is filed as a small Backend task so the two can be
 asserted equal before any scored run.
+
+---
+
+## ST-13 — Citation propagation, checked by machine (criteria 2 and 10)
+
+**Status: 3 of 4 criteria closed. Criterion 2 is UNMEASURED and says so.**
+
+| Criterion | Verdict |
+|---|---|
+| (1) drop-semantics unit tests re-confirmed and named | ✅ closed |
+| (2) checker run over the Q2/Q3 top-15 transcripts | ⏸ **UNMEASURED** — those transcripts do not exist until ST-16's quota day |
+| (3) harness-level reachability: the validator cannot be silently bypassed | ✅ closed, over the wire |
+| (4) re-runnable by the loop stage without quota | ✅ closed |
+
+### The checker
+
+`tests/checkers/citation-check.mjs` — reads transcripts, never the API. It decides
+the half of criterion 2 a machine can decide: that every rendered claim carries a
+citation, and that the citation **resolves to a real stored row**. Whether the cited
+passage *supports* the claim is a judgment and stays with Eval's sampled review; the
+two are deliberately not collapsed.
+
+Steps are re-parsed out of the rendered body rather than counted from the citation
+array — the question is whether a claim *the technician can see* has something
+behind it, and counting citations against themselves answers nothing.
+
+Checks: uncited claim · orphan citation · count divergence · empty claim ·
+unresolvable document/page · missing chunk_id · missing snippet · `verified ≠
+'exact'` · fabricated chunk_id · document mismatch · page mismatch · snippet that
+is not the stored chunk text. Every defect carries a severity **and an owner**.
+
+Exit codes follow the eval harness so that "nothing to measure" can never be
+reported as success: `0` PASS · `1` FAIL · `2` UNMEASURED. Run over the existing
+zero-quota transcript it correctly returns **UNMEASURED**, not PASS.
+
+**22 tests** (`citation-check.test.mjs`), every one planting a defect deliberately —
+a checker that has only seen correct input asserts nothing. Resolution is injected,
+so the whole suite runs with no database and no quota.
+
+### Criterion 1 — the drop-semantics tests, by name
+
+Re-confirmed green in `lib/diagnose.test.mjs`:
+
+- `a fabricated source index is dropped, not rendered` (line 107)
+- `every emitted step has a citation — the counts cannot diverge` (line 123)
+- `if every step is dropped the answer degrades to "no documentation", never to an uncited claim` (line 132)
+
+### Criterion 3 — reachability, proven on the serve path
+
+`tests/probes/citation-reachability-probe.mjs`. A unit test proves `validateAnswer`
+drops uncited steps; it cannot prove the serve path *calls* it. This asks the running
+server one real question and asserts the structural signature only `validateAnswer`
+produces.
+
+**Cost: 1 Gemini request** (`gemini-3.6-flash`, 4,771 tokens, 10.5 s), spent
+deliberately. It buys something the scored run cannot: proof that this checker parses
+**real** output before a quota day is spent producing fifteen transcripts for it. A
+checker validated only against fixtures is a guess about the format.
+
+Result — Carrier 48LC, low suction / short cycling: `kind=answer`, **4 citations,
+4/4 `verified:'exact'`, 4/4 with chunk_id and snippet, 4/4 resolved against stored
+chunks, 0 uncited claims, checker verdict PASS.** Real transcript committed
+(`synthetic: false`) as the checker's first genuine input.
+
+### Finding — the triage heuristic is not a filter, and must not be used as one
+
+The first real answer produced a counterexample worth more than the pass. Citation 2
+attached a claim about **evaporator fan belt tension** to a **Loss-of-Charge alert
+table** listing refrigerant faults — no mention of belts. `triageOverlap` scored it
+`band: 'high'`, its most confident bucket, because generic words (circuit, pressure,
+low, check) carry the overlap. A correct citation about dirty air filters scored high
+too, for the right reason.
+
+So the bands **do not separate supported from unsupported claims**. The checker now
+reports the distribution and refuses to filter on it; an earlier draft of this story
+selected review candidates by `band === 'none'`, which would have quietly told Eval
+that everything else was fine. **ST-16 must sample the full claim pool, not a triaged
+subset.**
+
+### Finding — a candidate claim/citation mismatch, routed to Eval (open)
+
+The fan-belt citation above is a candidate instance of the defect `CLAUDE.md` calls
+the worse of the two: a citation that does not support the claim attached to it. One
+observation from one answer is not a verdict, and support is not Test's call —
+filed in `backlog.md` for Eval's sampled review at ST-16. Mechanically it is clean,
+which is exactly why the mechanical checker cannot be the whole of criterion 2.
+
+### Fixed in passing — the no-documentation reply had gone false
+
+`lib/diagnose.mjs` told every technician "Phase 1 covers Trane Precedent and Carrier
+48/50 light-commercial rooftop units". Dropping the manufacturer limit on 7 Aug made
+that untrue, so a technician holding a Lennox unit was being told in the app that we
+do not cover it — while its manual sat in the corpus. Rewritten so it cannot go stale:
+coverage is stated by the unit gate, which builds it from the live documents table.
+ST-14's five coverage edges re-run green afterwards (117 assertions).
+
+### Process — the stale-server guard paid for itself
+
+`/health` (added earlier today) caught a server running `3c25b51` while HEAD was
+`9bb13da`, **before** the probe measured anything. Third occurrence of that trap and
+the first caught automatically rather than by noticing a process start time by hand.
