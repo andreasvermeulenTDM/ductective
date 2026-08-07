@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, SectionList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, SectionList, StyleSheet, RefreshControl } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
-import { Loading, ErrorState, EmptyState, OfflineState } from '../components/Chrome';
+import { ErrorState, EmptyState, OfflineState } from '../components/Chrome';
 import { HistorySkeleton } from '../components/Skeleton';
 import { ScalePressable } from '../components/Tactile';
 import { looksOffline } from '../lib/net';

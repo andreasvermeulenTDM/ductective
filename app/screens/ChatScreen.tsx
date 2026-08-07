@@ -8,7 +8,7 @@ import { ScalePressable, fireHaptic } from '../components/Tactile';
 import { ConversationSkeleton } from '../components/Skeleton';
 import { useLayout } from '../theme/layout';
 import { Message as MessageView } from '../components/Message';
-import { Loading, ErrorState, OfflineNotice, SessionHeader } from '../components/Chrome';
+import { ErrorState, OfflineNotice, SessionHeader } from '../components/Chrome';
 import { CitationSheet, SourcePanel } from '../components/Citation';
 import { looksOffline } from '../lib/net';
 import { STARTERS } from '../lib/mockDiagnostics';

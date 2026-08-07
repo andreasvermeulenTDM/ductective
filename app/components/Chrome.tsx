@@ -14,7 +14,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Animated, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScalePressable } from './Tactile';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
@@ -113,15 +113,6 @@ export function OfflineNotice() {
         <Text style={s.offlineNoticeStrong}>You're offline. </Text>
         Everything already answered stays here. Ask again when you have signal.
       </Text>
-    </View>
-  );
-}
-
-export function Loading({ label }: { label: string }) {
-  return (
-    <View style={s.center}>
-      <ActivityIndicator color={color.accent} />
-      <Text style={s.centerText}>{label}</Text>
     </View>
   );
 }
