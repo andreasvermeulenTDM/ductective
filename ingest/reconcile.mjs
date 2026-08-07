@@ -181,8 +181,51 @@ export const IN_SCOPE_DOCTYPES = ['PT Chart'];
  * (The brief's "18 Trane + Carrier rooftop docs" is a miscount: there are exactly 18
  * such documents and one of them is this chiller. Line 64 names chillers directly,
  * so it governs. Recorded rather than silently reconciled.)
+ *
+ * **Widened 7 Aug 2026, and the reason matters.** The manufacturer half of this rule
+ * was safe only while the corpus happened to hold nothing but rooftops from Trane and
+ * Carrier. The owner-supplied ZIP batch broke that assumption hard: it carries Carrier
+ * gas furnaces, evaporator coils, a cast-iron boiler, a steam humidifier, a whole-house
+ * dehumidifier, a ductless multi-zone, VRF indoor units and a VFD — plus a Trane
+ * residential furnace and an applied air handler. Every one of them is a Trane or
+ * Carrier document, so every one would have been tagged **in Phase 1 scope** and
+ * dropped straight into the retrieval set a technician's rooftop question searches.
+ * That is a silent precision regression against a measured baseline (M12, 80.9%), and
+ * it would have arrived looking like a corpus improvement.
+ *
+ * So the chiller pattern generalises into the equipment classes Phase 1 does not
+ * answer on. Still a coverage pattern and still no filename list, for the reason
+ * above. Two deliberate omissions:
+ *
+ *  - **`heat pump` is NOT here.** `PKGP-SVX010A-EN` is a Precedent *packaged rooftop*
+ *    heat pump and is legitimately in scope. Residential split heat pumps are caught by
+ *    `split`/`residential` in their coverage strings instead.
+ *  - **`\bERV\b`/`\bHRV\b` are word-anchored** so they cannot fire on the `erv` inside
+ *    "Install/Startup/**Serv**ice", which is a live doc type on nine in-scope rows.
+ *
+ * `reconcile.scope.test.mjs` pins the in-scope set so a future widening that clips a
+ * rooftop document fails CI rather than quietly shrinking what the app can answer.
  */
-export const OUT_OF_SCOPE_EQUIPMENT = /\bchillers?\b/i;
+export const OUT_OF_SCOPE_EQUIPMENT = new RegExp(
+  [
+    'chillers?',
+    'furnaces?',
+    'air handlers?', 'air handling',
+    'evaporator coils?', 'cased coils?', 'cased n',
+    'ductless', 'mini-?split', 'split-system', 'single split', 'splits? system',
+    'vrf', 'vrv', 'cassette',
+    'boilers?',
+    'de-?humidifiers?', 'humidifiers?',
+    '\\bERV\\b', '\\bHRV\\b', 'ventilator',
+    'water-source', 'water-to-air',
+    'blower',
+    'variable frequency drive', '\\bVFD\\b',
+    'gateway', 'remote control', 'antenna', 'accessory kit',
+    'residential',
+    'homeowner',
+  ].join('|'),
+  'i'
+);
 
 export const isInScope = (doc) =>
   !OUT_OF_SCOPE_EQUIPMENT.test(`${doc.coverage ?? ''} ${doc.docType ?? ''}`) &&
