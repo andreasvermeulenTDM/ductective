@@ -2,9 +2,10 @@
   "format": "ductective-eval-transcript/1",
   "runId": "B-zeroquota-2026-08-07",
   "synthetic": false,
-  "generatedAt": "2026-08-07T14:32:23.670Z",
+  "generatedAt": "2026-08-07T15:35:31.439Z",
   "quotaDay": "zero-quota",
-  "gitCommit": "d1ff32b",
+  "gitCommit": "3c25b51",
+  "serverCommit": "3c25b51",
   "server": {
     "runtime": "node scripts/serve.mjs",
     "model": "n/a — no model call by design",
@@ -33,7 +34,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 3,
+          "latencyMs": 11,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -73,7 +74,7 @@
           "trigger": "procedural",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 5,
+          "latencyMs": 11,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -153,7 +154,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -193,7 +194,7 @@
           "trigger": "procedural",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -273,7 +274,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 1,
+          "latencyMs": 5,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -313,7 +314,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -647,7 +648,7 @@
           "noDocumentation": true,
           "scopedTo": 0,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0

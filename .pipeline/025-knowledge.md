@@ -452,3 +452,52 @@ from a Phase 1 diagnosis, so they change nothing a technician sees; embedding th
 is a multi-hour unattended run on the free tier, tracked as follow-up work rather
 than left implicit. Run `npm run ingest` (no flag) to complete them. The content
 hash means that run re-embeds none of the 3,912 chunks already stored.
+
+---
+
+## §1 addendum 2 — the answer scope opens up (owner decision, 7 Aug 2026)
+
+Following the batch above the owner directed: **"the app should not be limited to
+any manufacturer."** Scope is no longer gated by manufacturer or equipment class.
+If the corpus holds documentation for a unit, the app answers on it.
+
+The rule that changed had been right for the corpus it was written against —
+eighteen rooftop manuals from two manufacturers, where the allowlist stopped a
+Daikin question being answered out of a Carrier book. It is the wrong rule for a
+corpus of eighty-six documents from fifteen manufacturers, where it meant holding
+the correct manual for a technician's unit and declining to open it.
+
+**What did not change, and was verified rather than assumed:**
+
+| Guarantee | Why it survives |
+|---|---|
+| Retrieval precision | Still unit-scoped: `resolveUnit` hands `/diagnose` the document ids and `match_chunks` filters on them. Scope was never what kept a rooftop question out of a boiler book — the document filter is |
+| Coverage honesty | A model matching no document still resolves to zero documents. Breadth of corpus is not breadth of claim |
+| Safety | The gate runs first and refuses combustion, refrigerant and live-electrical procedure whoever built the equipment. Admitting furnaces and boilers admits them to *citation*, never to procedure |
+
+Reversible in data rather than code: a manifest row whose Legal Status begins
+`OUT-OF-SCOPE` is ingested, tagged and withheld. Nothing uses it today.
+
+### Nameplate resolution (the High from `backlog.md`, closed)
+
+Matching is now prefix containment in both directions with a three-character floor,
+anchored left. The Trane coverage strings gained the model prefixes their documents
+actually name — `YSC`/`YHC`, `WSC`/`DHC`/`WHC`, `YZC`, `WSJ`, `YHJ` — read out of
+each document's own text rather than invented, which is the same "derive from the
+source, never guess" rule the manifest already runs on.
+
+**Proven over the wire, on the live corpus:**
+
+| Unit | Before | Now |
+|---|---|---|
+| `Carrier 59MN7B` (furnace — excluded by equipment) | not answerable | covered → 5 chunks, pp. 57–69 |
+| `Goodman AMEC960603` (excluded by manufacturer) | not answerable | covered → 5 chunks, pp. 13–31 |
+| `Trane YSC072E3RHB0000` (nameplate) | unrecognised | covered → `RT-SVX21AD`, pp. 55–76 |
+| `Carrier 48TCA06` (nameplate) | unrecognised | covered → 48TC manual, pp. 34–88 |
+
+ST-12/ST-14 re-run against all of it: **117 assertions, 18 wire probes, all green,
+ledger 0 → 0**, now including a first-class assertion that the server's commit
+equals the prober's. That check caught a stale server on its first run.
+
+Suite 232 pass · lint 0 errors (was 58, all from agent worktrees, hiding one real
+defect) · typecheck clean.
