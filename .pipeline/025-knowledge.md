@@ -297,3 +297,113 @@ are all cross-manufacturer rank flips at the 1/2 boundary — a class the primar
 flow no longer exercises, since unit-scoped retrieval excludes other
 manufacturers from the candidate set by construction and ST-02 gates the
 unitless path.
+
+---
+
+## §1 addendum — the owner ZIP batch (7 Aug 2026)
+
+The owner dropped `HVAC Data/ZIP - New/` — 19 archives, two sets, **66 PDFs,
+466 MB**. This addendum records what they are, what was accepted, and the scope
+defect that had to be fixed before any of them could be ingested safely.
+
+### What arrived
+
+All 19 archives pass `unzip -t` and no filename appears twice. They are
+independent archives, not a split volume, so the one missing part costs only its
+own contents rather than corrupting the set:
+
+> **`Bosch_IDS_part05_of_08.zip` is absent.** The Bosch numbering skips B08, B14,
+> B20, B22, B32 and B38 — six documents that were in that part. Nothing else is
+> affected. Worth re-sending if those six matter; otherwise no action.
+
+### The defect this batch exposed (would have been a silent regression)
+
+`isInScope` keyed Phase 1 on **manufacturer alone** — `Trane` or `Carrier`, plus
+PT charts by doc type. That was correct only for as long as "Trane or Carrier"
+implied "rooftop", which was true of the old corpus by accident rather than by
+rule. This batch breaks it hard. It contains Carrier **gas furnaces, evaporator
+coils, a cast-iron boiler, a steam humidifier, a whole-house dehumidifier, a
+ductless multi-zone, VRF indoor units and a VFD**, plus a Trane **residential
+furnace** and an **applied air handler** — 14 documents that are Trane or Carrier
+and are not rooftops.
+
+Under the old rule every one of them would have been tagged `in_phase1_scope` and
+entered the candidate set that a technician's rooftop question searches. That is a
+precision regression against a measured baseline (M12, 80.9%) arriving disguised
+as a corpus improvement — the failure mode that is hardest to notice, because the
+corpus genuinely did get bigger.
+
+`OUT_OF_SCOPE_EQUIPMENT` now generalises from the original chiller pattern to the
+equipment classes Phase 1 does not answer on. Two deliberate subtleties, both
+pinned by test:
+
+- **`heat pump` is not an exclusion.** `PKGP-SVX010A-EN` is a Precedent *packaged
+  rooftop* heat pump and is legitimately in scope. Residential split heat pumps are
+  caught by `split`/`residential` in their coverage strings instead.
+- **`ERV`/`HRV` are word-anchored.** Unanchored, they match the `erv` inside
+  `Install/Startup/**Serv**ice` — a live doc type on nine in-scope rows, which
+  would have taken those nine documents out of scope.
+
+`ingest/reconcile.scope.test.mjs` asserts both directions **by name**: 21 rooftop
+documents in, 14 non-rooftop Trane/Carrier documents out. A count-based assertion
+would pass while one rooftop dropped out and one furnace dropped in, which is
+precisely the substitution worth guarding against.
+
+### What was accepted
+
+| | Documents | Phase 1 |
+|---|---|---|
+| New rooftops — extend what the app answers | **4** | in scope |
+| Other equipment — ingested, tagged out of scope | 55 | out |
+| Declined (see below) | 7 | — |
+
+The four that change behaviour today:
+
+| Document | Why it matters |
+|---|---|
+| `Carrier 48TC` 3-15 ton packaged rooftop, service & maintenance | 48TC is the current Carrier RTU line and had **no manual at all** — "Carrier 48TC" resolved to nothing before this |
+| `Trane Precedent` 3-25 ton IOM, `RT-SVX075A-EN` | Newer revision than the four Precedent documents already held |
+| `Carrier 50V` packaged unit, install & start-up | New family |
+| `Trane` packaged rooftop application guide, `APP-PRC005H-EN` | System-level application context the corpus had none of |
+
+**Declined: 7 French/Spanish duplicates** of English documents in the same batch
+(B35–B42). Filed `EXCLUDED` with a manifest row so the decision is on record
+rather than the files silently vanishing. The reason is retrieval, not licence: a
+cross-language near-duplicate competes with its own English source for rank and
+can win, and a citation a technician cannot read is a defect under this project's
+citation rule.
+
+**Borderline, held out deliberately** — each is one manifest edit from promotion
+if the owner disagrees: York YPAL (a genuine rooftop, but York is not a Phase 1
+manufacturer and 70-105 ton is applied, not light commercial); the Carrier VFD and
+ERV/HRV documents (components that sit on an RTU, but not RTU documentation); the
+Trane applied air handler; and the Goodman/Daikin light-commercial DDC guide.
+
+### Provenance
+
+The files arrived without source URLs, so each row carries a `local:///` pseudo-URL
+and `Freely published OEM (owner-supplied copy; source URL unverified)` — the
+convention row 28 already set. This keeps `documentId` stable (it hashes the
+SourceURL) and keeps reconciliation joining on basename as designed.
+
+Reconciliation after the batch: **96 files, 96 rows, 0 orphans, 0 unattributed.**
+
+### Verified before ingest
+
+- Full suite **255 pass** (216 + 39 new scope assertions).
+- ST-14's five out-of-scope units still resolve to **zero documents** — checked
+  against the new corpus, because three of those five manufacturers (Lennox, York,
+  Goodman) now have documents in it. None of their models match, so the
+  coverage-honesty guarantee is unchanged.
+- Text layers confirmed on all four new rooftops by direct extraction. A raw
+  `/BaseFont` scan reported zero fonts for two of them and was **wrong** — those
+  files use compressed object streams. Had that heuristic been trusted, two Phase 1
+  manuals would have been wrongly filed as scans.
+
+### Found, filed, not fixed here
+
+`resolveUnit` misses full nameplate model numbers — `48TCA06`, `50HC024`,
+`YSC072E3RHB0000` all resolve `unrecognised` while their manuals sit in the
+corpus. Pre-existing and unrelated to this batch, but it lands on the camera path,
+so it is written up as **High** in `.pipeline/backlog.md` with a proposed fix
+rather than bundled into a corpus commit.
