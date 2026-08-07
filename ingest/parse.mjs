@@ -150,10 +150,21 @@ export function disposition(quality, doc) {
   return { state: 'ingest', reason: 'clean text layer' };
 }
 
-/** Async twin of parseDocument, so several can be in flight at once. */
+/**
+ * Async twin of parseDocument, so several can be in flight at once.
+ *
+ * Honours `PARSER_VERSION` for the same reason its synchronous twin does. It did not
+ * until 7 Aug 2026, which meant a parser fix was applied by `npm run ingest` and
+ * silently skipped by `npm run ingest:parse` — the exact "a parser fix that a warm
+ * cache hides" failure the version check exists to prevent, still open on one of the
+ * two paths that write this cache.
+ */
 async function parseDocumentAsync(doc) {
   const cachePath = join(CACHE, `${doc.file}.json`);
-  if (existsSync(cachePath)) return JSON.parse(readFileSync(cachePath, 'utf8'));
+  if (existsSync(cachePath)) {
+    const cached = JSON.parse(readFileSync(cachePath, 'utf8'));
+    if (cached.parser_version === PARSER_VERSION) return cached;
+  }
 
   const { stdout } = await execFileAsync('python', ['ingest/parse.py', join(CORPUS_DIR, doc.file)], {
     encoding: 'utf8',

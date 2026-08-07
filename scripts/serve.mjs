@@ -21,6 +21,7 @@
  */
 
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { diagnose, DiagnoseError } from '../lib/diagnose.mjs';
@@ -28,6 +29,34 @@ import { resolveUnit } from '../lib/units.mjs';
 import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
 import { budget, recordModelCall, appendRequestLog } from '../lib/ledger.mjs';
 import { estimateCostUsd, modelCallHappened, quotaConsumedByError } from '../lib/metrics.mjs';
+
+/**
+ * The commit this process is actually running, resolved once at start.
+ *
+ * Twice now a probe run has measured a `serve.mjs` started days earlier and reported
+ * confident nonsense — 429s and refusal "leaks" against a tree that no longer
+ * existed, and the run was believed until the process start time was checked by
+ * hand. The prober records its *own* HEAD in the transcript, which is exactly the
+ * number that looks right and is not.
+ *
+ * So the server states its own tree and probes assert the two match before scoring
+ * anything. Read at start rather than per request: a server that reported the
+ * working tree's current commit would claim code it is not running, which is the
+ * same lie in a newer coat.
+ */
+const COMMIT = (() => {
+  try {
+    return execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    // Deployed copies may have no git directory. Unknown is honest; a fabricated
+    // commit would defeat the point of the field.
+    return null;
+  }
+})();
+const STARTED_AT = new Date().toISOString();
 
 const PORT = Number(process.env.DIAGNOSE_PORT || 8787);
 const LIMIT = 32 * 1024;
@@ -128,7 +157,9 @@ async function readBody(req, limit = LIMIT) {
 
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
-  if (req.url === '/health') return send(res, 200, { ok: true, model: process.env.GEMINI_MODEL ?? 'default' });
+  if (req.url === '/health') {
+    return send(res, 200, { ok: true, model: process.env.GEMINI_MODEL ?? 'default', commit: COMMIT, startedAt: STARTED_AT });
+  }
   const route = req.method === 'POST' ? (req.url ?? '').split('?')[0] : null;
   if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/identify-unit') {
     return send(res, 404, { status: 404, message: 'POST /diagnose, /resolve-unit or /identify-unit' });

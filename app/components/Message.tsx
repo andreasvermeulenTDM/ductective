@@ -83,7 +83,7 @@ function UserTurn({ body }: { body: string }) {
  */
 /** Split a step's text at its "Reading:" marker so the tail can render muted. */
 function splitReading(rest: string): { text: string; muted: boolean }[] {
-  const i = rest.search(/Reading:/);
+  const i = rest.search(/\bReading:/);
   if (i < 0) return [{ text: rest, muted: false }];
   return [
     { text: rest.slice(0, i), muted: false },

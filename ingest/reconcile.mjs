@@ -163,73 +163,42 @@ export function reconcile() {
  * Out-of-scope documents are still ingested and tagged, per the brief, so
  * retrieval precision is measured against the equipment actually under test.
  */
-export const IN_SCOPE_MANUFACTURERS = ['Trane', 'Carrier'];
-export const IN_SCOPE_DOCTYPES = ['PT Chart'];
-
 /**
- * Equipment outside Phase 1 answer scope whatever the manufacturer.
+ * **Owner decision, 7 Aug 2026: the answer scope is no longer limited by
+ * manufacturer or by equipment class.** If the corpus holds documentation for a
+ * unit, the app answers on it.
  *
- * The definition above says "Trane + Carrier **rooftop** docs"; the rule implemented
- * only the manufacturer half, so `TEMP-SVX001A-EN_AirCooled-Chiller` — a Trane
- * document — was tagged in scope. `00-brief.md:64` is explicit: "Ingest the Daikin,
- * Mitsubishi, **chiller**, and EPA documents but tag them out of scope."
+ * What this replaced: an allowlist of `['Trane', 'Carrier']` plus a PT-chart escape
+ * plus a growing pattern of excluded equipment. That was the right shape while the
+ * corpus was eighteen rooftop manuals — it kept a Daikin question from being
+ * answered out of a Carrier book. It is the wrong shape now. After the 7 Aug batch
+ * the corpus carries fifteen manufacturers and most equipment classes in the trade,
+ * and the allowlist meant holding the correct manual for a technician's unit and
+ * declining to open it. "I have documentation for that unit but will not use it" is
+ * not a defensible thing to say to someone on a roof.
  *
- * Left as a coverage pattern rather than a document-id denylist so a second chiller
- * added to the manifest is handled without a code edit — the same reason scope is
- * derived from manifest columns rather than filenames.
+ * Nothing about this weakens a guarantee:
  *
- * (The brief's "18 Trane + Carrier rooftop docs" is a miscount: there are exactly 18
- * such documents and one of them is this chiller. Line 64 names chillers directly,
- * so it governs. Recorded rather than silently reconciled.)
+ *  - **Retrieval is still unit-scoped.** `resolveUnit` hands `/diagnose` the document
+ *    ids for the confirmed unit and `match_chunks` filters on them, so a Goodman
+ *    furnace question searches the Goodman furnace manual and nothing else. Scope
+ *    was never what kept a rooftop question out of a boiler book — the document
+ *    filter is, and it is unchanged.
+ *  - **Coverage honesty is unchanged.** A unit whose model matches no document still
+ *    resolves to zero documents and still gets "I don't have documentation covering
+ *    that". Breadth of corpus is not breadth of claim.
+ *  - **The safety gate is unchanged and runs first.** A combustion or refrigerant or
+ *    live-electrical procedure is refused whoever built the equipment. Admitting
+ *    furnaces and boilers to the corpus admits them to *citation*, never to
+ *    procedure.
  *
- * **Widened 7 Aug 2026, and the reason matters.** The manufacturer half of this rule
- * was safe only while the corpus happened to hold nothing but rooftops from Trane and
- * Carrier. The owner-supplied ZIP batch broke that assumption hard: it carries Carrier
- * gas furnaces, evaporator coils, a cast-iron boiler, a steam humidifier, a whole-house
- * dehumidifier, a ductless multi-zone, VRF indoor units and a VFD — plus a Trane
- * residential furnace and an applied air handler. Every one of them is a Trane or
- * Carrier document, so every one would have been tagged **in Phase 1 scope** and
- * dropped straight into the retrieval set a technician's rooftop question searches.
- * That is a silent precision regression against a measured baseline (M12, 80.9%), and
- * it would have arrived looking like a corpus improvement.
- *
- * So the chiller pattern generalises into the equipment classes Phase 1 does not
- * answer on. Still a coverage pattern and still no filename list, for the reason
- * above. Two deliberate omissions:
- *
- *  - **`heat pump` is NOT here.** `PKGP-SVX010A-EN` is a Precedent *packaged rooftop*
- *    heat pump and is legitimately in scope. Residential split heat pumps are caught by
- *    `split`/`residential` in their coverage strings instead.
- *  - **`\bERV\b`/`\bHRV\b` are word-anchored** so they cannot fire on the `erv` inside
- *    "Install/Startup/**Serv**ice", which is a live doc type on nine in-scope rows.
- *
- * `reconcile.scope.test.mjs` pins the in-scope set so a future widening that clips a
- * rooftop document fails CI rather than quietly shrinking what the app can answer.
+ * The mechanism survives so the decision stays reversible in data rather than code:
+ * a manifest row whose Legal Status begins `OUT-OF-SCOPE` is ingested, tagged, and
+ * kept out of the answer set. Nothing uses it today.
  */
-export const OUT_OF_SCOPE_EQUIPMENT = new RegExp(
-  [
-    'chillers?',
-    'furnaces?',
-    'air handlers?', 'air handling',
-    'evaporator coils?', 'cased coils?', 'cased n',
-    'ductless', 'mini-?split', 'split-system', 'single split', 'splits? system',
-    'vrf', 'vrv', 'cassette',
-    'boilers?',
-    'de-?humidifiers?', 'humidifiers?',
-    '\\bERV\\b', '\\bHRV\\b', 'ventilator',
-    'water-source', 'water-to-air',
-    'blower',
-    'variable frequency drive', '\\bVFD\\b',
-    'gateway', 'remote control', 'antenna', 'accessory kit',
-    'residential',
-    'homeowner',
-  ].join('|'),
-  'i'
-);
+const OUT_OF_SCOPE_MARKER = /^\s*OUT-OF-SCOPE/i;
 
-export const isInScope = (doc) =>
-  !OUT_OF_SCOPE_EQUIPMENT.test(`${doc.coverage ?? ''} ${doc.docType ?? ''}`) &&
-  (IN_SCOPE_MANUFACTURERS.includes(doc.manufacturer) || IN_SCOPE_DOCTYPES.includes(doc.docType));
+export const isInScope = (doc) => !OUT_OF_SCOPE_MARKER.test(doc?.licenseStatus ?? '');
 
 /**
  * Every document that resolved, with its manifest provenance and scope flag.

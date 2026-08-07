@@ -1,122 +1,86 @@
 /**
- * reconcile.scope.test.mjs — the Phase 1 answer scope, pinned in CI.
+ * reconcile.scope.test.mjs — the answer scope, pinned in CI.
  *
- * `OUT_OF_SCOPE_EQUIPMENT` decides which documents a technician's rooftop question
- * can retrieve. It is derived from manifest columns, which means a manifest edit can
- * move it — and a widening meant to keep a furnace out can clip a rooftop on the way
- * past. Both directions are regressions and neither shows up in a passing build
- * otherwise: retrieval simply gets quietly worse.
+ * **Owner decision, 7 Aug 2026: no manufacturer or equipment limit.** If the corpus
+ * holds documentation for a unit, the app answers on it. This file exists to keep
+ * that true by accident-proofing it: the previous rule was an allowlist of two
+ * manufacturers, and it silently decided what the product could answer. A rule that
+ * important should fail loudly when it changes, not shrink coverage unnoticed.
  *
- * So both directions are asserted here:
- *
- *  - every rooftop document that Phase 1 answers on stays in scope, by name;
- *  - the equipment classes Phase 1 does not answer on stay out, by name.
- *
- * The by-name list is the point. A generic "count the in-scope docs" assertion
- * passes when one rooftop drops out and one furnace drops in.
+ * What is asserted here is the *scope* half. That a broad corpus does not become a
+ * broad claim is asserted where it belongs — `units.test.mjs` for resolution, and
+ * `tests/probes/safety-coverage-probes.mjs` over the wire.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { documents, isInScope, OUT_OF_SCOPE_EQUIPMENT } from './reconcile.mjs';
+import { documents, reconcile, isInScope } from './reconcile.mjs';
 
 const corpus = documents();
-const byFile = (f) => corpus.find((d) => d.file === f);
 
-/**
- * The rooftop documents Phase 1 answers on. Written as files rather than a count so
- * a substitution cannot pass. `RT-SVX075A` and `48TC` joined on 7 Aug 2026 with the
- * owner's ZIP batch; the rest predate it.
- */
-const MUST_BE_IN_SCOPE = [
-  'PKGP-PRC013AA-EN_12202022.pdf',        // Trane packaged rooftop catalogue
-  'RT-SVX23R-EN_09222022.pdf',            // Precedent IOM
-  'RT-SVX21AD-EN_06172022.pdf',
-  'RT-SVX34W-EN_03112023.pdf',
-  'RT-SVX46G-EN_01162021.pdf',            // Precedent eFlex
-  'RT-SVX072E-EN_10122024.pdf',           // IntelliPak 1 / Symbio 800
-  'PKGP-SVX010A-EN_12152022.pdf',         // Precedent HEAT PUMP — must survive the widening
-  'RT-SVX056D-GB_1120.pdf',               // Airfinity
-  '48-50LC-4-6-C01T.pdf',
-  '48-50K-01APD.pdf',
-  '48-50PGPM-03T.pdf',
-  '48_50A-19PD.pdf',                      // WeatherMaker
-  '48HJ-32SI.pdf',
-  '50HC-7-12-07SI.pdf',
-  '50E-C2SI.pdf',
-  '48-50FE-20-30-01PD.pdf',
-  '48-50FC-20-30-01PD.pdf',
-  '15_Carrier_Carrier-48TC-3-15-Ton-Packaged-Rooftop-Service-Maintenance-Instructions.pdf',
-  '16_Trane_Trane-Precedent-3-25-Ton-Rooftop-Installation-Operation-Maintenance-RT-SVX075A-EN.pdf',
-  '18_Carrier_Carrier-50V-Packaged-Unit-Installation-Start-Up-Instructions.pdf',
-  '30_Trane_Trane-Packaged-Rooftop-Application-Guide-APP-PRC005H-EN.pdf',
-];
-
-/**
- * Trane and Carrier documents that are NOT rooftops. Every one of these passes the
- * manufacturer half of the rule, so each is a document that would have entered Phase 1
- * retrieval before the 7 Aug widening.
- */
-const MUST_BE_OUT_OF_SCOPE = [
-  'TEMP-SVX001A-EN_02142023.pdf',                                                          // chiller (the original case)
-  '01_Carrier_Carrier-59MN7B-Multipoise-Condensing-Gas-Furnace-Installation-Start-Up-Operating-Service-Mainte.pdf',
-  '04_Trane_Trane-Gas-Furnace-Installation-Manual-18-CE19D1-1B-EN.pdf',
-  '06_Carrier_Carrier-25VNA8-24VNA9-Infinity-Variable-Speed-Heat-Pump-Service-Manual.pdf',  // residential SPLIT heat pump
-  '11_Trane_Trane-Air-Handler-Installation-Operation-Maintenance-AHR-SVX001C-EN.pdf',
-  '13_Carrier_Carrier-CNPV-CNRV-Cased-N-Evaporator-Coils-Product-Data-airflow-pressure-drop.pdf',
-  '14_Carrier_Carrier-CAPMP-CARMP-Multipoise-Evaporator-Coils-Installation-Instructions.pdf',
-  '20_Carrier_Carrier-38MURA-Ductless-Multi-Zone-Outdoor-Unit-Service-Manual.pdf',
-  '22_Carrier_Carrier-40VM-VRF-Indoor-Units-Installation-Operating-Instructions.pdf',
-  '24_Carrier_Carrier-ERV-HRV-User-and-Installer-Manual-ventilation-airflow-balancing.pdf',
-  '25_Carrier_Carrier-DEHXXCDA-Whole-House-Dehumidifier-Installation-Instructions-duct-connection.pdf',
-  '26_Carrier_Carrier-HUMCRSTM-Steam-Humidifier-Installation-Maintenance-Instructions.pdf',
-  '27_Carrier_Carrier-BWBC-Cast-Iron-Gas-Boiler-Forced-Hot-Water-Installation-Operating.pdf',
-  '29_Carrier_Carrier-VFD-Variable-Frequency-Drive-Installation-Start-Up-and-Service-Instructions.pdf',
-];
-
-for (const file of MUST_BE_IN_SCOPE) {
-  test(`scope: IN — ${file.slice(0, 60)}`, () => {
-    const doc = byFile(file);
-    assert.ok(doc, `not in the corpus at all — manifest row missing or unmatched`);
-    assert.equal(doc.inScope, true, `a rooftop document fell OUT of Phase 1 scope (coverage: "${doc.coverage}")`);
-  });
-}
-
-for (const file of MUST_BE_OUT_OF_SCOPE) {
-  test(`scope: OUT — ${file.slice(0, 60)}`, () => {
-    const doc = byFile(file);
-    assert.ok(doc, `not in the corpus at all — manifest row missing or unmatched`);
-    assert.equal(doc.inScope, false, `non-rooftop equipment entered Phase 1 retrieval (coverage: "${doc.coverage}")`);
-  });
-}
-
-test('scope: the doc-type escape still admits PT charts', () => {
-  const pt = corpus.filter((d) => d.docType === 'PT Chart');
-  assert.ok(pt.length >= 3, `expected the refrigerant PT charts, found ${pt.length}`);
-  for (const d of pt) assert.equal(d.inScope, true, `${d.file} — a PT chart must stay in scope`);
+test('scope: every reconciled document is answerable', () => {
+  const withheld = corpus.filter((d) => !d.inScope);
+  assert.deepEqual(
+    withheld.map((d) => d.file),
+    [],
+    'a document is in the corpus but withheld from answering — nothing should be, today'
+  );
+  assert.ok(corpus.length >= 80, `expected the full corpus, got ${corpus.length}`);
 });
 
-test('scope: the widened pattern cannot fire on the "erv" inside "Service"', () => {
-  // Nine in-scope rows carry a doc type containing "Service". An unanchored ERV
-  // alternative would have taken every one of them out of scope.
-  assert.equal(OUT_OF_SCOPE_EQUIPMENT.test('Install/Startup/Service'), false);
-  assert.equal(OUT_OF_SCOPE_EQUIPMENT.test('IOM + diagnostics'), false);
-  assert.equal(OUT_OF_SCOPE_EQUIPMENT.test('ERV / HRV ventilator, airflow balancing'), true);
-});
-
-test('scope: no document is in scope without a Phase 1 manufacturer or doc type', () => {
-  for (const d of corpus.filter((x) => x.inScope)) {
+test('scope: manufacturers are no longer a gate', () => {
+  // The exact case the old allowlist got wrong: a technician holding a unit from a
+  // manufacturer we carry documentation for, and being told we do not answer on it.
+  const makers = new Set(corpus.map((d) => d.manufacturer));
+  for (const m of ['Lennox', 'York', 'Bosch', 'Rheem', 'Goodman / Amana', 'Payne']) {
+    assert.ok(makers.has(m), `${m} missing from the corpus`);
     assert.ok(
-      ['Trane', 'Carrier'].includes(d.manufacturer) || d.docType === 'PT Chart',
-      `${d.file} is in scope but is neither Trane/Carrier nor a PT chart (${d.manufacturer})`
+      corpus.filter((d) => d.manufacturer === m).every((d) => d.inScope),
+      `${m} documents are in the corpus but not answerable`
     );
+  }
+  assert.ok(makers.size >= 10, `expected a broad corpus, got ${makers.size} manufacturers`);
+});
+
+test('scope: equipment class is no longer a gate', () => {
+  // Furnaces, boilers, coils, ductless and air handlers were all excluded by class
+  // before this decision. Each is now answerable when we hold its manual.
+  const byCoverage = (re) => corpus.filter((d) => re.test(d.coverage));
+  for (const [label, re] of [
+    ['furnace', /furnace/i],
+    ['boiler', /boiler/i],
+    ['air handler', /air handler/i],
+    ['ductless / split', /ductless|split/i],
+    ['coil', /coil/i],
+    ['chiller', /chiller/i],
+  ]) {
+    const found = byCoverage(re);
+    assert.ok(found.length > 0, `no ${label} documents in the corpus to check`);
+    assert.ok(found.every((d) => d.inScope), `${label} documents are not answerable`);
   }
 });
 
-test('scope: isInScope is driven by the manifest, not the filename', () => {
-  // A synthetic row proves the rule reads columns. If this ever starts consulting
-  // the filename, the derivation promise in reconcile.mjs is broken.
-  assert.equal(isInScope({ manufacturer: 'Carrier', docType: 'IOM', coverage: '48TC rooftop' }), true);
-  assert.equal(isInScope({ manufacturer: 'Carrier', docType: 'IOM', coverage: 'gas furnace' }), false);
-  assert.equal(isInScope({ manufacturer: 'Lennox', docType: 'IOM', coverage: 'rooftop' }), false);
+test('scope: the OUT-OF-SCOPE marker still works, so the decision is reversible in data', () => {
+  assert.equal(isInScope({ licenseStatus: 'Freely published OEM' }), true);
+  assert.equal(isInScope({ licenseStatus: 'OUT-OF-SCOPE — deferred to Phase 2' }), false);
+  assert.equal(isInScope({}), true, 'a row with no status is answerable by default');
+  // Nothing uses it today; if something starts to, that is a deliberate act.
+  assert.equal(corpus.filter((d) => !d.inScope).length, 0);
+});
+
+test('scope: EXCLUDED rows are attributed but never enter the corpus', () => {
+  const { matched } = reconcile();
+  const excluded = matched.filter((m) => /^\s*EXCLUDED/i.test(m.licenseStatus));
+  assert.ok(excluded.length >= 10, `expected the declined documents to still be on record, got ${excluded.length}`);
+  const files = new Set(corpus.map((d) => d.file));
+  for (const m of excluded) {
+    assert.equal(files.has(m.file), false, `${m.file} is EXCLUDED but reached the corpus`);
+  }
+});
+
+test('scope: reconciliation is clean — every file attributed, every row resolved', () => {
+  const { orphanRows, unattributed, files, matched } = reconcile();
+  assert.equal(orphanRows.length, 0, 'a manifest row resolved to no file');
+  assert.equal(unattributed.length, 0, 'a file on disk has no manifest row and would have no provenance');
+  assert.equal(matched.length, files.length);
 });

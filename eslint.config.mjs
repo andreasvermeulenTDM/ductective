@@ -29,6 +29,19 @@ export default tseslint.config(
       'Mockups/**',
       'HVAC Data/**',
       'ingest/sources/**',
+      /*
+       * Agent worktrees are checkouts of this repo living inside it. ESLint walked
+       * into them and reported 58 parse errors — a second `app/tsconfig.json` under
+       * `.claude/` makes the TSConfig root ambiguous, so every app file failed to
+       * parse. They are gitignored, so `npm run lint` was red on a clean tree with
+       * nothing wrong in it.
+       *
+       * That is worse than noise. Every stage of this pipeline is required to report
+       * lint status before handing off, and a gate that is always red stops being
+       * read — the next real error would have landed in a list of 58 and gone
+       * straight past whoever was checking.
+       */
+      '.claude/**',
     ],
   },
 

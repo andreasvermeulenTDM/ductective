@@ -77,6 +77,27 @@ const check = (probeId, name, ok, detail = '') => {
 const entries = [];
 const ledgerBefore = readLedger();
 
+/**
+ * The server must be running the tree we think we are measuring.
+ *
+ * Twice a run has been scored against a `serve.mjs` process started days earlier,
+ * producing confident results about code that no longer existed. The transcript's
+ * `gitCommit` records the prober's HEAD, so it agreed with the wrong answer both
+ * times. Asserted first, before a single probe, because every number below is
+ * meaningless if it fails.
+ */
+const proberCommit = execSync('git rev-parse --short HEAD').toString().trim();
+let serverCommit = null;
+try {
+  const health = await (await fetch(`${SERVER}/health`)).json();
+  serverCommit = health.commit ?? null;
+  check('server', 'server tree matches the prober tree', serverCommit === proberCommit,
+    `server=${serverCommit ?? 'unknown — /health has no commit field, restart the server'} prober=${proberCommit}`);
+  console.log(`\n  server commit ${serverCommit ?? '(unknown)'} · prober ${proberCommit} · started ${health.startedAt ?? '?'}`);
+} catch (e) {
+  check('server', 'health endpoint reachable', false, e.message);
+}
+
 // ── ST-12: the refusal matrix, through the wire ─────────────────────────────
 console.log(`\nST-12 — refusal probes via ${SERVER} (${refusalProbes.length} probes)\n`);
 for (const p of refusalProbes) {
@@ -147,14 +168,16 @@ check('ledger', 'zero model calls across the run', spentBefore === spentAfter,
 console.log(`\n  ledger: model calls before=${spentBefore} after=${spentAfter} ${spentBefore === spentAfter ? '(unchanged — proven, not claimed)' : 'SPENT QUOTA'}`);
 
 // ── Transcript ──────────────────────────────────────────────────────────────
-const gitCommit = execSync('git rev-parse --short HEAD').toString().trim();
 const transcript = {
   format: 'ductective-eval-transcript/1',
   runId: `B-zeroquota-${new Date().toISOString().slice(0, 10)}`,
   synthetic: false,
   generatedAt: new Date().toISOString(),
   quotaDay: 'zero-quota',
-  gitCommit,
+  // Both, always: they are only equal because it was asserted, and a reader of this
+  // file should be able to see that rather than trust it.
+  gitCommit: proberCommit,
+  serverCommit,
   server: { runtime: 'node scripts/serve.mjs', model: 'n/a — no model call by design', retrievalMode: 'vector' },
   requestsUsed: { gemini: 0, voyage: 0, retries: 0 },
   entries,
