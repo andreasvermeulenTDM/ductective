@@ -193,11 +193,13 @@ export async function postIdentify(
   fetchFn: FetchLike,
   baseUrl: string,
   base64Jpeg: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  /** Injected by the caller so the shared-secret header lives in one place (diagnose.ts). */
+  headers: Record<string, string> = { 'Content-Type': 'application/json' }
 ): Promise<IdentifyOutcome> {
   const res = await fetchFn(`${baseUrl}/identify-unit`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     // The contract accepts a data-URI prefix and strips it; sending the bare
     // payload with the explicit mimeType is the byte-for-byte documented form.
     body: JSON.stringify({ image: base64Jpeg, mimeType: 'image/jpeg' }),

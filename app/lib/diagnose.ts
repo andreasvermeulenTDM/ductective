@@ -117,6 +117,21 @@ function loopbackToDevHost(rawUrl: string): string {
 const CONFIGURED = process.env.EXPO_PUBLIC_DIAGNOSE_URL?.replace(/\/+$/, '');
 const BASE = CONFIGURED ? loopbackToDevHost(CONFIGURED) : undefined;
 
+/**
+ * Shared secret for the diagnose server, matching `DIAGNOSE_AUTH_TOKEN` on the
+ * server. Optional: unset in the dev/LAN flow, set when the listener is locked
+ * down. Public by nature — it ships in the client bundle, so it is a gate against
+ * casual LAN callers, not a real credential; the server's own comment says as much.
+ */
+const AUTH_TOKEN = process.env.EXPO_PUBLIC_DIAGNOSE_TOKEN;
+
+/** JSON POST headers, carrying the bearer token when one is configured. */
+export function serverHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (AUTH_TOKEN) h.Authorization = `Bearer ${AUTH_TOKEN}`;
+  return h;
+}
+
 /** True when a backend is configured. `store.ts` falls back to mocks when false. */
 export const isLive = Boolean(BASE);
 
@@ -152,7 +167,7 @@ export async function requestDiagnosis(
   try {
     const res = await fetch(`${BASE}/diagnose`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: serverHeaders(),
       body: JSON.stringify({
         symptom,
         equipment: equipment ?? undefined,
@@ -247,7 +262,7 @@ export async function requestIdentifyUnit(
   cancel?.addEventListener('abort', onCancel);
 
   try {
-    const outcome = await postIdentify(fetch, BASE, base64Jpeg, controller.signal);
+    const outcome = await postIdentify(fetch, BASE, base64Jpeg, controller.signal, serverHeaders());
     if (!outcome.ok) {
       throw new DiagnoseError(outcome.status, outcome.message, outcome.providerBlocked);
     }

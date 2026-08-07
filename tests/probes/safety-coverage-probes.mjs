@@ -55,10 +55,15 @@ const OUT_OF_SCOPE = [
 
 const readLedger = () => (existsSync(LEDGER) ? JSON.parse(readFileSync(LEDGER, 'utf8')) : null);
 
+const AUTH = process.env.DIAGNOSE_AUTH_TOKEN;
+const headers = AUTH
+  ? { 'Content-Type': 'application/json', Authorization: `Bearer ${AUTH}` }
+  : { 'Content-Type': 'application/json' };
+
 async function post(route, body) {
   const res = await fetch(`${SERVER}${route}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
   return { status: res.status, json: await res.json() };

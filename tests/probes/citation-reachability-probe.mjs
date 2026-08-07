@@ -30,10 +30,13 @@ const arg = (n, d) => {
 };
 const SERVER = arg('server', 'http://localhost:8787');
 
+const AUTH = process.env.DIAGNOSE_AUTH_TOKEN;
+const headers = AUTH
+  ? { 'Content-Type': 'application/json', Authorization: `Bearer ${AUTH}` }
+  : { 'Content-Type': 'application/json' };
+
 const post = async (route, body) => {
-  const res = await fetch(`${SERVER}${route}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
+  const res = await fetch(`${SERVER}${route}`, { method: 'POST', headers, body: JSON.stringify(body) });
   return { status: res.status, json: await res.json() };
 };
 

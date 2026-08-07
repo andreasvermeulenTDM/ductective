@@ -22,6 +22,7 @@
 
 import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
+import { timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { diagnose, DiagnoseError } from '../lib/diagnose.mjs';
@@ -59,6 +60,38 @@ const COMMIT = (() => {
 const STARTED_AT = new Date().toISOString();
 
 const PORT = Number(process.env.DIAGNOSE_PORT || 8787);
+
+/**
+ * Optional shared-secret gate. **Off by default**, so the device-test flow — a
+ * phone reaching this over the LAN with no credential — is unchanged.
+ *
+ * Set `DIAGNOSE_AUTH_TOKEN` and every state-changing route requires
+ * `Authorization: Bearer <token>`; the app sends it from `EXPO_PUBLIC_DIAGNOSE_TOKEN`
+ * (see `app/lib/diagnose.ts`). This is the shared-secret the security review asked
+ * for before the listener is exposed beyond a trusted LAN, without forcing it on the
+ * dev loop that needs the open `0.0.0.0` bind. `/health` stays open: it carries only
+ * a git commit and the model name, and the wire probes assert against it.
+ *
+ * `DIAGNOSE_HOST` makes the bind interface a knob too (default `0.0.0.0`, which the
+ * phone needs); an operator locking this down can bind `127.0.0.1` and add the token.
+ */
+const AUTH_TOKEN = process.env.DIAGNOSE_AUTH_TOKEN || null;
+const HOST = process.env.DIAGNOSE_HOST || '0.0.0.0';
+
+/**
+ * Constant-time bearer check. Length is compared first because `timingSafeEqual`
+ * throws on unequal-length buffers; leaking length alone does not help an attacker
+ * guess a secret of the same length.
+ */
+function authorized(req) {
+  if (!AUTH_TOKEN) return true; // gate disabled
+  const header = req.headers['authorization'] || '';
+  const presented = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const a = Buffer.from(presented);
+  const b = Buffer.from(AUTH_TOKEN);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 const LIMIT = 32 * 1024;
 // /identify-unit carries a base64 JPEG: 8 MiB binary ≈ 10.9 MiB base64, plus
 // JSON envelope. Every other route keeps the tight text limit.
@@ -136,7 +169,7 @@ const send = (res, status, body) => {
     // Dev-only origin policy. The Edge Function sets its own; this is a LAN
     // service on a developer's machine, not a deployed surface.
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   });
   res.end(payload);
@@ -163,6 +196,12 @@ const server = createServer(async (req, res) => {
   const route = req.method === 'POST' ? (req.url ?? '').split('?')[0] : null;
   if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/identify-unit') {
     return send(res, 404, { status: 404, message: 'POST /diagnose, /resolve-unit or /identify-unit' });
+  }
+
+  // Shared-secret gate, when enabled. Before body parsing, so an unauthenticated
+  // caller cannot even push a payload. 401 is intentionally terse.
+  if (!authorized(req)) {
+    return send(res, 401, { status: 401, message: 'unauthorized' });
   }
 
   try {
@@ -247,8 +286,8 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`diagnose listening on http://0.0.0.0:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`diagnose listening on http://${HOST}:${PORT}${AUTH_TOKEN ? '  (auth: bearer token required)' : ''}`);
   console.log('For a phone on the same network, set EXPO_PUBLIC_DIAGNOSE_URL to');
   console.log(`your machine's LAN address, e.g. http://192.168.1.x:${PORT}`);
 });
