@@ -1,6 +1,6 @@
 {
   "model": "voyage-4-large",
-  "at": "2026-08-06T16:26:12.482Z",
+  "at": "2026-08-07T14:30:11.140Z",
   "passes": true,
   "rows": [
     {
@@ -12,7 +12,7 @@
         "label": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM"
       },
       "mfr": "Trane",
-      "mfrDocCount": 8,
+      "mfrDocCount": 10,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -75,10 +75,10 @@
           "RT-SVX23R-EN_Precedent-Rooftop-IOM p.56",
           "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.36",
           "RT-SVX21AD-EN_Rooftop-IOM p.67",
+          "Trane_Precedent-Rooftop-IOM-RT-SVX075A-EN p.51",
           "RT-SVX23R-EN_Precedent-Rooftop-IOM p.9",
           "RT-SVX34W-EN_Rooftop-IOM p.78",
-          "RT-SVX34W-EN_Rooftop-IOM p.87",
-          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.47"
+          "RT-SVX34W-EN_Rooftop-IOM p.87"
         ]
       }
     },
@@ -91,7 +91,7 @@
         "label": "PKGP-SVX010A-EN_Precedent-HeatPump-IOM"
       },
       "mfr": "Trane",
-      "mfrDocCount": 8,
+      "mfrDocCount": 10,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -150,14 +150,14 @@
           }
         ],
         "mfr": [
-          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.9",
           "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.112",
-          "RT-SVX056D-GB_Airfinity-Rooftop-IOM p.46",
           "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.134",
-          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.60",
-          "RT-SVX056D-GB_Airfinity-Rooftop-IOM p.5",
-          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.143",
-          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.40"
+          "Trane_Packaged-Rooftop-Application-Guide-APP-PRC005H-EN p.36",
+          "RT-SVX056D-GB_Airfinity-Rooftop-IOM p.42",
+          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.56",
+          "Trane_Packaged-Rooftop-Application-Guide-APP-PRC005H-EN p.37",
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.36",
+          "Trane_Packaged-Rooftop-Application-Guide-APP-PRC005H-EN p.32"
         ]
       }
     },
@@ -170,7 +170,7 @@
         "label": "48-50LC-04-06_Single-Package-Rooftop-Service"
       },
       "mfr": "Carrier",
-      "mfrDocCount": 9,
+      "mfrDocCount": 11,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -236,7 +236,7 @@
           "48-50LC-04-06_Single-Package-Rooftop-Service p.33",
           "48HJ-32SI_Install-Startup-Service p.54",
           "48-50PGPM_Single-Package-Rooftop-Service p.45",
-          "48-50LC-04-06_Single-Package-Rooftop-Service p.28"
+          "Carrier_48TC-Packaged-Rooftop-Service-Maintenance p.35"
         ]
       }
     },
@@ -249,7 +249,7 @@
         "label": "48-50LC-04-06_Single-Package-Rooftop-Service"
       },
       "mfr": "Carrier",
-      "mfrDocCount": 9,
+      "mfrDocCount": 11,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -312,10 +312,10 @@
           "48-50LC-04-06_Single-Package-Rooftop-Service p.33",
           "48-50PGPM_Single-Package-Rooftop-Service p.41",
           "48HJ-32SI_Install-Startup-Service p.54",
-          "48-50PGPM_Single-Package-Rooftop-Service p.39",
-          "48-50LC-04-06_Single-Package-Rooftop-Service p.28",
-          "48-50PGPM_Single-Package-Rooftop-Service p.46",
-          "48-50LC-04-06_Single-Package-Rooftop-Service p.31"
+          "Carrier_48TC-Packaged-Rooftop-Service-Maintenance p.17",
+          "Carrier_48TC-Packaged-Rooftop-Service-Maintenance p.13",
+          "Carrier_48TC-Packaged-Rooftop-Service-Maintenance p.76",
+          "48-50LC-04-06_Single-Package-Rooftop-Service p.28"
         ]
       }
     },
@@ -328,7 +328,7 @@
         "label": "48-50A-19PD_WeatherMaker-Product-Data"
       },
       "mfr": "Trane",
-      "mfrDocCount": 8,
+      "mfrDocCount": 10,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -407,7 +407,7 @@
         "label": "48-50A-19PD_WeatherMaker-Product-Data"
       },
       "mfr": "Trane",
-      "mfrDocCount": 8,
+      "mfrDocCount": 10,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -472,8 +472,8 @@
           "RT-SVX21AD-EN_Rooftop-IOM p.71",
           "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.54",
           "RT-SVX21AD-EN_Rooftop-IOM p.74",
-          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.51",
-          "RT-SVX23R-EN_Precedent-Rooftop-IOM p.59"
+          "Trane_Precedent-Rooftop-IOM-RT-SVX075A-EN p.49",
+          "RT-SVX46G-EN_Precedent-eFlex-Rooftop-IOM p.51"
         ]
       }
     },
@@ -486,7 +486,7 @@
         "label": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM"
       },
       "mfr": "Trane",
-      "mfrDocCount": 8,
+      "mfrDocCount": 10,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -546,12 +546,12 @@
         ],
         "mfr": [
           "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.39",
+          "Trane_Precedent-Rooftop-IOM-RT-SVX075A-EN p.54",
           "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.72",
           "RT-SVX34W-EN_Rooftop-IOM p.87",
           "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.33",
+          "Trane_Precedent-Rooftop-IOM-RT-SVX075A-EN p.48",
           "RT-SVX34W-EN_Rooftop-IOM p.86",
-          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.65",
-          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.1",
           "RT-SVX34W-EN_Rooftop-IOM p.89"
         ]
       }
@@ -565,7 +565,7 @@
         "label": "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM"
       },
       "mfr": "Trane",
-      "mfrDocCount": 8,
+      "mfrDocCount": 10,
       "singleOk": true,
       "singleRows": 8,
       "mfrOk": true,
@@ -627,11 +627,11 @@
           "RT-SVX34W-EN_Rooftop-IOM p.87",
           "RT-SVX34W-EN_Rooftop-IOM p.37",
           "RT-SVX34W-EN_Rooftop-IOM p.88",
-          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.72",
-          "RT-SVX072E-EN_IntelliPak1-Symbio800-IOM p.12",
-          "RT-SVX34W-EN_Rooftop-IOM p.89",
           "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.10",
-          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.9"
+          "PKGP-SVX010A-EN_Precedent-HeatPump-IOM p.39",
+          "RT-SVX21AD-EN_Rooftop-IOM p.77",
+          "Trane_Precedent-Rooftop-IOM-RT-SVX075A-EN p.54",
+          "Trane_Precedent-Rooftop-IOM-RT-SVX075A-EN p.56"
         ]
       }
     }

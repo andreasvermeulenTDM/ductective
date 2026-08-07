@@ -2,9 +2,9 @@
   "format": "ductective-eval-transcript/1",
   "runId": "B-zeroquota-2026-08-07",
   "synthetic": false,
-  "generatedAt": "2026-08-07T00:34:12.437Z",
+  "generatedAt": "2026-08-07T14:32:23.670Z",
   "quotaDay": "zero-quota",
-  "gitCommit": "e915e24",
+  "gitCommit": "d1ff32b",
   "server": {
     "runtime": "node scripts/serve.mjs",
     "model": "n/a — no model call by design",
@@ -33,7 +33,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 3,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -48,7 +48,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -73,7 +73,7 @@
           "trigger": "procedural",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 5,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -88,7 +88,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -113,7 +113,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 2,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -128,7 +128,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -168,7 +168,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -208,7 +208,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -248,7 +248,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -273,7 +273,7 @@
           "trigger": "action",
           "noDocumentation": false,
           "mode": "vector",
-          "latencyMs": 0,
+          "latencyMs": 1,
           "latency": {
             "retrievalMs": 0,
             "generationMs": 0
@@ -288,7 +288,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -328,7 +328,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -368,7 +368,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -408,7 +408,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -448,7 +448,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -488,7 +488,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -530,7 +530,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -574,7 +574,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -618,7 +618,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -662,7 +662,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -706,7 +706,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
@@ -750,7 +750,7 @@
           "attempts": 0,
           "model": null,
           "budget": {
-            "day": "2026-08-06",
+            "day": "2026-08-07",
             "used": 0,
             "limit": 20,
             "remaining": 20
