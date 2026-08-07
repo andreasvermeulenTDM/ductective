@@ -13,8 +13,8 @@
  *    network — the half of the state that matters on a roof (E6.6).
  */
 
-import React from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Animated, View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScalePressable } from './Tactile';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
@@ -32,16 +32,43 @@ export function PrototypeBanner() {
   // are canned over a live refusal is the same defect class as claiming live over
   // a mock: the label lies about provenance. POC honesty: live answers are still
   // unvalidated by a technician, and the banner says so rather than going away.
+  //
+  // P3: after five seconds it collapses to a cyan hairline — the caveat stays
+  // permanently visible as a mark without competing with the status bar all
+  // session. Tap re-reads it; it re-collapses on its own. The full text never
+  // leaves the accessibility tree. Static two-state styling, deliberately: the
+  // JS-driver Animated tween silently no-ops on react-native-web, and a state
+  // change that only works on one platform is worse than no tween at all.
+  const text = isLive
+    ? 'LIVE POC · answers from the knowledge base · not yet technician-validated'
+    : 'DESIGN PROTOTYPE · answers are canned, citations unverified';
+
+  const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const t = setTimeout(() => setExpanded(false), 5000);
+    return () => clearTimeout(t);
+  }, [expanded]);
+
   return (
-    <View style={s.banner}>
-      <Text style={s.bannerText}>
-        {isLive
-          ? 'LIVE POC · answers from the knowledge base · not yet technician-validated'
-          : 'DESIGN PROTOTYPE · answers are canned, citations unverified'}
-      </Text>
-    </View>
+    <Pressable
+      onPress={() => setExpanded(true)}
+      accessibilityRole="button"
+      accessibilityLabel={text}
+      accessibilityHint={expanded ? undefined : 'Expands the prototype notice'}
+    >
+      {expanded ? (
+        <View style={s.banner}>
+          <Text style={s.bannerText} numberOfLines={1}>{text}</Text>
+        </View>
+      ) : (
+        <View style={s.bannerHairline} />
+      )}
+    </Pressable>
   );
 }
+
 
 /** The unit and symptom this session is about, per mockup s4–s6. */
 export function SessionHeader({
@@ -324,6 +351,10 @@ export function NavRail({
 }
 
 const s = StyleSheet.create({
+  bannerHairline: {
+    height: 3,
+    backgroundColor: color.accent,
+  },
   banner: {
     backgroundColor: color.surfaceRaised,
     borderBottomWidth: 1,
