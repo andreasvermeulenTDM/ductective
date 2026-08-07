@@ -275,3 +275,43 @@ the same rules the nameplate route enforces.
 
 **Gates: 286 tests pass · lint 0 · typecheck clean · ST-12/ST-14 probes 117
 assertions green, ledger 0 → 0.**
+
+### ST-17 clarified — uploading photos, not just capturing one
+
+Owner clarification: *"I want the user to upload photos to the app so that those
+pictures can be analyzed and possibly used to generate a response."* The first pass
+missed two things — it opened the **camera only**, and it held **one** photo.
+
+- **Library upload is now the primary door.** "Upload" means the roll: a technician
+  has usually already photographed the panel before they think to ask about it.
+  Tapping the composer's photo button offers *Choose from library* / *Take a photo*.
+- **Up to three photos per question**, multi-select in one pass. A fault is often two
+  pictures — the board's code and the component it points at — and splitting them
+  across turns loses the pairing that makes them useful. Three is the cap because
+  each image is real tokens on every retry of that turn; `normalizePhotos` enforces
+  it server-side and the picker's `selectionLimit` stops the app offering a selection
+  the server would reject.
+- Thumbnail strip with per-photo remove, so a wrong picture is visible and
+  removable before it is sent.
+
+Corrected while doing it: the first pass used `manipulateAsync`, the **deprecated**
+image-manipulator API. The capture flow already uses SDK 54's current
+`ImageManipulator.manipulate().renderAsync().saveAsync()`, and both paths now share
+it — along with `resizeTarget` and the `MAX_UPLOAD_BYTES` pre-flight guard.
+
+**Proven end to end on the live server** (one Gemini request, `gemini-3.6-flash`,
+8,806 tokens) with two images attached to a real question:
+
+> "The attached photos show solid dark shapes and do not display visible details of
+> the contactor or control board. Based on the cooling troubleshooting
+> documentation, work through these diagnostic steps…"
+
+That is the whole design in one answer. The photos **were** analyzed; the model said
+honestly what it could and could not see (the test images are synthetic and genuinely
+featureless); it invented nothing from them; and all three ranked steps still cite
+`Carrier_48TC-Packaged-Rooftop-Service-Maintenance` p35 with `verified: 'exact'`.
+
+Wire-verified alongside it: four photos → `400 at most 3 photos per question`, a
+malformed second photo → `400` (each is validated individually), and three photos
+attached to a hazardous question → deterministic refusal with **zero model calls**,
+because the safety gate still runs before any image is decoded.
