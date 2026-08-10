@@ -992,3 +992,45 @@ Five mocked-fetch tests pin these behaviors (`lib/providers/gemini.test.mjs`).
 Eval note for ST-16: rounds intended as pinned-model measurements should either
 set `GEMINI_MODEL_CHAIN` to a single model or treat any `modelFallback: true`
 transcript as a separate bucket in the report — the harness sees the flag.
+
+## ST-08(a) — the clarify joint, tested before the quota day ✅
+
+Criterion 6's free half. The clarify **parts** had all shipped — `validateAnswer`
+passes a `kind:'clarify'` through citation-free, `buildPrompt` accepts `history`,
+and the adapter merges consecutive same-role turns. The **joint** between them had
+never been exercised, and the joint is where the risk sits.
+
+`lib/diagnose.clarify.test.mjs` — 13 tests, no quota.
+
+**Why the joint is the risky part.** A clarify continuation is the only request
+shape in the app whose message list stops alternating user/model: replaying
+`assistant(question) → user(answer)` and then appending the new grounded question
+produces **two user turns in a row**, which Gemini rejects. `toContents`' merge is
+what makes it legal — and `toContents` had *no test coverage at all* before this.
+
+Covered:
+
+- **`buildPrompt`** — history replayed before the new turn and in order, verbatim;
+  the model's own question is what gets replayed to it; the continuation still
+  carries the numbered sources and the original symptom, so turn two gets no
+  discount on grounding; no-history is unchanged.
+- **The adapter over that exact sequence** — the continuation collapses to
+  alternating roles; merging concatenates parts rather than dropping a turn;
+  `assistant` → `model`; SYSTEM is lifted to `systemInstruction` and never left as
+  a turn; a two-round loop still alternates.
+- **Composition with the security fix** — a forged `{role:'system'}` turn is
+  sanitized out *before* `buildPrompt`, so it cannot be lifted into
+  `systemInstruction` by the merge downstream. The two halves are asserted together.
+- **Output** — clarify is citation-free; the answer that *ends* the loop is cited
+  like any other; a clarify arriving with steps is still a question, never an
+  uncited answer.
+
+**Verified by mutation, not by passing.** All 13 passed first run, which is not
+evidence. Disabling the adapter's merge fails 3; dropping `history` from the prompt
+fails 6. (The first mutation attempt silently no-opped — this repo is CRLF, and a
+`\n`-anchored replace matches nothing. The tests "passing" against an unmutated
+file is exactly the false comfort this check exists to catch.)
+
+**What this buys.** ST-08(b)/(c) spend real requests proving the live loop. A
+prompt-assembly bug found there costs a day's budget to discover; found here it
+costs nothing. (b)/(c) remain open and quota-gated.
