@@ -1,6 +1,15 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+
+    // `store.ts` imports `./mockDiagnostics.ts` with its extension so that
+    // `node --test` can load the module at all — Node's ESM resolver does not
+    // guess extensions, and without this ST-A06 AC 1 ("a guest issues zero calls
+    // to the Supabase client") could only be asserted by reading the source
+    // rather than by running it. Safe here: `noEmit` is on and Metro resolves the
+    // literal path before trying its own extension list, so the device build is
+    // unaffected.
+    "allowImportingTsExtensions": true
   }
 }

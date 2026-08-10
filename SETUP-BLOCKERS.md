@@ -27,6 +27,12 @@ top of them.**
 | H6 | Docker Desktop installed | `supabase start` (local stack) | ⏸️ **Deferred by decision** |
 | H7 | Physical iOS or Android device + Expo Go | Acceptance criteria 2 and 3 | 🟡 **Criterion 2 verified 8 Aug; 3 blocked on inbound 8787** |
 | H8 | Re-download `RT-SVX096C-EN_02282025.pdf` and `04-3817.pdf` | Corpus completeness | ⬜ Not done |
+| **H9** | **Supabase Auth toggles** (email on, **Confirm email OFF**, anonymous **OFF**, Apple on, Google on) | Every accounts story — ST-A01 | 🔴 **Measured 10 Aug 2026: 2 of 5 wrong** |
+| **H10** | **Apple Developer Program enrolment** ($99/yr + identity verification) → Team ID | Sign in with Apple — ST-A20 | ⬜ **Not started. EXTERNAL LEAD TIME — start on day one** |
+| **H11** | **Apple Services ID + Sign in with Apple key** (`.p8`, Key ID, Team ID) in the Supabase dashboard | Sign in with Apple — ST-A20 | ⬜ Blocked on H10 |
+| **H12** | **Google OAuth client credentials**, with the Supabase callback as an authorized redirect URI | Google sign-in — ST-A20 | ⬜ Not started |
+| **H13** | **Run the accounts migrations by hand** — `sql/probe_auth_delete_capability.sql`, then `010`–`014`, in order | Every accounts story | ⬜ **Not run. Ordered list in `.pipeline/03-backend-accounts.md`** |
+| **H14** | A domain the project owns, for throwaway test addresses (`DUCTECTIVE_SCRATCH_EMAIL_DOMAIN`) | Tidiness of `verify:auth` / `verify:accounts` | ⬜ Optional, not blocking |
 
 Update the status column as you go. An agent that needs a blocked item must stop
 and say so rather than working around it.
@@ -209,6 +215,66 @@ Missing: Trane `RT-SVX096C-EN_02282025.pdf` (Foundation rooftop IOM) and EPA
 `04-3817.pdf` (2004 Section 608 rule). Both source URLs are in the manifest.
 Either re-download them or delete the two rows — but decide, and record the
 decision, so the knowledge agent doesn't rediscover the gap every run.
+
+### H9 — the auth toggles. **Measured, not guessed.**
+
+`npm run verify:auth` ([scripts/verify-auth-config.mjs](scripts/verify-auth-config.mjs))
+against the live project on **10 Aug 2026**:
+
+| Toggle | Required | Measured | 
+|---|---|---|
+| Email provider | on | ✅ on |
+| **Confirm email** | **OFF** (OQ-A7b) | 🔴 **ON** — `signUp` hit `email rate limit exceeded`, which only happens when a confirmation mail is being sent |
+| **Anonymous sign-ins** | **OFF** (OQ-A4) | ✅ **off** — `anonymous_provider_disabled` |
+| Apple provider | on | 🔴 not enabled — blocked on H10/H11 |
+| Google provider | on | 🔴 not enabled — blocked on H12 |
+
+Two of these are one click each and neither needs an Apple account:
+
+- **Authentication → Sign In / Providers → Email → turn OFF "Confirm email".**
+  Leave it on and brief AC 1's on-device proof depends on a shared, hard
+  rate-limited free-tier mailer, which makes the acceptance pass flaky for
+  reasons unrelated to the code. Re-enabling it before public release is a
+  **launch blocker** and is filed in `.pipeline/backlog.md`.
+- **Authentication → URL Configuration → add `ductective://auth-callback`** to
+  Redirect URLs. It must match byte for byte what H11/H12 register with Apple and
+  Google. A mismatch here is the single most common cause of an OAuth flow that
+  works on web and fails on device.
+
+Anonymous sign-in is already off and **must stay off**. `verify:auth` asserts the
+*absence* of that capability deliberately: with it off and the guest route writing
+nothing, no ownerless row can ever be created again, which is what turns brief
+AC 7 from a one-time cleanup into a permanent property.
+
+### H10–H12 — Apple and Google. **Start H10 today; it is the only item with external lead time.**
+
+`docs/phase1-story-map.md:E10` flags the Apple enrolment as having lead time and
+Human-owned identity verification, and OQ-A7 made Sign in with Apple mandatory —
+that combination is the classic silent blocker, which is why ST-A20 sits in
+Wave 0.
+
+**The pairing rule is not negotiable.** Offering Google without Sign in with Apple
+is an App Store guideline 4.8 rejection (brief hard constraint 4). If H10/H11 slip,
+**H12 slips with them** — ship email/password alone, never Google alone. A static
+test (ST-A04 AC 2) fails the build if a Google action appears without an Apple one,
+because failing a build is much cheaper than failing a review.
+
+**The `.p8` never enters this repo.** It lives in the Supabase dashboard only.
+`lib/secrets.mjs:37` already matches PEM private keys, so `npm run verify:secrets`
+would catch it if it ever landed — but the rule is "never commit it", not "the
+scanner will save us".
+
+Record the date each item completes. If the run slips, §4 of
+`.pipeline/02-user-stories-accounts.md` can then be shown to be the cause rather
+than guessed at.
+
+### H13 — the migrations. Run them in this order, reading each first.
+
+Nothing in this repo can apply SQL; every statement is run by hand in the SQL
+Editor. **`sql/011` is a release step, not a schema chore** — it destroys data by
+default and it stops any app build without auth from working the moment it lands.
+The full ordered list, with what to read before each and what to paste back, is in
+`.pipeline/03-backend-accounts.md`.
 
 ## Verify before you start Run A
 
