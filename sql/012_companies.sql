@@ -226,9 +226,20 @@ grant select, insert, update, delete on public.memberships to authenticated;
 -- project is 17) makes the view run with the *caller's* rights, so both
 -- underlying policies still apply — without it a view owned by `postgres` would
 -- quietly bypass RLS and become the hole this run exists to close.
+-- `membership_id` is the row's own key, and the roster is the only place the app
+-- ever sees a co-member. Without it, `setMemberRole` and `removeMembership` — both
+-- keyed by membership id — had no way to obtain one from the screen that lists the
+-- people they act on, so the owner actions could not be wired at all. Stage 4
+-- raised it as CONTRACT MISMATCH CM-3; corrected here rather than in a follow-up
+-- migration because this file has not been applied to any database yet.
+--
+-- Exposing it is safe: the view is `security_invoker`, so it is still filtered by
+-- `memberships_select_member`, and a membership id is only actionable through the
+-- owner-gated RPCs in this same file.
 create or replace view public.company_roster
 with (security_invoker = true) as
-  select m.company_id,
+  select m.id as membership_id,
+         m.company_id,
          m.user_id,
          m.role,
          m.created_at as joined_at,

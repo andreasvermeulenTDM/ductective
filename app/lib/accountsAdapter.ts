@@ -1,17 +1,35 @@
 /**
- * accountsAdapter.ts — the one place Stage 4 works around Stage 3's contract.
+ * accountsAdapter.ts — Stage 4's workaround for three Stage 3 contract defects.
  *
- * **Read this before adding anything to it.** Everything else in `app/screens/`
- * consumes `lib/accounts.ts` and `lib/auth.ts` exactly as
- * `.pipeline/03-backend-accounts.md` §3 documents them. Three calls do not
- * behave the way §3 describes once `sql/012` is applied, and rather than sprinkle
- * compensations through four screens, all three live here, named, with the
- * divergence written down and Backend named as the owner.
+ * ===========================================================================
+ * ⚠️  ALL THREE WERE FIXED AT SOURCE ON 10 AUG 2026. THIS MODULE IS REDUNDANT.
+ * ===========================================================================
  *
- * All three are recorded as **CONTRACT MISMATCH** in
- * `.pipeline/04-frontend-accounts.md` so Stage 5 can route the fix. None of them
- * is a fix applied to backend code — no file under `lib/accounts.ts`, `sql/` or
- * anywhere else in Stage 3's surface is touched by this run.
+ * Stage 4 was right to raise these rather than reach into Backend's files, and
+ * right to put the compensations in one named place. The agent lead then verified
+ * all three independently and fixed them where they belonged:
+ *
+ *  * **CM-1** — `getMyProfile()` now filters `.eq('id', uid)` (`accounts.ts`).
+ *  * **CM-2** — `listMyMemberships()` now filters `.eq('user_id', uid)`.
+ *  * **CM-3** — `public.company_roster` now exposes `membership_id`, corrected in
+ *    `sql/012` itself rather than in a follow-up migration, because that file has
+ *    never been applied to a database.
+ *
+ * So the functions below now filter rows that `accounts.ts` has already filtered.
+ * That is harmless and still correct — it is not wrong, it is just no longer
+ * load-bearing. It is retained for exactly one release rather than removed in the
+ * same change that fixed the source, because removing it means rewiring two
+ * screens with no component test runner and no headless browser to verify the
+ * result, and trading working tested code for tidiness at the end of a long
+ * session is a bad exchange.
+ *
+ * **Removal is filed in `.pipeline/backlog.md`.** Delete this module, point
+ * `CompanyScreen` and `AccountScreen` at `lib/accounts.ts` directly, and drop
+ * `accountsAdapter.test.mjs`. Do it with the app running so the screens can be
+ * seen working.
+ *
+ * The original analysis follows, kept because it is the evidence for the fixes
+ * and explains why each defect was invisible to a single-user fixture.
  *
  * ---------------------------------------------------------------------------
  * CM-1 · `getMyProfile()` throws in any company with more than one person

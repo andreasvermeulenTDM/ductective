@@ -3,7 +3,7 @@
 Open items that are not blocking the current round's acceptance criteria. Per
 `CLAUDE.md`, Critical/High issues do **not** belong here — they block "done".
 
-**Seven items are open**: a candidate claim/citation mismatch awaiting Eval's
+**Eight items are open**: a candidate claim/citation mismatch awaiting Eval's
 judgment (Run B, mid-file), and six filed by the accounts run on 10 Aug 2026 (at
 the bottom). Everything else filed on 7 Aug 2026 is closed, and kept below with
 its resolution rather than deleted: the reasoning is why the fixes look the way
@@ -208,3 +208,30 @@ limits the expected number of guesses is far beyond any realistic rate, but
 "impractical" is not "prevented" and the distinction belongs on record. Closing it
 needs either pg_cron-based throttling or an Edge Function in front of
 `redeem_join_code`.
+
+## OPEN · `L` · Remove `app/lib/accountsAdapter.ts` (filed 10 Aug 2026)
+
+Stage 4 raised three CONTRACT MISMATCHes against Stage 3 and, correctly, worked
+around them in one named module rather than reaching into Backend's files. All
+three were then verified and **fixed at source**:
+
+| | Defect | Fix |
+|---|---|---|
+| CM-1 | `getMyProfile()` selected `profiles` unfiltered with `.maybeSingle()`; `profiles_select_co_member` is OR'd with `profiles_select_own`, so a second person in the company made it return N rows and throw | `.eq('id', uid)` in `accounts.ts` |
+| CM-2 | `listMyMemberships()` returned co-members' rows, so a three-person shop listed the same company three times | `.eq('user_id', uid)` in `accounts.ts` |
+| CM-3 | `company_roster` had no `membership_id`, but `setMemberRole`/`removeMembership` are keyed by one | `m.id as membership_id` added to the view **in `sql/012` itself**, since it has never been applied |
+
+CM-1 deserves a note: solo users worked and every real shop broke — the worst
+shape of bug, invisible to any single-user fixture. It was found by reading, not
+by a failing test.
+
+The adapter now filters rows `accounts.ts` has already filtered. Harmless, still
+correct, no longer load-bearing. **The work:** delete the module, point
+`CompanyScreen` and `AccountScreen` at `lib/accounts.ts`, drop
+`accountsAdapter.test.mjs`. Not done in the same change as the source fix because
+it means rewiring two screens with no component test runner and no headless
+browser — do it with the app running so the screens can be seen working.
+
+**Risk of leaving it:** none functionally. The cost is a reader believing there
+are three open contract defects when there are none; the header now says
+otherwise, which is what makes deferring it safe rather than merely convenient.

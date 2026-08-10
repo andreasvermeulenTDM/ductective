@@ -59,9 +59,29 @@ const boom = (raw: unknown): never => {
  * and is worth surfacing as an empty state rather than a crash if it ever does.
  */
 export async function getMyProfile(): Promise<Profile | null> {
-  const { data, error } = await db()
+  const client = db();
+  /*
+   * The `.eq('id', …)` is **disambiguation, not isolation** — the distinction the
+   * header insists on, and this is the function that proves why it matters.
+   *
+   * `sql/012` adds `profiles_select_co_member`, and Postgres ORs same-command
+   * policies together. So the moment a second technician joins your company this
+   * select is permitted to return their row too, and `.maybeSingle()` throws on
+   * more than one. Without the filter: a solo user works and every real shop
+   * breaks — and no single-user fixture would ever show it. Found by Stage 4 as
+   * CONTRACT MISMATCH CM-1.
+   *
+   * The filter picks which permitted row we want. It is not what stops anyone
+   * reading someone else's; that is still the policy's job alone.
+   */
+  const { data: auth } = await client.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return null;
+
+  const { data, error } = await client
     .from('profiles')
     .select('id, display_name, trade_role, active_company_id, created_at, updated_at')
+    .eq('id', uid)
     .maybeSingle();
   if (error) boom(error);
   return data ?? null;
@@ -110,9 +130,24 @@ export async function updateMyProfile(patch: {
  * gated behind this being non-empty.
  */
 export async function listMyMemberships(): Promise<(Membership & { company: Company })[]> {
-  const { data, error } = await db()
+  const client = db();
+  /*
+   * Same shape of correction as `getMyProfile`, same reason (CM-2).
+   * `memberships_select_member` is `using (is_member(company_id))` — it permits
+   * every membership row of every company you belong to, which is correct for a
+   * roster and wrong for "mine". Unfiltered, a three-person shop returned three
+   * rows and the company appeared three times in the user's own list.
+   *
+   * Again: disambiguation, not isolation.
+   */
+  const { data: auth } = await client.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return [];
+
+  const { data, error } = await client
     .from('memberships')
     .select('id, company_id, user_id, role, created_at, company:companies(id, name, city, region, created_by, created_at, updated_at)')
+    .eq('user_id', uid)
     .order('created_at', { ascending: true });
   if (error) boom(error);
   type Row = Membership & { company: Company | Company[] | null };
@@ -166,7 +201,10 @@ export async function deleteCompany(companyId: string): Promise<void> {
 export async function listRoster(companyId: string): Promise<RosterEntry[]> {
   const { data, error } = await db()
     .from('company_roster')
-    .select('company_id, user_id, role, joined_at, display_name, trade_role')
+    // `membership_id` first: it is the key the owner actions act on, and CM-3 was
+    // that the roster could not supply one. Selecting it here is what lets
+    // `setMemberRole`/`removeMembership` be wired from the screen that lists people.
+    .select('membership_id, company_id, user_id, role, joined_at, display_name, trade_role')
     .eq('company_id', companyId)
     .order('joined_at', { ascending: true });
   if (error) boom(error);

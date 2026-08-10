@@ -155,6 +155,12 @@ export type Membership = {
  * it, and no policy anywhere would permit reading those if it did.
  */
 export type RosterEntry = {
+  /**
+   * The membership row's own key. Added when CM-3 was fixed in `sql/012` — the
+   * owner actions (`setMemberRole`, `removeMembership`) are keyed by it, and the
+   * roster is the only screen that lists the people they act on.
+   */
+  membership_id: string;
   company_id: string;
   user_id: string;
   role: CompanyRole;
