@@ -80,7 +80,37 @@ $$;
 -- Nobody but the person running this needs it, and it is about to be dropped.
 revoke execute on function public._ductective_probe_auth_delete() from public, anon, authenticated;
 
-select public._ductective_probe_auth_delete() as auth_delete_capability;
+-- ---------------------------------------------------------------------------
+-- Second question, same round trip: may we put a trigger on auth.users?
+-- ---------------------------------------------------------------------------
+-- sql/010's profile auto-provisioning depends on it. It is the pattern Supabase's
+-- own documentation uses and it is expected to work — but this run has already
+-- been surprised once by `auth`, and finding out here costs nothing.
+create or replace function public._ductective_probe_auth_trigger()
+returns text
+language plpgsql
+security definer
+set search_path = public, auth, pg_catalog
+as $$
+begin
+  execute 'create trigger _ductective_probe_trg after insert on auth.users '
+       || 'for each row execute function public._ductective_probe_noop()';
+  execute 'drop trigger _ductective_probe_trg on auth.users';
+  return 'CAN_TRIGGER';
+exception
+  when others then
+    return 'CANNOT_TRIGGER — ' || sqlstate || ': ' || sqlerrm;
+end;
+$$;
+
+create or replace function public._ductective_probe_noop()
+returns trigger language plpgsql set search_path = public, pg_catalog
+as $$ begin return new; end; $$;
+
+select public._ductective_probe_auth_delete()  as auth_delete_capability,
+       public._ductective_probe_auth_trigger() as auth_trigger_capability;
 
 -- Leave nothing behind.
 drop function if exists public._ductective_probe_auth_delete();
+drop function if exists public._ductective_probe_auth_trigger();
+drop function if exists public._ductective_probe_noop();
