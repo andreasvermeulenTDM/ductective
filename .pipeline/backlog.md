@@ -3,11 +3,12 @@
 Open items that are not blocking the current round's acceptance criteria. Per
 `CLAUDE.md`, Critical/High issues do **not** belong here — they block "done".
 
-**One item is open** — a candidate claim/citation mismatch awaiting Eval's judgment,
-at the bottom of this file. Everything else filed on 7 Aug 2026 is closed, and kept
-below with its resolution rather than deleted: the reasoning is why the fixes look
-the way they do, and two of them were found by a tool that had been reporting noise
-for long enough that nobody read it.
+**Seven items are open**: a candidate claim/citation mismatch awaiting Eval's
+judgment (Run B, mid-file), and six filed by the accounts run on 10 Aug 2026 (at
+the bottom). Everything else filed on 7 Aug 2026 is closed, and kept below with
+its resolution rather than deleted: the reasoning is why the fixes look the way
+they do, and two of them were found by a tool that had been reporting noise for
+long enough that nobody read it.
 
 ---
 
@@ -123,3 +124,87 @@ Likely owner if confirmed: Backend (source-index anchoring picking a chunk that
 retrieved well for the symptom but does not support the specific step) or Knowledge
 (chunk boundaries merging an alert table with adjacent remedy prose). Route on
 inspection of the retrieval, not on assumption.
+
+---
+
+# Accounts run (ST-A**) — filed 10 Aug 2026 by Stage 3
+
+Six items, each with the risk of not doing it stated. Two are tagged
+`launch-blocker`: they do not block this round's acceptance criteria, and they
+**do** block shipping to the App Store or to the public, which is a different bar.
+
+## OPEN · `launch-blocker` · Native Sign in with Apple in a development build
+
+This run ships Apple and Google through the **OAuth web flow**
+(`expo-auth-session` + `expo-web-browser`), because Expo Go runs under *Expo's*
+bundle identifier, not Ductective's, so a native SIWA sheet cannot be configured
+against our Apple Services ID — and the SDK 54 pin exists precisely because the
+test iPhone cannot run a newer Expo Go (`app/AGENTS.md`).
+
+Guideline 4.8 asks that Sign in with Apple be **offered**, and it is. But App
+Review expects the native experience on iOS.
+
+**Risk of leaving it:** review friction, not a missing feature. Honest framing:
+this run is compliant in substance and not yet in polish. Closes with E10's
+development build, where `expo-apple-authentication` replaces the web sheet on
+iOS and the SDK pin disappears entirely.
+
+## OPEN · `launch-blocker` · Re-enable email confirmation before public release
+
+OQ-A7b turns "Confirm email" **off** for the beta so brief AC 1's on-device proof
+does not depend on a shared, hard rate-limited free-tier mailer. Measured 10 Aug
+2026: it is currently **on**, and it is what makes `signUp` return
+`email rate limit exceeded` after a handful of attempts.
+
+**Risk of leaving it off:** a user can sign up with an address that is not theirs
+and squat on someone else's. Tolerable for a closed beta with a handful of known
+testers; not tolerable at public launch. It also interacts with OQ-A9 — an
+unverified address must never be a basis for linking identities.
+
+## OPEN · `launch-blocker` · Password reset
+
+Not built. Needs deliverable transactional mail and a deep-link scheme — the same
+infrastructure OQ-A3 declined for join codes.
+
+**Risk:** a beta tester who forgets their password is locked out with no
+self-service path and no support path. Softened but not removed by OQ-A7: a user
+who signed up with Apple or Google has no password to forget.
+
+## OPEN · Manual provider linking for Apple Private Relay users
+
+Apple returns an `@privaterelay.appleid.com` alias rather than the real address,
+so a user's Apple identity and their `dave@shop.com` password account **cannot**
+be matched by email — by design, and no client logic changes that.
+
+Measured 10 Aug 2026 (`npm run measure:linking`): this project refuses two
+`auth.users` rows with the same email (`email_exists`), so a *same-address*
+collision can only link or error — never silently duplicate. Private Relay is the
+one case that escapes that, because the two addresses genuinely differ.
+
+**Risk:** some users end up with two accounts and their history appears to have
+vanished. Mitigated by disclosure in the sign-in copy plus a manual "link another
+sign-in method" action on the profile screen (ST-A11 AC 4).
+
+## OPEN · A chunked SecureStore adapter for the session token
+
+ST-A02 chose `@react-native-async-storage/async-storage` over
+`expo-secure-store`: SecureStore encrypts at rest, which is better, but its
+~2048-byte per-item limit can be exceeded by a Supabase session, producing a
+failure that appears for some users and not others.
+
+**Risk, stated rather than hidden:** the session token is stored **unencrypted**
+on the device and is readable on a rooted or jailbroken phone. A chunked adapter
+that splits the session across SecureStore items would close it.
+
+## OPEN · Join-code brute force is bounded, not rate-limited
+
+`sql/013` gives codes 50 bits of entropy, a 14-day expiry, a use limit, and a
+table no non-owner can read — a code can only be obtained by being told it. What
+it does **not** have is a request-rate limit at the database, so an attacker can
+guess as fast as PostgREST will answer.
+
+**Risk:** impractical rather than impossible. At 50 bits with expiry and use
+limits the expected number of guesses is far beyond any realistic rate, but
+"impractical" is not "prevented" and the distinction belongs on record. Closing it
+needs either pg_cron-based throttling or an Edge Function in front of
+`redeem_join_code`.
