@@ -1,9 +1,35 @@
 /**
- * store.ts — all Supabase reads and writes for the prototype.
+ * store.ts — all session/message/citation access, for both routes.
  *
- * Kept in one file so the seam is obvious: the diagnostic *content* is mock, but
- * every function here talks to real Postgres. When Run B lands, mockReply() is
- * swapped for the real core and nothing in this file changes.
+ * Kept in one file so the seam is obvious. There are now **two** implementations
+ * behind the same exported names:
+ *
+ *   persisted — a signed-in technician. Real rows in Postgres, isolated to them
+ *               by row-level security (sql/011), not by the filters below.
+ *   guest     — nobody signed in. Real, live, cited answers (§1j) and **not one
+ *               row written, ever** (OQ-A4).
+ *
+ * `ChatScreen` and `HistoryScreen` call the same six functions either way. That
+ * is the point of the split: six call sites across two screens depend on the
+ * current shape, and making them each learn about auth state would put the
+ * "nothing is saved" decision in three places instead of one.
+ *
+ * ---------------------------------------------------------------------------
+ * Two things that changed at the RLS cutover, and why
+ * ---------------------------------------------------------------------------
+ *  * `listSessions` no longer filters `.is('user_id', null)`. After sql/011 that
+ *    filter returns zero rows for every signed-in user. It was **deleted, not
+ *    adapted** — the brief is explicit that E9 replaces the prototype predicate
+ *    rather than bolting something beside it.
+ *  * `createSession` still inserts with no `user_id`, and that is deliberate.
+ *    sql/011 sets `default auth.uid()` on the column, so the **database** stamps
+ *    ownership and `with check (user_id = auth.uid())` makes forging one
+ *    impossible. Ownership stopped depending on the client remembering to send
+ *    it, which is what hard constraint 3 actually asks for.
+ *
+ * Nothing in this file enforces isolation. Every read below is permitted or
+ * refused by policy. If a filter here were the only thing keeping one technician
+ * out of another's jobs, that would be a defect even on the days it worked.
  */
 
 import { supabase, isConfigured, type Citation, type Message, type Session } from './supabase';
@@ -12,12 +38,84 @@ import { isLive, requestDiagnosis } from './diagnose';
 
 export class NotConfiguredError extends Error {}
 
-function db() {
+// ---------------------------------------------------------------------------
+// The seam
+// ---------------------------------------------------------------------------
+
+type Client = NonNullable<typeof supabase>;
+
+let persisting = false;
+let clientOverride: Client | null = null;
+
+/**
+ * Tell the store who is signed in. Called by the app shell from
+ * `onAuthStateChange` (see `app/lib/auth.ts`), and by nothing else.
+ *
+ * Defaults to **guest**, so the failure mode of forgetting to call it is "nothing
+ * was saved" rather than "someone else's rows were written". Of the two ways to
+ * be wrong, that is the recoverable one.
+ *
+ * The shell must not call the store at all while auth state is `determining`
+ * (ST-A02 AC 7) — that is what `isDetermining()` in `authState.ts` is for.
+ */
+export function setStoreAuth(signedIn: boolean): void {
+  persisting = signedIn;
+}
+
+export const isPersistingStore = (): boolean => persisting;
+
+/**
+ * Test hook for ST-A06 AC 1: inject a spy client and assert `from()` is never
+ * invoked on the guest route. Exported rather than reached for through module
+ * internals so the assertion the story asks for is possible without a mocking
+ * framework — this repo has none and is not adding one.
+ */
+export function __setClientForTests(client: Client | null): void {
+  clientOverride = client;
+}
+
+function db(): Client {
+  if (clientOverride) return clientOverride;
   if (!isConfigured || !supabase) throw new NotConfiguredError('Supabase not configured');
   return supabase;
 }
 
-const SESSION_COLUMNS = 'id, title, equipment, created_at, updated_at';
+const SESSION_COLUMNS = 'id, title, equipment, company_id, created_at, updated_at';
+
+// ---------------------------------------------------------------------------
+// The guest route — in memory, and only in memory
+// ---------------------------------------------------------------------------
+
+/**
+ * The whole guest transcript. Cleared on sign-out (ST-A06 AC 10), and lost when
+ * the process dies — which is the accepted downside the owner chose knowingly and
+ * which the app is required to disclose *before* the first answer, not after.
+ */
+const guestSessions = new Map<string, Session>();
+const guestMessages = new Map<string, Message[]>();
+let guestSeq = 0;
+
+/**
+ * Synthetic ids so `ChatScreen`'s existing `ownSession` guard and `unanswered`
+ * retry path keep working unchanged. The `guest-` prefix is not decoration: it
+ * makes an id that leaked into a database call obvious in a stack trace instead
+ * of looking like a uuid that merely does not exist.
+ */
+const guestId = (kind: string) => `guest-${kind}-${Date.now().toString(36)}-${(guestSeq += 1).toString(36)}`;
+
+/** ST-A06 AC 10 — signing out must not leave one person's text on screen. */
+export function resetGuestState(): void {
+  guestSessions.clear();
+  guestMessages.clear();
+}
+
+/** Exposed for the shell's mid-conversation sign-up handling (OQ-A4 sub-decision 2). */
+export const guestTranscriptLength = (): number =>
+  [...guestMessages.values()].reduce((n, list) => n + list.length, 0);
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
 
 /**
  * Sessions for the history list.
@@ -31,12 +129,18 @@ const SESSION_COLUMNS = 'id, title, equipment, created_at, updated_at';
  * nothing in `sql/` moves. If the embed fails for any reason (an older PostgREST,
  * a policy that blocks the nested read), it falls back to the plain select and the
  * list renders without the two badges rather than erroring out.
+ *
+ * **A guest gets an empty list, always.** Not their in-memory conversation: the
+ * History tab's job for a guest is to explain that nothing is being saved and
+ * offer a way forward (OQ-A4 sub-decision 1). Showing them a list that will be
+ * gone when they close the app would be the opposite of that.
  */
 export async function listSessions(): Promise<Session[]> {
+  if (!persisting) return [];
+
   const enriched = await db()
     .from('sessions')
     .select(`${SESSION_COLUMNS}, messages(kind, citations(id))`)
-    .is('user_id', null)
     .order('updated_at', { ascending: false });
 
   if (!enriched.error) {
@@ -55,7 +159,6 @@ export async function listSessions(): Promise<Session[]> {
   const { data, error } = await db()
     .from('sessions')
     .select(SESSION_COLUMNS)
-    .is('user_id', null)
     .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -68,25 +171,53 @@ export async function listSessions(): Promise<Session[]> {
  * (sql/002), so the database removes the turns and their citations. Deleting them
  * from the client instead would leave orphans behind on any partial failure.
  *
- * The prototype RLS policy is `for all`, so DELETE is already permitted for the
- * anon role on `user_id is null` rows — no migration needed for this.
+ * Since sql/011 the owner-keyed policy is `for all`, so DELETE is permitted for
+ * the `authenticated` role on rows where `user_id = auth.uid()` — and refused
+ * everywhere else. Another technician's session id, passed here, affects zero
+ * rows; it does not error, and it does not delete.
  */
 export async function deleteSession(sessionId: string): Promise<void> {
+  if (!persisting) {
+    guestSessions.delete(sessionId);
+    guestMessages.delete(sessionId);
+    return;
+  }
   const { error } = await db().from('sessions').delete().eq('id', sessionId);
   if (error) throw new Error(error.message);
 }
 
 export async function createSession(title: string, equipment?: string | null): Promise<Session> {
+  if (!persisting) {
+    const now = new Date().toISOString();
+    const session: Session = {
+      id: guestId('session'),
+      title: title.slice(0, 80),
+      equipment: equipment ?? null,
+      company_id: null,
+      created_at: now,
+      updated_at: now,
+    };
+    guestSessions.set(session.id, session);
+    guestMessages.set(session.id, []);
+    return session;
+  }
+
+  // No `user_id` here on purpose — see the header. sql/011's `default auth.uid()`
+  // stamps it, and sql/012's trigger stamps `company_id` from the creator's
+  // active company. Neither is accepted from the client, because a claim the
+  // client makes about ownership is not a fact.
   const { data, error } = await db()
     .from('sessions')
     .insert({ title: title.slice(0, 80), equipment: equipment ?? null })
-    .select('id, title, equipment, created_at, updated_at')
+    .select(SESSION_COLUMNS)
     .single();
   if (error) throw new Error(error.message);
   return data;
 }
 
 export async function loadMessages(sessionId: string): Promise<Message[]> {
+  if (!persisting) return [...(guestMessages.get(sessionId) ?? [])];
+
   const { data, error } = await db()
     .from('messages')
     .select('id, session_id, kind, body, seq, citations(id, source_document, page, claim, ordinal, snippet, chunk_id, verified)')
@@ -101,6 +232,10 @@ export async function loadMessages(sessionId: string): Promise<Message[]> {
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
 async function appendMessage(
   sessionId: string,
   seq: number,
@@ -108,6 +243,8 @@ async function appendMessage(
   body: string,
   citations: Omit<Citation, 'id'>[] = []
 ): Promise<Message> {
+  if (!persisting) return appendGuestMessage(sessionId, seq, kind, body, citations);
+
   const { data: msg, error } = await db()
     .from('messages')
     .insert({ session_id: sessionId, kind, body, seq })
@@ -130,19 +267,45 @@ async function appendMessage(
 }
 
 /**
- * Submit a symptom and persist both turns.
+ * The same turn, in memory.
  *
- * The reply comes from the Run B core when `EXPO_PUBLIC_DIAGNOSE_URL` is set, and
- * from mockDiagnostics when it is not — so a checkout with no backend running
- * still renders. That was the swap this file was written to accept, and nothing
- * else in it changed.
- *
- * The fallback is deliberately *not* silent-on-error: if a live core is configured
- * and fails, the error propagates to the caller's error state. Quietly serving a
- * canned answer in place of a failed real one would mean a technician reading
- * unverified text believing it came from the manual — the worst outcome available
- * here, and worse than an honest error card.
+ * Citation ids are synthesised exactly as the persisted path already does at the
+ * `pending-${i}` line above, so the renderer sees a shape it has always seen. The
+ * citation *content* — `source_document`, `page`, `claim`, `snippet` — is passed
+ * through untouched, because `CLAUDE.md`'s cite-every-claim rule applies to a
+ * guest exactly as it applies to anyone else. Nothing about being signed out
+ * degrades an answer, a citation or a refusal; it degrades persistence and
+ * nothing else.
  */
+function appendGuestMessage(
+  sessionId: string,
+  seq: number,
+  kind: Message['kind'],
+  body: string,
+  citations: Omit<Citation, 'id'>[] = []
+): Message {
+  const message: Message = {
+    id: guestId('msg'),
+    session_id: sessionId,
+    kind,
+    body,
+    seq,
+    citations: citations.map((c, i) => ({ ...c, id: `pending-${i}` })),
+  };
+  const list = guestMessages.get(sessionId) ?? [];
+  // Replace rather than duplicate on a retry, matching the unique (session_id,
+  // seq) constraint the persisted path relies on.
+  const existing = list.findIndex((m) => m.seq === seq);
+  if (existing >= 0) list.splice(existing, 1, message);
+  else list.push(message);
+  guestMessages.set(sessionId, list);
+
+  const session = guestSessions.get(sessionId);
+  if (session) guestSessions.set(sessionId, { ...session, updated_at: new Date().toISOString() });
+
+  return message;
+}
+
 /**
  * Persist the technician's question, and nothing else.
  *
@@ -161,6 +324,10 @@ export function askQuestion(sessionId: string, seq: number, input: string): Prom
  * reopening that session showed the technician their own words and nothing else —
  * indistinguishable from losing their work. This regenerates the missing reply
  * without appending a second copy of the question.
+ *
+ * On the guest route "already saved" means "already in state", and the retry
+ * affordance still works — which matters more for a guest, not less, because the
+ * reason it exists is flaky rooftop signal.
  */
 export async function answerExisting(
   sessionId: string,
@@ -177,7 +344,17 @@ export async function answerExisting(
   return appendMessage(sessionId, replySeq, result.kind, result.body, result.citations);
 }
 
-async function generateReply(
+/**
+ * The generation half, on its own.
+ *
+ * Split out and exported because `answerExisting` used to fuse generation with
+ * persistence, and the guest route needs the first half without the second (§1i).
+ * **No parameter here is derived from auth state, and none ever may be**: a
+ * refusal is a refusal for a guest, a solo user, a member and an owner alike
+ * (ST-A19 AC 4). The safety gate is server-side, deterministic and pre-model, and
+ * nothing on this path can reach it.
+ */
+export async function generateReply(
   input: string,
   equipment?: string | null,
   documentIds?: string[] | null,

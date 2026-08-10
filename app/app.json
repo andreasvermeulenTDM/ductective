@@ -4,6 +4,7 @@
     "slug": "app",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "ductective",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -34,7 +35,8 @@
         {
           "photosPermission": "Ductective reads a data-plate photo you already took, to identify the unit."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }
