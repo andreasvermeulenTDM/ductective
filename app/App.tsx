@@ -15,10 +15,11 @@
  * question, not a place you go.
  */
 
-import { useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { View, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import {
   useFonts,
   Outfit_400Regular,
@@ -35,6 +36,19 @@ import { ChatScreen } from './screens/ChatScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { CaptureScreen } from './screens/CaptureScreen';
 import { UnitGate } from './screens/UnitGate';
+import { SignInScreen } from './screens/SignInScreen';
+import { AccountScreen } from './screens/AccountScreen';
+import { startAuth } from './lib/auth';
+import { INITIAL_AUTH_STATE, isDetermining, nextAuthState } from './lib/authState';
+
+/**
+ * Required once, at module scope, by `expo-auth-session`: it closes the browser
+ * window the OAuth round trip opened. A no-op on native, which is where this run
+ * actually runs — the redirect is `ductective://auth-callback`, a native scheme —
+ * but the repo also builds for web (`npm run app`) and leaving it out is the
+ * documented way to get a popup that never closes.
+ */
+WebBrowser.maybeCompleteAuthSession();
 
 /**
  * The shipped lockup, not a redrawn mark.
@@ -81,6 +95,51 @@ export default function App() {
   const [carried, setCarried] = useState<string | null>(null);
   const { isTablet } = useLayout();
 
+  /**
+   * Auth — three states, and the third one is why this is a reducer.
+   *
+   * `nextAuthState` is Stage 3's pure transition (`lib/authState.ts`) and it has
+   * exactly the shape a reducer wants, so the shell holds no auth logic of its
+   * own. There is one state machine in this app and this is not a second one.
+   *
+   * `determining` renders as a loading state below, never as guest. A shell that
+   * collapses the two shows "nothing is being saved" to a signed-in technician
+   * for 200ms at every cold start — the app lying about the one thing OQ-A4
+   * requires it to be honest about (ST-A02 AC 7).
+   */
+  const [auth, dispatch] = useReducer(nextAuthState, INITIAL_AUTH_STATE);
+
+  useEffect(() => {
+    // `startAuth` returns its unsubscribe, so returning it here *is* the cleanup
+    // (ST-A02 AC 6). A leaked onAuthStateChange listener across sign-out/sign-in
+    // is how stale-user bugs get in.
+    return startAuth({
+      onResolved: (user) => dispatch({ type: 'resolved', user }),
+      onSignedIn: (user) => dispatch({ type: 'signed-in', user }),
+      onSignedOut: () => dispatch({ type: 'signed-out' }),
+    });
+  }, []);
+
+  /**
+   * A different person is now holding this phone.
+   *
+   * Only fires when a *known* user is replaced (sign-out, or a switch to another
+   * account) — never on the guest→signed-in transition, which OQ-A4 sub-decision
+   * 2 requires to keep the transcript on screen. `store.ts` clears its own guest
+   * memory on sign-out; this clears the screen state that points at it, so one
+   * technician's job is not left open for the next.
+   */
+  const lastUser = useRef<string | null>(null);
+  useEffect(() => {
+    if (auth.phase === 'determining') return;
+    const previous = lastUser.current;
+    lastUser.current = auth.userId;
+    if (previous !== null && previous !== auth.userId) goHome();
+    // `goHome` only calls setState functions, which React guarantees are stable,
+    // so it is deliberately not a dependency: adding it would re-run this on
+    // every render and clear the screen under the technician.
+  }, [auth.phase, auth.userId]);
+
   /** Reopening a job restores its unit; U1 forbids re-asking for one it already has. */
   function openSession(id: string, unit: string | null) {
     setSessionId(id);
@@ -107,6 +166,10 @@ export default function App() {
     setTab('chat');
   }
 
+  const signedIn = auth.phase === 'signed-in';
+  /** Every "sign in" affordance in the app lands on the same tab. One route. */
+  const goSignIn = () => setTab('account');
+
   const chat = (
     <ChatScreen
       sessionId={sessionId}
@@ -117,8 +180,26 @@ export default function App() {
       coverage={coverage}
       carriedQuestion={carried}
       onCarriedConsumed={() => setCarried(null)}
+      signedIn={signedIn}
+      onSignIn={goSignIn}
+      justSignedIn={auth.justSignedIn}
+      onBoundaryDrawn={() => dispatch({ type: 'boundary-acknowledged' })}
     />
   );
+
+  /**
+   * The reinstated third tab, and it has content in **both** states — which is
+   * what keeps it from being the empty dead end `Chrome.tsx` dropped it for.
+   * A guest gets the sign-in screen; a signed-in technician gets their profile,
+   * their companies and account deletion.
+   */
+  const account = signedIn ? (
+    <AccountScreen userId={auth.userId!} email={auth.email} />
+  ) : (
+    <SignInScreen onContinueAsGuest={() => setTab('chat')} />
+  );
+
+  const history = <HistoryScreen onOpen={openSession} signedIn={signedIn} onSignIn={goSignIn} />;
 
   /**
    * U1 — a cold start with no unit lands on unit selection, not chat.
@@ -128,6 +209,10 @@ export default function App() {
     <UnitGate
       onIdentify={(mode) => setCapture(mode)}
       onCarryOver={setCarried}
+      // U7 lets this screen answer — with a refusal — before a unit exists, so
+      // the guest disclosure belongs here too (ST-A06 AC 6).
+      signedIn={signedIn}
+      onSignIn={goSignIn}
     />
   );
 
@@ -149,27 +234,40 @@ export default function App() {
       onCancel={() => setCapture(null)}
     />
   ) : isTablet ? (
-    // Tablet: the session list keeps its width beside the answer rather than
-    // being a screen you leave the conversation to reach (E6.9).
-    <View style={s.split}>
-      <View style={s.sessionList}>
-        <HistoryScreen onOpen={openSession} />
+    // The account tab takes the full width — a profile form squeezed beside a
+    // session list is the phone-stretched-to-width layout E6.9 forbids.
+    tab === 'account' ? (
+      account
+    ) : (
+      // Tablet: the session list keeps its width beside the answer rather than
+      // being a screen you leave the conversation to reach (E6.9).
+      <View style={s.split}>
+        <View style={s.sessionList}>{history}</View>
+        <View style={s.fill}>{equipment || sessionId ? chat : gate}</View>
       </View>
-      <View style={s.fill}>{equipment || sessionId ? chat : gate}</View>
-    </View>
+    )
   ) : tab === 'chat' ? (
     equipment || sessionId ? chat : gate
+  ) : tab === 'account' ? (
+    account
   ) : (
-    <HistoryScreen onOpen={openSession} />
+    history
   );
 
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
       <SafeAreaView style={s.root} edges={['top', 'bottom']}>
-        {/* Gate on fonts. Outfit is a brand requirement, and flashing a system
-            font first is the parallel style CLAUDE.md warns against. */}
-        {!fontsLoaded ? (
+        {/* Gate on fonts *and* on auth.
+            Outfit is a brand requirement, and flashing a system font first is the
+            parallel style CLAUDE.md warns against.
+            `isDetermining` is the same idea applied to identity: until the stored
+            session has been read off the device we know neither state, so we show
+            neither. `isDetermining(auth)` rather than `auth.phase !== 'signed-in'`
+            on purpose — the latter is the wrong check and is exactly the one that
+            produces the guest flash (ST-A02 AC 7). Nothing below this gate calls
+            the store, so no read happens against an auth state we do not have. */}
+        {!fontsLoaded || isDetermining(auth) ? (
           <View style={s.boot}>
             <ActivityIndicator color={color.accent} />
           </View>

@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { ScalePressable } from '../components/Tactile';
+import { GuestNotice } from '../components/Chrome';
 import { Message as MessageView } from '../components/Message';
 import { looksOffline } from '../lib/net';
 import { refusalCheck, DiagnoseError, isLive, type DiagnoseReply } from '../lib/diagnose';
@@ -30,9 +31,18 @@ type Props = {
   onIdentify: (mode: 'camera' | 'manual') => void;
   /** Carries text typed at the gate into the session once a unit exists. */
   onCarryOver: (text: string) => void;
+  /**
+   * ST-A06 AC 6. This screen answers too — U7's carve-out returns a **refusal**
+   * before any unit exists, and a refusal is an answer. So "the app says so
+   * before the first answer" binds here as well as on the chat composer, or a
+   * guest whose very first question is a hazard gets a reply having never been
+   * told the conversation is not being kept.
+   */
+  signedIn?: boolean;
+  onSignIn?: () => void;
 };
 
-export function UnitGate({ onIdentify, onCarryOver }: Props) {
+export function UnitGate({ onIdentify, onCarryOver, signedIn, onSignIn }: Props) {
   const [question, setQuestion] = useState('');
   const [urgentOpen, setUrgentOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -73,6 +83,10 @@ export function UnitGate({ onIdentify, onCarryOver }: Props) {
             machine before the symptom.
           </Text>
         </View>
+
+        {/* Before the doors, because it is true before anything else on this
+            screen is: whatever happens next is not being kept. */}
+        {!signedIn && <GuestNotice onSignIn={() => onSignIn?.()} />}
 
         {/* Co-equal front doors — U1 and U2. Neither is the fallback. */}
         <View style={s.doors}>
