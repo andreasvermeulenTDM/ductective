@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Image, Alert,
 } from 'react-native';
@@ -11,7 +11,7 @@ import { ScalePressable, fireHaptic } from '../components/Tactile';
 import { ConversationSkeleton } from '../components/Skeleton';
 import { useLayout } from '../theme/layout';
 import { Message as MessageView } from '../components/Message';
-import { ErrorState, OfflineNotice, SessionHeader } from '../components/Chrome';
+import { ErrorState, GuestNotice, OfflineNotice, SavedFromHere, SessionHeader } from '../components/Chrome';
 import { CitationSheet, SourcePanel } from '../components/Citation';
 import { looksOffline } from '../lib/net';
 import { startersFor } from '../lib/starters';
@@ -48,11 +48,25 @@ export function ChatScreen({
   coverage,
   carriedQuestion,
   onCarriedConsumed,
+  signedIn,
+  onSignIn,
+  justSignedIn,
+  onBoundaryDrawn,
 }: {
   sessionId: string | null;
   onSession: (id: string) => void;
   onCapture: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
+  /** Persisting or not. Drives the disclosure only — the store owns the decision. */
+  signedIn?: boolean;
+  onSignIn?: () => void;
+  /**
+   * True for exactly one transition, guest → signed-in, from the shell's auth
+   * state machine. OQ-A4 sub-decision 2: keep the transcript, back-fill nothing,
+   * and mark the split.
+   */
+  justSignedIn?: boolean;
+  onBoundaryDrawn?: () => void;
   /** The unit's coverage verdict, for the "do we have this unit" line. */
   coverage?: { status: string | null; docs: string[] } | null;
   /**
@@ -98,15 +112,73 @@ export function ChatScreen({
    */
   const ownSession = useRef<string | null>(null);
 
+  /**
+   * Where the *saved from here* rule is drawn — an index into `messages`, or null
+   * when no boundary happened in this conversation (ST-A06 AC 9).
+   */
+  const [boundaryAt, setBoundaryAt] = useState<number | null>(null);
+
+  /**
+   * True when `sessionId` still points at the in-memory guest session the
+   * technician was using before they signed in.
+   *
+   * That id is not a database row and never will be: OQ-A4 rules out
+   * back-filling. So the next question must start a **real** session rather than
+   * writing into a uuid that does not exist. Detaching is how "the next question
+   * creates a real persisted session containing only from that point"
+   * (ST-A06 AC 8) is true without the visible transcript being destroyed.
+   */
+  const detached = useRef(false);
+
+  /**
+   * How many visible turns belong to the *previous* (unsaved) transcript.
+   *
+   * `seq` is per-session and the persisted path relies on `unique (session_id,
+   * seq)`. After a boundary the visible list is longer than the new session, so
+   * seq counts from here rather than from the top of the screen. Zero in every
+   * ordinary conversation, which is why nothing else changed.
+   */
+  const seqBase = useRef(0);
+
+  function resetTranscriptMarkers() {
+    setBoundaryAt(null);
+    detached.current = false;
+    seqBase.current = 0;
+  }
+
   useEffect(() => {
-    if (!sessionId) { setMessages([]); return; }
+    if (!sessionId) { setMessages([]); resetTranscriptMarkers(); return; }
     if (ownSession.current === sessionId) return; // ours; state is already correct
+    resetTranscriptMarkers();
     setLoading(true);
     loadMessages(sessionId)
       .then((m) => { setMessages(m); setOffline(false); })
       .catch((e) => { setError(e); setOffline(looksOffline(e)); })
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  /**
+   * Signed in mid-conversation.
+   *
+   * Three things happen and no fourth: the split is marked, the guest session is
+   * detached so nothing writes into it, and the shell is told the marker is drawn
+   * so a later token refresh does not re-mark. Clearing the screen was considered
+   * and rejected upstream as punitive — destroying visible work to reward making
+   * an account teaches the wrong lesson. Back-filling was rejected as the exact
+   * migration the owner ruled out.
+   */
+  const boundaryDrawn = useRef(false);
+  useEffect(() => {
+    if (!justSignedIn) { boundaryDrawn.current = false; return; }
+    // `onBoundaryDrawn` is a fresh closure every render, so this effect re-runs
+    // freely. The ref is what makes the work happen exactly once per transition.
+    if (boundaryDrawn.current) return;
+    boundaryDrawn.current = true;
+    if (messages.length > 0) setBoundaryAt(messages.length);
+    seqBase.current = messages.length;
+    if (sessionId) detached.current = true;
+    onBoundaryDrawn?.();
+  }, [justSignedIn, sessionId, messages.length, onBoundaryDrawn]);
 
   useEffect(() => {
     if (!carriedQuestion) return;
@@ -155,10 +227,14 @@ export function ChatScreen({
     const controller = new AbortController();
     abort.current = controller;
     try {
-      let sid = sessionId;
+      // A detached id belongs to the pre-sign-in guest transcript and is not a
+      // row. Treating it as absent is what makes the next question start a real
+      // session while the turns above it stay on screen, unsaved (ST-A06 AC 8).
+      let sid = detached.current ? null : sessionId;
       if (!sid) {
         const created = await createSession(body, equipment);
         sid = created.id;
+        detached.current = false;
         // Claim it before publishing the id, so the load effect that the prop
         // change triggers sees the mark and leaves our optimistic turns alone.
         ownSession.current = sid;
@@ -168,7 +244,7 @@ export function ChatScreen({
       // is attempted, so a failure leaves a visible turn with a retry beside it
       // rather than a saved-but-invisible question. Retrying then regenerates only
       // the reply — asking again as a whole would persist a duplicate question.
-      const seq = messages.length;
+      const seq = messages.length - seqBase.current;
       const user = await askQuestion(sid, seq, body);
       setMessages((prev) => [...prev, user]);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
@@ -275,6 +351,14 @@ export function ChatScreen({
   /** Regenerate the missing reply for an already-saved question. */
   async function answerUnanswered() {
     if (!sessionId || !unanswered || busy) return;
+    /**
+     * The unanswered turn is on the guest side of a boundary, so there is no row
+     * to attach a reply to and never will be. Re-asking is the honest repair: it
+     * starts the real session the sign-in earned and puts both the question and
+     * its answer in it. Regenerating in place would write an answer with no
+     * question above it.
+     */
+    if (detached.current) { void send(unanswered.body); return; }
     setBusy(true);
     setError(null);
     const controller = new AbortController();
@@ -312,16 +396,25 @@ export function ChatScreen({
           coverage={coverage}
         />
       ) : (
-        messages.map((m) => (
-          <MessageView
-            key={m.id}
-            kind={m.kind}
-            body={m.body}
-            citations={m.citations}
-            onCitationPress={setCitation}
-          />
+        messages.map((m, i) => (
+          <Fragment key={m.id}>
+            {/* The rule is drawn between turns, so it reads as a point in time
+                rather than as a label on a message. */}
+            {boundaryAt === i && <SavedFromHere />}
+            <MessageView
+              kind={m.kind}
+              body={m.body}
+              citations={m.citations}
+              onCitationPress={setCitation}
+            />
+          </Fragment>
         ))
       )}
+
+      {/* Signed in with the transcript already complete: the boundary sits at the
+          end, and nothing below it is saved yet either — the next question is
+          what starts the real session. */}
+      {boundaryAt !== null && boundaryAt === messages.length && <SavedFromHere />}
 
       {busy && (
         <View style={s.working}>
@@ -424,6 +517,20 @@ export function ChatScreen({
       ) : (
         conversation
       )}
+
+      {/*
+        ST-A06 AC 6 — **before the first answer, not after.**
+
+        It sits above the composer rather than inside the empty state because an
+        empty state is gone the moment the first question is sent, and this has to
+        still be true on the tenth. It is rendered for a guest in every state of
+        this screen — no question yet, mid-conversation, after an error — so there
+        is no path to an answer that does not pass it first.
+
+        Above the unit gate notice deliberately: what you are about to lose
+        outranks which unit you are asking about.
+      */}
+      {!signedIn && <GuestNotice onSignIn={() => onSignIn?.()} />}
 
       {!equipment && (
         <View style={s.gateNotice}>

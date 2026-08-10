@@ -7,6 +7,7 @@ import { HistorySkeleton } from '../components/Skeleton';
 import { ScalePressable } from '../components/Tactile';
 import { looksOffline } from '../lib/net';
 import { listSessions, deleteSession } from '../lib/store';
+import { GUEST_HISTORY } from '../lib/accountCopy';
 import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
 
 /**
@@ -16,12 +17,23 @@ import { isConfigured, CONFIG_HINT, type Session } from '../lib/supabase';
  * marker — so a session is identifiable by the work rather than by the first
  * sentence a tech happened to type. Both are derived in `listSessions`; when that
  * read falls back, the badges are simply absent rather than showing a false zero.
+ *
+ * **The tab stays visible for a guest** (OQ-A4 sub-decision 1). Hiding it would
+ * make the shape of the app depend on auth state, which is a bigger change for a
+ * worse result. What a guest gets instead is a dedicated empty state that
+ * explains why there is nothing here and offers a way forward — an explanation,
+ * not a locked door, which is the distinction `Chrome.tsx`'s own reasoning and
+ * E6.6 both turn on.
  */
 export function HistoryScreen({
   onOpen,
+  signedIn,
+  onSignIn,
 }: {
   /** The unit travels with the id — U1 must not re-ask for a session that has one. */
   onOpen: (id: string, equipment: string | null) => void;
+  signedIn: boolean;
+  onSignIn: () => void;
 }) {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +51,11 @@ export function HistoryScreen({
     }
   }, []);
 
-  useEffect(() => { if (isConfigured) load(); }, [load]);
+  // A guest's list is always empty by contract (§3.2) and `listSessions` never
+  // reaches the database in that state, so there is nothing to load and nothing
+  // to spin over. Skipping the call keeps the guest route's "zero Supabase calls"
+  // property true from this screen as well as from the store.
+  useEffect(() => { if (isConfigured && signedIn) load(); }, [load, signedIn]);
 
   /**
    * Delete a job, after asking.
@@ -75,6 +91,26 @@ export function HistoryScreen({
   }
 
   if (!isConfigured) return <ErrorState title="Not connected" detail={CONFIG_HINT} />;
+
+  /**
+   * ST-A06 AC 7 — the guest's History tab.
+   *
+   * Checked before offline and before error, because for a guest neither is
+   * true: nothing was requested, so nothing failed. Reporting "can't reach your
+   * history" to somebody who has no history would be a fault the app invented.
+   *
+   * The copy says what is *lost* rather than what is on offer — same rule as the
+   * composer disclosure, same words, from `accountCopy.ts`.
+   */
+  if (!signedIn) {
+    return (
+      <EmptyState
+        title={GUEST_HISTORY.title}
+        detail={GUEST_HISTORY.detail}
+        action={{ label: GUEST_HISTORY.action, onPress: onSignIn }}
+      />
+    );
+  }
 
   // Offline before error: "no signal" and "something broke" send a technician to
   // two different places, and on a roof the first is the ordinary case (E6.6).
