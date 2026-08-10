@@ -49,6 +49,7 @@ import { SIGN_IN_PROVIDERS, signInWithEmail, signInWithProvider, signUpWithEmail
 import { AccountFailure } from '../lib/accounts';
 import { copyForError, isSilentOutcome, type AccountCopy } from '../lib/accountCopy';
 import { GUEST_DISCLOSURE } from '../lib/accountCopy';
+import { isConfigured, CONFIG_HINT } from '../lib/supabase';
 
 /** Apple first, and the label is Apple's required wording. */
 const PROVIDER_UI: Record<OAuthProvider, { label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
@@ -139,6 +140,17 @@ export function SignInScreen({ onContinueAsGuest }: { onContinueAsGuest: () => v
           </Text>
         </View>
 
+        {/*
+          No Supabase env: signing in cannot work, and saying so beats letting
+          every button fail with "that didn't reach the server". The rest of the
+          screen stays live on purpose — "Continue without an account" needs no
+          backend at all (§1j), so an unconfigured build is still a usable one.
+          Same posture and the same hint the other screens already use.
+        */}
+        {!isConfigured && (
+          <InlineNotice tone="notice" title="Not connected to an account server" detail={CONFIG_HINT} />
+        )}
+
         {notice && (
           <InlineNotice tone={notice.tone} title={notice.title} detail={notice.detail} />
         )}
@@ -152,7 +164,7 @@ export function SignInScreen({ onContinueAsGuest }: { onContinueAsGuest: () => v
               icon={PROVIDER_UI[p].icon}
               variant="secondary"
               busy={busy === p}
-              disabled={Boolean(busy) && busy !== p}
+              disabled={!isConfigured || (Boolean(busy) && busy !== p)}
               onPress={() => submitProvider(p)}
               hint="Opens the provider's sign-in page"
             />
@@ -194,7 +206,7 @@ export function SignInScreen({ onContinueAsGuest }: { onContinueAsGuest: () => v
             label={mode === 'sign-in' ? 'Sign in' : 'Create account'}
             onPress={submitEmail}
             busy={busy === 'email'}
-            disabled={Boolean(busy) && busy !== 'email'}
+            disabled={!isConfigured || (Boolean(busy) && busy !== 'email')}
           />
           <ScalePressable
             onPress={() => { setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in'); setNotice(null); }}

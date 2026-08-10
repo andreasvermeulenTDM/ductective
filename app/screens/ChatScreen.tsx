@@ -530,7 +530,11 @@ export function ChatScreen({
         Above the unit gate notice deliberately: what you are about to lose
         outranks which unit you are asking about.
       */}
-      {!signedIn && <GuestNotice onSignIn={() => onSignIn?.()} />}
+      {!signedIn && (
+        <View style={s.guestWrap}>
+          <GuestNotice onSignIn={() => onSignIn?.()} />
+        </View>
+      )}
 
       {!equipment && (
         <View style={s.gateNotice}>
@@ -887,6 +891,9 @@ const s = StyleSheet.create({
   inlineErrorText: { ...type.heading, color: color.textPrimary },
   inlineErrorDetail: { ...type.caption, color: color.refusalText },
   inlineErrorHint: { ...type.caption, color: color.textSecondary },
+
+  /** The disclosure sits outside the padded scroll, so it carries its own inset. */
+  guestWrap: { marginHorizontal: space.lg, marginBottom: space.sm },
 
   gateNotice: {
     gap: space.sm,

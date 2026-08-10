@@ -118,14 +118,28 @@ test('ST-A06 AC 6: the disclosure is on the answer surface and precedes the comp
   const composer = src.indexOf('style={s.composer}');
   assert.ok(notice > 0 && composer > 0);
   assert.ok(notice < composer, 'the disclosure is rendered after the composer');
-  assert.doesNotMatch(
-    src.slice(notice - 120, notice),
-    /messages\.length/,
-    'the disclosure is conditioned on the transcript being empty'
-  );
+  // It is conditioned on auth state and on nothing else — in particular not on
+  // the transcript being empty, which is what "before the first answer, not
+  // after" rules out.
+  const preamble = src.slice(Math.max(0, notice - 160), notice);
+  assert.match(preamble, /!signedIn &&/, 'the disclosure is not gated on auth state');
+  assert.doesNotMatch(preamble, /messages\.length/, 'the disclosure disappears once a question is asked');
+});
 
-  // It is conditioned on auth state and on nothing else.
-  assert.match(src.slice(notice - 40, notice), /!signedIn &&/);
+test('ST-A06 AC 6: the unit gate carries it too, because the gate answers', () => {
+  // U7's carve-out returns a **refusal** before any unit exists, and a refusal is
+  // an answer. Without the disclosure here, a guest whose first question is a
+  // hazard gets a reply having never been told nothing is being kept — which is
+  // the precise failure "before the first answer, not after" names.
+  const gate = code('screens/UnitGate.tsx');
+  assert.match(gate, /<GuestNotice/, 'the unit gate can answer but carries no disclosure');
+  assert.match(gate, /refusalCheck/, 'assumption check: the gate no longer answers');
+  assert.ok(
+    gate.indexOf('<GuestNotice') < gate.indexOf('refusal &&'),
+    'the disclosure must precede the refusal it would otherwise follow'
+  );
+  // And the shell has to actually pass the props, or the notice never renders.
+  assert.match(code('App.tsx'), /<UnitGate[\s\S]{0,300}signedIn=\{signedIn\}/);
 });
 
 test('ST-A06 AC 7: the guest History tab explains itself and carries an action', () => {

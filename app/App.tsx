@@ -209,6 +209,10 @@ export default function App() {
     <UnitGate
       onIdentify={(mode) => setCapture(mode)}
       onCarryOver={setCarried}
+      // U7 lets this screen answer — with a refusal — before a unit exists, so
+      // the guest disclosure belongs here too (ST-A06 AC 6).
+      signedIn={signedIn}
+      onSignIn={goSignIn}
     />
   );
 

@@ -596,11 +596,11 @@ const s = StyleSheet.create({
   noticeTitle: { ...type.bodyStrong, color: color.textPrimary, flex: 1 },
   noticeDetail: { ...type.caption, color: color.textSecondary },
 
-  /* GuestNotice — the "nothing is being saved" disclosure. */
+  /* GuestNotice — the "nothing is being saved" disclosure.
+     No outer margin: it sits inside a padded ScrollView on the unit gate and
+     outside one above the chat composer, so spacing belongs to the caller. */
   guest: {
     gap: space.sm,
-    marginHorizontal: space.lg,
-    marginBottom: space.sm,
     padding: space.md,
     borderRadius: radius.lg,
     borderWidth: 1,
