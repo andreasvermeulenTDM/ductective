@@ -32,9 +32,14 @@
  * out of another's jobs, that would be a defect even on the days it worked.
  */
 
-import { supabase, isConfigured, type Citation, type Message, type Session } from './supabase';
-import { mockReply } from './mockDiagnostics';
-import { isLive, requestDiagnosis } from './diagnose';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Citation, Message, Session } from './supabase';
+// The explicit `.ts` extension is what lets `node --test` load this module at all
+// (Node's ESM resolver does not guess extensions), which is what makes ST-A06
+// AC 1 executable rather than a claim. Metro resolves the literal path first, so
+// the device build is unaffected, and `module: preserve` in the Expo tsconfig
+// base permits it.
+import { mockReply } from './mockDiagnostics.ts';
 
 export class NotConfiguredError extends Error {}
 
@@ -42,7 +47,7 @@ export class NotConfiguredError extends Error {}
 // The seam
 // ---------------------------------------------------------------------------
 
-type Client = NonNullable<typeof supabase>;
+type Client = SupabaseClient;
 
 let persisting = false;
 let clientOverride: Client | null = null;
@@ -74,10 +79,24 @@ export function __setClientForTests(client: Client | null): void {
   clientOverride = client;
 }
 
-function db(): Client {
+/**
+ * The Supabase client, loaded **only when a write or read actually needs it**.
+ *
+ * The dynamic import is not a style choice. `supabase.ts` constructs the client
+ * with an AsyncStorage adapter and `diagnose.ts` imports `react-native`, so a
+ * static import of either would make this module unloadable outside a React
+ * Native runtime — and then ST-A06 AC 1, "a guest issues zero calls to the
+ * Supabase client", could only ever be asserted by reading the source instead of
+ * by running it.
+ *
+ * The stronger property this buys: on the guest route the client is never even
+ * *constructed*. Not "constructed and unused" — absent.
+ */
+async function db(): Promise<Client> {
   if (clientOverride) return clientOverride;
+  const { supabase, isConfigured } = await import('./supabase');
   if (!isConfigured || !supabase) throw new NotConfiguredError('Supabase not configured');
-  return supabase;
+  return supabase as Client;
 }
 
 const SESSION_COLUMNS = 'id, title, equipment, company_id, created_at, updated_at';
@@ -138,7 +157,7 @@ export const guestTranscriptLength = (): number =>
 export async function listSessions(): Promise<Session[]> {
   if (!persisting) return [];
 
-  const enriched = await db()
+  const enriched = await (await db())
     .from('sessions')
     .select(`${SESSION_COLUMNS}, messages(kind, citations(id))`)
     .order('updated_at', { ascending: false });
@@ -156,7 +175,7 @@ export async function listSessions(): Promise<Session[]> {
     });
   }
 
-  const { data, error } = await db()
+  const { data, error } = await (await db())
     .from('sessions')
     .select(SESSION_COLUMNS)
     .order('updated_at', { ascending: false });
@@ -182,7 +201,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
     guestMessages.delete(sessionId);
     return;
   }
-  const { error } = await db().from('sessions').delete().eq('id', sessionId);
+  const { error } = await (await db()).from('sessions').delete().eq('id', sessionId);
   if (error) throw new Error(error.message);
 }
 
@@ -206,7 +225,7 @@ export async function createSession(title: string, equipment?: string | null): P
   // stamps it, and sql/012's trigger stamps `company_id` from the creator's
   // active company. Neither is accepted from the client, because a claim the
   // client makes about ownership is not a fact.
-  const { data, error } = await db()
+  const { data, error } = await (await db())
     .from('sessions')
     .insert({ title: title.slice(0, 80), equipment: equipment ?? null })
     .select(SESSION_COLUMNS)
@@ -218,7 +237,7 @@ export async function createSession(title: string, equipment?: string | null): P
 export async function loadMessages(sessionId: string): Promise<Message[]> {
   if (!persisting) return [...(guestMessages.get(sessionId) ?? [])];
 
-  const { data, error } = await db()
+  const { data, error } = await (await db())
     .from('messages')
     .select('id, session_id, kind, body, seq, citations(id, source_document, page, claim, ordinal, snippet, chunk_id, verified)')
     .eq('session_id', sessionId)
@@ -245,7 +264,7 @@ async function appendMessage(
 ): Promise<Message> {
   if (!persisting) return appendGuestMessage(sessionId, seq, kind, body, citations);
 
-  const { data: msg, error } = await db()
+  const { data: msg, error } = await (await db())
     .from('messages')
     .insert({ session_id: sessionId, kind, body, seq })
     .select('id, session_id, kind, body, seq')
@@ -253,7 +272,7 @@ async function appendMessage(
   if (error) throw new Error(error.message);
 
   if (citations.length) {
-    const { error: cErr } = await db()
+    const { error: cErr } = await (await db())
       .from('citations')
       .insert(citations.map((c) => ({ ...c, message_id: msg.id })));
     // A stored answer whose citations failed to store would render as an uncited
@@ -261,7 +280,7 @@ async function appendMessage(
     if (cErr) throw new Error(`Answer saved but citations failed: ${cErr.message}`);
   }
 
-  await db().from('sessions').update({ updated_at: new Date().toISOString() }).eq('id', sessionId);
+  await (await db()).from('sessions').update({ updated_at: new Date().toISOString() }).eq('id', sessionId);
 
   return { ...msg, citations: citations.map((c, i) => ({ ...c, id: `pending-${i}` })) };
 }
@@ -361,7 +380,15 @@ export async function generateReply(
   cancel?: AbortSignal,
   photos?: string[] | null
 ) {
-  if (isLive) return requestDiagnosis(input, equipment, cancel, documentIds, photos);
+  // Dynamically imported for the same reason as the Supabase client above:
+  // `diagnose.ts` imports `react-native` at its top, and a static import would
+  // make this module unloadable under `node --test`. The env guard is a strict
+  // pre-filter, not a second source of truth — `isLive` is derived from the same
+  // variable and cannot be true while it is unset.
+  if (process.env.EXPO_PUBLIC_DIAGNOSE_URL) {
+    const { isLive, requestDiagnosis } = await import('./diagnose');
+    if (isLive) return requestDiagnosis(input, equipment, cancel, documentIds, photos);
+  }
   const mock = mockReply(input);
   return { ...mock, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
 }
