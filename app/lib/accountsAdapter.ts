@@ -61,10 +61,15 @@
  * constraint 3). It is disambiguation, not security.
  */
 
-import { supabase, isConfigured } from './supabase';
+// Only the pure module is imported statically. `supabase.ts` constructs a client
+// with a React Native storage adapter and `accounts.ts` imports it, so a static
+// import of either would make this module unloadable under `node --test` — and
+// then `mine()` and `membershipIds()`, the two functions where CM-2 and CM-3 are
+// actually compensated for, could only be checked by reading them. Same trade
+// `store.ts` already makes, for the same reason, and the `.ts` extension is what
+// lets Node's ESM resolver find it (`allowImportingTsExtensions` in the tsconfig).
+import { toAccountError } from './accountErrors.ts';
 import type { Company, Membership, Profile } from './supabase';
-import { AccountFailure, listMyMemberships } from './accounts';
-import { toAccountError } from './accountErrors';
 
 export type MembershipRow = Membership & { company: Company };
 
@@ -76,6 +81,8 @@ export type MembershipRow = Membership & { company: Company };
  * the screen renders as an empty state rather than a crash (§3.2).
  */
 export async function myProfile(userId: string): Promise<Profile | null> {
+  const { supabase, isConfigured } = await import('./supabase');
+  const { AccountFailure } = await import('./accounts');
   if (!isConfigured || !supabase) {
     throw new AccountFailure({ code: 'network', detail: null, hint: null });
   }
@@ -93,7 +100,8 @@ export async function myProfile(userId: string): Promise<Profile | null> {
  * co-members' rows, because that is what the policy permits and what the API
  * actually returns. Split by the two helpers below rather than pretended away.
  */
-export function readableMemberships(): Promise<MembershipRow[]> {
+export async function readableMemberships(): Promise<MembershipRow[]> {
+  const { listMyMemberships } = await import('./accounts');
   return listMyMemberships();
 }
 
