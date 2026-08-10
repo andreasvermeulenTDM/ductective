@@ -1,17 +1,35 @@
-// scripts/verify-sessions.mjs — exercise the prototype's data path as the APP does.
+// scripts/verify-sessions.mjs — exercise the data path as the APP does.
 //
 // Uses the ANON key, not service_role. That is the point: it proves the RLS
-// policies in sql/002_prototype_sessions.sql actually permit what the app needs
-// and nothing more. Verifying this with service_role would prove nothing, because
-// service_role bypasses RLS entirely.
+// policies actually permit what the app needs and nothing more. Verifying this
+// with service_role would prove nothing, because service_role bypasses RLS
+// entirely.
+//
+// CHANGED FOR E9 (ST-A05 AC 7). It used to run with no sign-in at all, against
+// sql/002's prototype `user_id is null` policy. After sql/011 that policy is gone
+// and an unauthenticated client has no privilege on these tables whatsoever, so
+// this now signs in as a **real account**, created and torn down via service role.
+//
+// Anonymous sign-in is not an option: OQ-A4 removed it deliberately, and ST-A01
+// asserts it stays off. Service role is used for the account's creation and
+// deletion only — every check below is made through the anon-key client carrying
+// that user's JWT, exactly as the app does.
+//
+// All seven original checks are intact. None was weakened to accommodate auth:
+// the CHECK-constraint and cascade-delete checks in particular are the ones a
+// careless auth retrofit would quietly drop.
 //
 // Run: npm run verify:sessions
 
 import { createClient } from '@supabase/supabase-js';
+import { scratchEmail, scratchPassword } from '../lib/auth-config.mjs';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 let failures = 0;
+let fixtureUserId = null;
+let admin = null;
 
 const pass = (m) => console.log(`  \x1b[32mPASS\x1b[0m  ${m}`);
 const fail = (m, hint) => {
@@ -20,13 +38,32 @@ const fail = (m, hint) => {
   failures++;
 };
 
-if (!url || !anon) {
-  fail('env missing', 'Run with --env-file=.env');
+if (!url || !anon || !serviceKey) {
+  fail('env missing', 'Run with --env-file=.env — the fixture account needs SUPABASE_SERVICE_ROLE_KEY');
 } else {
   const db = createClient(url, anon, { auth: { persistSession: false } });
-  const RUN_SQL = 'Run sql/002_prototype_sessions.sql in the Supabase SQL Editor.';
+  const RUN_SQL = 'Run sql/002_prototype_sessions.sql and sql/011_session_rls_cutover.sql in the Supabase SQL Editor.';
 
-  console.log('\nDuctective — session persistence (anon key, RLS enforced)\n');
+  console.log('\nDuctective — session persistence (anon key + a real user JWT, RLS enforced)\n');
+
+  // --- 0. the fixture account -----------------------------------------------
+  admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const email = scratchEmail();
+  const password = scratchPassword();
+  const { data: made, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (createErr) {
+    fail(`fixture account: ${createErr.message}`, 'Is the email provider enabled? See ST-A01.');
+  } else {
+    fixtureUserId = made.user.id;
+    const { error: signInErr } = await db.auth.signInWithPassword({ email, password });
+    signInErr
+      ? fail(`fixture sign-in: ${signInErr.message}`)
+      : pass('signed in as a real account (no anonymous sign-in — OQ-A4)');
+  }
 
   // 1. tables reachable
   const { error: tErr } = await db.from('sessions').select('id').limit(1);
@@ -110,5 +147,18 @@ if (!url || !anon) {
   }
 }
 
-console.log(failures === 0 ? '\n✅ Session persistence works via the anon key.\n' : `\n❌ ${failures} check(s) failed.\n`);
+// --- teardown ---------------------------------------------------------------
+// Runs whatever happened above, so repeated runs do not accumulate accounts.
+if (admin && fixtureUserId) {
+  const { error } = await admin.auth.admin.deleteUser(fixtureUserId);
+  error
+    ? fail(`fixture teardown: ${error.message}`, 'Remove it in Authentication → Users.')
+    : pass('fixture account removed');
+}
+
+console.log(
+  failures === 0
+    ? '\n✅ Session persistence works via the anon key, for a signed-in user.\n'
+    : `\n❌ ${failures} check(s) failed.\n`
+);
 process.exitCode = failures === 0 ? 0 : 1;
