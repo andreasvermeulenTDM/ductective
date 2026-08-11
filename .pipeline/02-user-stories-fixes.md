@@ -1405,3 +1405,51 @@ None of them is written as though a machine could check it.
 - **Persisting the guest-notice dismissal.** OQ-F1's default; revisit only with the
   per-transcript reset attached.
 - **Anything from the accounts run other than F1.** Its stories are already written.
+
+---
+
+# OWNER DECISIONS — 10 Aug 2026
+
+Four questions were put to the owner and answered. These are **decisions, not
+defaults**: a stage agent may not re-open them. Where a decision differs from the
+default this file was written on, the difference is called out.
+
+| # | Question | Decision |
+|---|---|---|
+| OQ-F1 | Guest-notice dismissal lifetime | **Until the app closes.** Confirms the default. Reappears on cold start; no stored flag. |
+| OQ-F4 | How much lighter | **Option 1, the one-step lift.** Confirms the default. `background` Ink → Steel900, sunken/rail → Ink, `surface` → derived Steel800, plus the new derived `textSecondary` mid-tone. Stays a dark app; CyanRead keeps its text role. |
+| F4 route | Citation page preview | **Full page text PLUS a link to the official PDF** where `documents.source_url` is a real URL. Slightly wider than the story's default, which was page text alone. |
+| F5 focus | What is over-complicated | **The first screen — unit entry.** Not the chat screen, not global chrome. |
+
+### What the F4 decision adds
+
+The story priced page-text-only. The owner also wants an **"open the manufacturer's
+PDF" link**, which costs almost nothing and is the honest answer to "look in more
+detail": most Carrier and Trane rows in `data/manifest.csv` carry real
+`shareddocs.com` / `tranetechnologies.com` URLs.
+
+Two rules on it, because a broken or dishonest link is worse than none:
+
+1. **Only render the link when `documents.source_url` is a real `http(s)` URL.**
+   Owner-supplied documents use a `local:///` pseudo-URL that resolves to nothing —
+   those rows show the page text and no link, with no broken affordance.
+2. **Say it leaves the app**, and never imply the linked PDF is the page being
+   quoted — it is the whole document, and the page number is the technician's to
+   navigate to. Claiming otherwise would be a citation that overstates itself.
+
+The rendered-page-image route is **declined** and moves to the backlog with the
+pricing already recorded: a rasteriser in neither language here, 1.5–3 GB against a
+1 GB free tier, and an unanswered OEM redistribution question.
+
+### What the F5 decision narrows
+
+Density work targets **the unit-entry screen only** (`app/screens/UnitGate.tsx`,
+and the empty state in `ChatScreen.tsx` that repeats it). The chat screen and the
+global notice strips are explicitly **not** in scope for this round, so ST-F18's
+baseline and ST-F19's reduction are measured on that screen alone.
+
+The ~10% ceiling noted in §7 still applies and is not a target to game: the guest
+disclosure is 55% of that screen's copy and is fenced by hard constraint 1. The
+honest goal is fewer competing blocks before the technician has done anything —
+today it is four (two doors, a coverage card, an urgent-question box with its own
+input and button) plus the prototype banner.
