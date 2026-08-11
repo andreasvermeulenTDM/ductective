@@ -57,7 +57,17 @@ export const CONFIG_HINT =
 
 // --- row shapes, mirroring sql/002_prototype_sessions.sql --------------------
 
-export type MessageKind = 'user' | 'answer' | 'clarify' | 'refusal';
+/**
+ * The rendering contract, mirroring `messages.kind`'s CHECK constraint.
+ *
+ * `conversational` (F2/ST-F06) is a server-authored reply to small talk. It
+ * carries **no diagnostic claim**, so it carries no citation and is legitimately
+ * exempt from the cite-every-claim rule — the body is a constant in
+ * `lib/conversation.mjs`, never model-authored, which is what makes that
+ * exemption safe rather than a hole. Requires sql/015 on the instance, or a
+ * signed-in user's insert is refused.
+ */
+export type MessageKind = 'user' | 'answer' | 'clarify' | 'refusal' | 'conversational';
 
 export type Citation = {
   id: string;

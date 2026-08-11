@@ -15,6 +15,12 @@
 
 import { NativeModules, Platform } from 'react-native';
 import { postIdentify, type IdentifyResult, type UnitVerdict } from './identify';
+import {
+  SUGGEST_TIMEOUT_MS,
+  postSuggestUnits,
+  worthSuggesting,
+  type UnitSuggestion,
+} from './suggest';
 
 export type DiagnoseCitation = {
   source_document: string;
@@ -29,7 +35,15 @@ export type DiagnoseCitation = {
 };
 
 export type DiagnoseReply = {
-  kind: 'answer' | 'clarify' | 'refusal';
+  /**
+   * `conversational` (F2/ST-F06) is the server's canned reply to small talk —
+   * "that worked", "thanks", "morning". It always arrives with
+   * `citations: []` and that is correct, not a defect: the body is a constant in
+   * `lib/conversation.mjs` and makes no diagnostic claim, so there is nothing for
+   * a citation to support. Every other kind with an empty `citations` array is
+   * still an uncited-defect case and must render as one.
+   */
+  kind: 'answer' | 'clarify' | 'refusal' | 'conversational';
   body: string;
   citations: DiagnoseCitation[];
 };
@@ -276,6 +290,37 @@ export async function requestResolveUnit(
     return json && typeof json.status === 'string' ? json : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Suggest covered units for a partially typed model — `POST /suggest-units` (F3).
+ *
+ * Returns `[]` for every failure there is: no server configured, server
+ * unreachable, non-200, malformed body, timeout, or the abort a newer keystroke
+ * fires. **None of them is an error the technician can act on**, and a type-ahead
+ * that shows an error card has made the field worse than the plain one it
+ * replaced. `requestResolveUnit` above sets exactly this precedent.
+ *
+ * The suggestions are the server's, whole: the app never composes a label and
+ * never re-derives `documentIds`. See `suggest.ts` for why.
+ */
+export async function requestSuggestUnits(
+  query: string,
+  cancel?: AbortSignal
+): Promise<UnitSuggestion[]> {
+  if (!BASE || !worthSuggesting(query)) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SUGGEST_TIMEOUT_MS);
+  const onCancel = () => controller.abort();
+  cancel?.addEventListener('abort', onCancel);
+
+  try {
+    return await postSuggestUnits(fetch, BASE, query, controller.signal, serverHeaders());
+  } finally {
+    clearTimeout(timer);
+    cancel?.removeEventListener('abort', onCancel);
   }
 }
 
