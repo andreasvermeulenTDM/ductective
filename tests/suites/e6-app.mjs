@@ -12,7 +12,8 @@
  */
 
 import { defineSuite, pass, fail, blocked } from '../harness.mjs';
-import { contrastRatio, extractHexTokens } from '../lib/contrast.mjs';
+import { extractHexTokens } from '../lib/contrast.mjs';
+import { evaluateMatrix, coverageGaps, TEXT_PAIRS, NON_TEXT_PAIRS, FLOOR } from '../lib/contrastMatrix.mjs';
 import { findTags, attributeValue, blankComments } from '../lib/jsx.mjs';
 
 const TOKENS = 'app/theme/tokens.ts';
@@ -140,39 +141,56 @@ export default defineSuite({
 
     {
       story: 'E6.7',
-      ac: 'Run C AC 7',
-      what: 'body text clears 4.5:1 on every surface it is drawn on',
+      ac: 'Run C AC 7 · ST-F16',
+      what: 'body text clears 4.5:1 on every surface it is actually drawn on',
       async run(c) {
+        // ST-F16. This check used to build its pairs out of *palette* constants
+        // (`['textPrimary → background', t.mist, t.ink]`) behind semantic labels,
+        // so it asserted Mist-on-Ink and would have kept passing if
+        // `color.background` were changed to white. It now resolves the semantic
+        // roles from `export const color`, composites the rgba roles over their
+        // real backdrop, and carries the file:line of every pairing.
         const src = c.read(TOKENS);
         if (!src) return blocked(`${TOKENS} not found`);
-        const t = extractHexTokens(src);
 
-        const pairs = [
-          ['textPrimary → background', t.mist, t.ink],
-          ['textPrimary → surface', t.mist, t.steel900],
-          ['textSecondary → background', t.steel400, t.ink],
-          ['textOnAccent → accent', t.ink, t.cyanRead],
-          ['textOnInteractive → interactiveFill', t.white, t.ductBlue],
-          ['textOnInteractive → pressed', t.white, t.pressed],
-        ];
-
-        const rows = [];
-        const failures = [];
-        for (const [label, fg, bg] of pairs) {
-          if (!fg || !bg) {
-            failures.push(`${label}: token missing`);
-            rows.push(`${label}: TOKEN MISSING`);
-            continue;
-          }
-          const ratio = contrastRatio(fg, bg);
-          rows.push(`${label}: ${ratio.toFixed(2)}:1 ${ratio >= 4.5 ? 'ok' : 'FAIL'}`);
-          if (ratio < 4.5) failures.push(`${label} at ${ratio.toFixed(2)}:1`);
-        }
-
-        const ev = c.fromCheck('WCAG 2.1 contrast over the semantic token pairs', rows.join('\n'));
+        const { rows, failures } = evaluateMatrix(src);
+        const ev = c.fromCheck(
+          `WCAG 2.1 contrast over ${TEXT_PAIRS.length} semantic text pairings ` +
+          `+ ${NON_TEXT_PAIRS.length} non-text, resolved from ${TOKENS}`,
+          rows.join('\n')
+        );
         return failures.length === 0
-          ? pass(ev, 'every text/surface pair clears the floor')
-          : fail(ev, `under 4.5:1 — ${failures.join('; ')}`);
+          ? pass(ev, `every one of ${TEXT_PAIRS.length} text pairings clears ${FLOOR.toFixed(1)}:1`)
+          : fail(ev, `under ${FLOOR.toFixed(1)}:1 — ${failures.join('; ')}`);
+      },
+    },
+
+    {
+      story: 'E6.7',
+      ac: 'Run C AC 7 · ST-F16',
+      what: 'every colour role a screen draws is covered by the contrast matrix',
+      async run(c) {
+        // The guard on the guard. A matrix is only as current as the last person
+        // who edited it, and the defect ST-F16 exists to remove was a table that
+        // had quietly stopped describing the app. A role that starts being drawn
+        // and is not measured fails here, with the file:line that introduced it.
+        const sources = appSources(c)
+          .filter((f) => f !== TOKENS)
+          .map((f) => ({ file: f, source: stripComments(c.read(f) ?? '') }));
+
+        const { gaps, foregrounds, backgrounds } = coverageGaps(sources);
+        const ev = c.fromCheck(
+          `scan ${sources.length} app sources for color/backgroundColor roles`,
+          [
+            `foreground roles drawn: ${foregrounds.join(', ')}`,
+            `background roles drawn: ${backgrounds.join(', ')}`,
+            '',
+            gaps.join('\n') || '(every drawn role appears in the matrix)',
+          ].join('\n')
+        );
+        return gaps.length === 0
+          ? pass(ev, `${foregrounds.length} foreground and ${backgrounds.length} background roles, all measured`)
+          : fail(ev, `${gaps.length} colour role(s) drawn but not measured`);
       },
     },
 

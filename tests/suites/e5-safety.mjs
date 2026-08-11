@@ -14,7 +14,7 @@
  */
 
 import { defineSuite, pass, fail, blocked } from '../harness.mjs';
-import { contrastRatio, extractHexTokens } from '../lib/contrast.mjs';
+import { refusalRows, FLOOR } from '../lib/contrastMatrix.mjs';
 
 const TOKENS = 'app/theme/tokens.ts';
 const MESSAGE = 'app/components/Message.tsx';
@@ -112,34 +112,30 @@ export default defineSuite({
       async run(c) {
         const src = c.read(TOKENS);
         if (!src) return blocked(`${TOKENS} not found`);
-        const tokens = extractHexTokens(src);
 
+        // ST-F16 AC 4. This check shared the palette-name defect with E6.7: it
+        // measured `refusalText` on `ink` and `steel900` — palette entries — so it
+        // would have gone on reporting the same three numbers after `surface` and
+        // `background` moved off them. It now draws the refusal rows straight out
+        // of the semantic matrix, which is the same table E6.7 scores, so the two
+        // cannot drift apart and neither can drift away from the screens.
+        //
         // tokens.ts states these ratios in a comment. A number in a comment is an
         // assertion; this turns it into a check — and this is the single most
         // safety-critical label in the app, so it is the one that must not drift.
-        const pairs = [
-          ['refusalText', 'refusalSurface'],
-          ['refusalText', 'ink'],
-          ['refusalText', 'steel900'],
-        ];
-        const rows = [];
-        let worst = Infinity;
-        for (const [fg, bg] of pairs) {
-          if (!tokens[fg] || !tokens[bg]) {
-            return fail(
-              c.fromFile(TOKENS, `token missing: ${!tokens[fg] ? fg : bg}`),
-              `${!tokens[fg] ? fg : bg} is no longer defined as a hex literal`
-            );
-          }
-          const ratio = contrastRatio(tokens[fg], tokens[bg]);
-          worst = Math.min(worst, ratio);
-          rows.push(`${fg} (${tokens[fg]}) on ${bg} (${tokens[bg]}): ${ratio.toFixed(2)}:1 ${ratio >= 4.5 ? 'ok' : 'FAIL'}`);
-        }
+        const { rows, failures, worst } = refusalRows(src);
 
-        const ev = c.fromCheck('WCAG 2.1 contrast over app/theme/tokens.ts', rows.join('\n'));
-        return worst >= 4.5
+        const ev = c.fromCheck(
+          'WCAG 2.1 contrast over the semantic refusal roles in app/theme/tokens.ts',
+          rows.join('\n')
+        );
+        return failures.length === 0
           ? pass(ev, `worst pair ${worst.toFixed(2)}:1`)
-          : fail(ev, `refusal text falls to ${worst.toFixed(2)}:1 — under the 4.5:1 floor E5.2 requires on dark`);
+          : fail(
+              ev,
+              `refusal text falls to ${worst.toFixed(2)}:1 — under the ${FLOOR.toFixed(1)}:1 floor ` +
+              `E5.2 requires on dark: ${failures.join('; ')}`
+            );
       },
     },
 
