@@ -26,7 +26,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { diagnose, DiagnoseError, MAX_PHOTOS } from '../lib/diagnose.mjs';
-import { resolveUnit } from '../lib/units.mjs';
+import { resolveUnit, suggestUnitsLive } from '../lib/units.mjs';
 import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
 import { budget, recordModelCall, appendRequestLog } from '../lib/ledger.mjs';
 import { estimateCostUsd, modelCallHappened, quotaConsumedByError } from '../lib/metrics.mjs';
@@ -201,8 +201,8 @@ const server = createServer(async (req, res) => {
     return send(res, 200, { ok: true, model: process.env.GEMINI_MODEL ?? 'default', commit: COMMIT, startedAt: STARTED_AT });
   }
   const route = req.method === 'POST' ? (req.url ?? '').split('?')[0] : null;
-  if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/identify-unit') {
-    return send(res, 404, { status: 404, message: 'POST /diagnose, /resolve-unit or /identify-unit' });
+  if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/suggest-units' && route !== '/identify-unit') {
+    return send(res, 404, { status: 404, message: 'POST /diagnose, /resolve-unit, /suggest-units or /identify-unit' });
   }
 
   // Shared-secret gate, when enabled. Before body parsing, so an unauthenticated
@@ -215,7 +215,11 @@ const server = createServer(async (req, res) => {
     // Three ceilings, one per route's actual payload: /resolve-unit is text only,
     // /identify-unit carries one plate photo, /diagnose up to MAX_PHOTOS of the part.
     const limit =
-      route === '/resolve-unit' ? LIMIT : route === '/identify-unit' ? IMAGE_LIMIT : DIAGNOSE_LIMIT;
+      route === '/resolve-unit' || route === '/suggest-units'
+        ? LIMIT
+        : route === '/identify-unit'
+          ? IMAGE_LIMIT
+          : DIAGNOSE_LIMIT;
     const body = await readBody(req, limit);
 
     // U4 — coverage before any question. Deliberately its own call rather than a
@@ -225,6 +229,32 @@ const server = createServer(async (req, res) => {
       const verdict = await resolveUnit({ manufacturer: body.manufacturer, model: body.model });
       console.log(`resolve  ${verdict.status.padEnd(14)} ${body.manufacturer ?? '?'} / ${body.model ?? '?'}  docs=${verdict.documentIds.length}`);
       return send(res, 200, verdict);
+    }
+
+    /*
+     * F3 / ST-F10 — type-ahead on the manual-entry field.
+     *
+     * Its own route rather than a mode on /resolve-unit: that one answers "is
+     * this unit covered" about a unit already typed in full, and its verdict
+     * shape (status, message, covered[]) is a contract the camera path also
+     * carries. A prefix has no verdict.
+     *
+     * On the server rather than in the app for the reason OQ-F3 records: the
+     * matching rules ARE the correctness of this feature, and a second
+     * implementation in TypeScript would be a second definition of "covered"
+     * that drifts from the one `/resolve-unit` and `/identify-unit` use. The app
+     * degrades to no suggestions when this is unreachable — free typing never
+     * depends on it.
+     *
+     * Costs no model quota and no embedding: one select and pure matching. It is
+     * deliberately NOT instrumented into the day ledger for that reason, exactly
+     * as /resolve-unit is not.
+     */
+    if (route === '/suggest-units') {
+      const query = typeof body.query === 'string' ? body.query : '';
+      const suggestions = await suggestUnitsLive(query);
+      console.log(`suggest ${String(suggestions.length).padStart(2)} for ${JSON.stringify(query.slice(0, 40))}`);
+      return send(res, 200, { suggestions });
     }
 
     // ST-05 — nameplate photo in, identification + coverage verdict out.

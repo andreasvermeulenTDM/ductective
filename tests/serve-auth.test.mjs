@@ -73,3 +73,22 @@ test('an unknown route is still 404 before auth matters', async () => {
   const r = await post('/nope');
   assert.equal(r.status, 404);
 });
+
+// --- ST-F10: the new type-ahead route sits behind the same gate --------------
+
+test('/suggest-units is covered by the bearer gate like every other POST route', async () => {
+  // A suggestion is a coverage claim about the corpus. It gets no weaker a gate
+  // than /resolve-unit, which answers the same question about one unit.
+  const r = await post('/suggest-units', { body: JSON.stringify({ query: 'tra' }) });
+  assert.equal(r.status, 401);
+});
+
+test('the 404 message names /suggest-units, so the route list stays discoverable', async () => {
+  const r = await post('/nope');
+  const j = await r.json();
+  assert.match(j.message, /\/suggest-units/);
+  // The routes that were already there are still named.
+  assert.match(j.message, /\/diagnose/);
+  assert.match(j.message, /\/resolve-unit/);
+  assert.match(j.message, /\/identify-unit/);
+});
