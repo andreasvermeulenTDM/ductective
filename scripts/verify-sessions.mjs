@@ -136,6 +136,30 @@ if (!url || !anon || !serviceKey) {
           ? pass('invalid message kind rejected by CHECK constraint')
           : fail('invalid message kind was ACCEPTED — the rendering contract is not enforced');
 
+        // 6b. ST-F06 — and the constraint ADMITS the conversational kind.
+        //
+        // Insert-then-delete, through the same anon-key + JWT client the app
+        // uses, because the question is whether the *app's* write succeeds. A
+        // service-role insert would bypass RLS and prove less than nothing here.
+        //
+        // Until sql/015_conversational_kind.sql is applied this FAILS, and it is
+        // meant to: F2's reply is a state-only turn for a guest and a failed
+        // write for every signed-in technician, which is exactly the kind of
+        // defect that only shows up on someone else's phone.
+        const { data: convo, error: convoErr } = await db
+          .from('messages')
+          .insert({ session_id: session.id, kind: 'conversational', body: 'Good — glad that helped.', seq: 2 })
+          .select('id');
+        if (convoErr) {
+          fail(
+            `conversational kind rejected: ${convoErr.message}`,
+            'Run sql/015_conversational_kind.sql in the Supabase SQL Editor.'
+          );
+        } else {
+          pass('conversational message kind accepted (sql/015 applied)');
+          await db.from('messages').delete().eq('id', convo[0].id);
+        }
+
         // 7. cascade delete leaves nothing orphaned
         await db.from('sessions').delete().eq('id', session.id);
         const { data: after } = await db.from('messages').select('id').eq('session_id', session.id);

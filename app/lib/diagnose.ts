@@ -29,7 +29,15 @@ export type DiagnoseCitation = {
 };
 
 export type DiagnoseReply = {
-  kind: 'answer' | 'clarify' | 'refusal';
+  /**
+   * `conversational` (F2/ST-F06) is the server's canned reply to small talk —
+   * "that worked", "thanks", "morning". It always arrives with
+   * `citations: []` and that is correct, not a defect: the body is a constant in
+   * `lib/conversation.mjs` and makes no diagnostic claim, so there is nothing for
+   * a citation to support. Every other kind with an empty `citations` array is
+   * still an uncited-defect case and must render as one.
+   */
+  kind: 'answer' | 'clarify' | 'refusal' | 'conversational';
   body: string;
   citations: DiagnoseCitation[];
 };
