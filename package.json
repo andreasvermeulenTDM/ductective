@@ -21,6 +21,7 @@
     "measure:linking": "node --env-file=.env scripts/measure-auth-linking.mjs",
     "measure:authdelete": "node --env-file=.env scripts/measure-auth-delete.mjs",
     "verify:stage5": "node --env-file=.env tests/run-all.mjs",
+    "density": "node tests/density-baseline.mjs",
     "verify:secrets": "node --env-file-if-exists=.env scripts/verify-secrets.mjs",
     "ingest:reconcile": "node ingest/reconcile.mjs",
     "ingest": "node --env-file=.env ingest/run.mjs",
