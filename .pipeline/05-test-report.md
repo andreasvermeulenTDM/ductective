@@ -239,7 +239,8 @@ against. `app/theme/tokens.ts` and every screen are unchanged in this branch —
 |---|---|
 | Stage 0 brief committed | yes — `.pipeline/00-brief-fixes.md` at `6b70585` |
 | Stage 2 stories committed | yes — `.pipeline/02-user-stories-fixes.md` at `6b70585`, owner decisions at `592ae3c` |
-| Waves 1–3 landed | **no, and by design.** ST-F16/ST-F18 are Wave 0 and have no dependencies (stories §4). Nothing in this section claims a verdict on F1–F5 behaviour |
+| Wave 1 backend landed | yes — merged to `main` at `b5337b8` (`.pipeline/03-backend-fixes.md`, ST-F04/F05/F06/F10/F13) **while this branch was in flight**. The branch was rebased onto it and every gate re-run against the rebased tree; all numbers below are post-rebase |
+| Waves 2–3 landed | **no, and by design.** ST-F16/ST-F18 are Wave 0 and have no dependencies (stories §4). Nothing in this section claims a verdict on F1–F5 *behaviour* — that is the Wave 1/2 stages' and Stage 5.5's |
 
 ## Headline
 
@@ -253,7 +254,7 @@ fix (ST-F17 owns `tokens.ts`), and they are reported rather than absorbed.
 
 | Gate | Command | Exit | Result |
 |---|---|---|---|
-| Tests | `npm test` | 1 | **417 pass · 1 fail** — the single failure is `ingest/reconcile.scope.test.mjs`, **BLOCKED for environment**, see below |
+| Tests | `npm test` | 1 | **536 pass · 1 fail** — the single failure is `ingest/reconcile.scope.test.mjs`, **BLOCKED for environment**, see below |
 | Lint | `npm run lint` | **0** | 0 errors, 0 warnings — unchanged from baseline |
 | Typecheck | `npm run build` | **0** | clean |
 | Stage 5 suites | `node tests/run-all.mjs --run=C` | 1 | 16 PASS · 4 FAIL · 3 BLOCKED · 11 HUMAN-ONLY (baseline before this branch: 17 PASS · 2 FAIL · 3 BLOCKED · 11 HUMAN-ONLY) |
@@ -271,19 +272,29 @@ exit 1
 `HVAC Data/` is the owner's gitignored local corpus (`ingest/reconcile.mjs:26`
 `CORPUS_DIR`). It exists in the main checkout and not in an agent worktree. The
 file crashes at import, so its **6** tests never register — which is exactly the
-arithmetic that reconciles the numbers: **386 pass here at the base commit + 6 =
-392**, the baseline this task quoted. **BLOCKED, not FAIL.** Nothing under
-`ingest/` was touched. Re-run in the main checkout to clear it.
+arithmetic that reconciles the pre-Wave-1 numbers: **386 pass at the branch point
+`592ae3c` + 6 = 392**, the baseline this task quoted. **BLOCKED, not FAIL.**
+Nothing under `ingest/` was touched. Re-run in the main checkout to clear it.
 
 ### Test-count movement
 
-| | base commit `592ae3c` | this branch |
+Both columns measured with the same command on the same machine.
+
+| | `main` @ `b5337b8` (Wave 1 merged) | this branch, rebased on it |
 |---|---|---|
-| passing | 386 | **417** (+31) |
+| passing | 505 | **536** (+31) |
 | failing | 1 (environment) | 1 (the same one) |
 
+```
+$ git checkout b5337b8 && npm test
+ℹ tests 506  ℹ pass 505  ℹ fail 1
+$ git checkout stage/test-fixes && npm test
+ℹ tests 537  ℹ pass 536  ℹ fail 1
+```
+
 +31 = 16 new contrast-matrix tests + 15 new density tests. **No test was
-weakened, skipped, deleted or loosened, and none is `.only`.**
+weakened, skipped, deleted or loosened, and none is `.only`.** Wave 1's 119 new
+tests are carried through unchanged.
 
 ### Stage-5 suite movement — read this carefully
 
@@ -681,6 +692,7 @@ routed rather than decided here.
 | 4 | **Frontend** (ST-F19) | Medium | The urgent-question box on the gate is **already collapsed** (`UnitGate.tsx:128-178`). The closing line of OWNER DECISIONS counts it as an open competing block; it is not. Plan the reduction against the measured baseline, not that sentence |
 | 5 | **Owner** | Low | Adopt WCAG 1.4.11 (3:1 non-text) as a criterion, or leave the 11 non-text pairings unscored. Ratios are printed either way |
 | 6 | **Human** | Low | Re-run `npm test` in the main checkout to clear `ingest/reconcile.scope.test.mjs`, which needs the gitignored `HVAC Data/` |
+| 7 | **Backend** / **Test** | Low | Wave 1 added server-authored constant reply bodies in `lib/conversation.mjs`. They are the same class of copy as `NO_DOCUMENTATION` and `refusalBody`, which are fenced by ST-F18 AC 5, but the story's list predates them so they are **not** in `FENCED_COPY`. Decide whether they should be; adding them is one line in `tests/lib/densityScenes.mjs` |
 
 ## Human-only checklist
 
