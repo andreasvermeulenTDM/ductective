@@ -51,6 +51,20 @@ test('a guarded block is kept when true and dropped when false', () => {
   assert.doesNotMatch(pruneBranches(jsx, { shown: false }), /visible/);
 });
 
+test('a chained guard evaluates both conditions, and counts neither as copy', () => {
+  // `{a && b && (<jsx>)}` used to resolve only `a` and then hand `b && (<jsx>)`
+  // to the counter as text, so the block survived a false `b` and the word "b"
+  // was counted as visible copy. Both screens gate the guest disclosure on two
+  // conditions (ST-F02), so this is a live shape, not a hypothetical.
+  const jsx = '<View>{!signedIn && !dismissed && (<Text>notice</Text>)}</View>';
+  assert.match(pruneBranches(jsx, { signedIn: false, dismissed: false }), /notice/);
+  assert.doesNotMatch(pruneBranches(jsx, { signedIn: false, dismissed: true }), /notice/);
+  assert.doesNotMatch(pruneBranches(jsx, { signedIn: true, dismissed: false }), /notice/);
+  assert.equal(countWords(pruneBranches(jsx, { signedIn: false, dismissed: false }), {}), 1);
+  // And an undeclared second condition still throws rather than being guessed.
+  assert.throws(() => pruneBranches(jsx, { signedIn: false }), /no value declared for `dismissed`/);
+});
+
 test('a ternary keeps exactly one arm', () => {
   const jsx = '<View>{expanded ? (<Text>full</Text>) : (<View style={s.hairline} />)}</View>';
   const on = pruneBranches(jsx, { expanded: true });
@@ -139,6 +153,42 @@ test('every scene still measures, and matches the committed baseline', () => {
       '  node tests/density-baseline.mjs --json > tests/fixtures/density-baseline.json'
     );
   }
+});
+
+test('ST-F19: the unit-entry reduction holds, and did not buy it with a control', () => {
+  // The fixture carries both columns: `supersedes.correctedBaseline` is the gate
+  // as it was, `scenes` is the gate as it is. Pinned as a test rather than left in
+  // an artifact so that re-inflating the first screen fails a gate instead of
+  // being noticed a round later.
+  //
+  // ST-F19 AC 2's floor is 10% on D2, D3 and D4 for state (a), and the artifact
+  // has to say plainly why a larger number is not available: GUEST_DISCLOSURE is
+  // 56 of the 93 words left on that screen and is fenced (AC 3, hard constraint 1).
+  const before = BASELINE.supersedes.correctedBaseline.scenes;
+  for (const name of Object.keys(BASELINE.scenes)) {
+    if (!name.startsWith('(a)')) continue;
+    const was = before[name];
+    const now = BASELINE.scenes[name];
+    for (const k of ['D2', 'D3', 'D4']) {
+      const cut = (was[k] - now[k]) / was[k];
+      assert.ok(cut >= 0.1, `${name} ${k}: ${was[k]} → ${now[k]} is only ${(cut * 100).toFixed(1)}%`);
+    }
+    // AC 1's other half, applied to the scene the owner actually named: density
+    // must not be bought by removing a way to do something.
+    assert.ok(now.D1 <= was.D1, `${name} gained a control: ${was.D1} → ${now.D1}`);
+  }
+});
+
+test('ST-F19 AC 4: both front doors, the safety escape and the History tab all survive', () => {
+  // A reduction that removed the only route to a capability would be a worse
+  // screen with a better number. Checked at the source rather than inferred from
+  // the counts, because the counts cannot tell a merged card from a deleted door.
+  const gate = read('app/screens/UnitGate.tsx');
+  assert.match(gate, /onIdentify\('camera'\)/, 'the camera door is gone');
+  assert.match(gate, /onIdentify\('manual'\)/, 'manual entry is gone — the only offline route');
+  assert.match(gate, /setUrgentOpen/, 'U7\'s safety escape is gone');
+  assert.match(gate, /refusalCheck/, 'the gate can no longer return a refusal');
+  assert.match(read('app/components/Chrome.tsx'), /id: 'history'/, 'the guest History tab is gone');
 });
 
 test('no fenced copy has been shortened', () => {

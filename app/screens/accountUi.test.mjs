@@ -107,7 +107,7 @@ test('ST-A04 AC 9: no password, email or token can reach a log line', () => {
 // ST-A06 — the guest disclosures
 // ---------------------------------------------------------------------------
 
-test('ST-A06 AC 6: the disclosure is on the answer surface and precedes the composer', () => {
+test('ST-A06 AC 6 / ST-F03: the disclosure is on the answer surface, precedes the composer, and is gated on auth and the shared dismissal only', () => {
   const src = code('screens/ChatScreen.tsx');
   assert.match(src, /<GuestNotice/, 'the composer surface carries no guest disclosure');
 
@@ -118,12 +118,121 @@ test('ST-A06 AC 6: the disclosure is on the answer surface and precedes the comp
   const composer = src.indexOf('style={s.composer}');
   assert.ok(notice > 0 && composer > 0);
   assert.ok(notice < composer, 'the disclosure is rendered after the composer');
-  // It is conditioned on auth state and on nothing else — in particular not on
-  // the transcript being empty, which is what "before the first answer, not
-  // after" rules out.
-  const preamble = src.slice(Math.max(0, notice - 160), notice);
+
+  // ST-F03 AC 1 and 2. This assertion used to be
+  // `doesNotMatch(preamble, /messages\.length/)` — i.e. "gated on auth state and
+  // nothing else at all". ST-F02 necessarily adds one more term, the shared
+  // dismissal flag, so the assertion is **replaced by a stricter one** rather
+  // than deleted: the condition must be exactly auth state and the shared flag,
+  // and must still contain nothing derived from the transcript. A screen that
+  // re-introduced a `messages.length` gate — the original ST-A06 AC 6 failure —
+  // fails here.
+  const preamble = src.slice(Math.max(0, notice - 200), notice);
   assert.match(preamble, /!signedIn &&/, 'the disclosure is not gated on auth state');
+  assert.match(preamble, /!noticeDismissed/, 'the disclosure does not use the shared dismissal flag');
   assert.doesNotMatch(preamble, /messages\.length/, 'the disclosure disappears once a question is asked');
+  assert.doesNotMatch(preamble, /messages\b/, 'the disclosure is gated on the transcript');
+});
+
+test('ST-F03 AC 3: nothing outside lib/guestNotice.ts sets the dismissed flag directly', () => {
+  // The invariant that actually matters. `dismiss()` is a no-op before an answer
+  // has been delivered (ST-F01 AC 5), so the disclosure is unskippable *provided*
+  // no screen writes the flag behind its back. This is the check that keeps that
+  // proviso true.
+  const files = [
+    'App.tsx', 'screens/ChatScreen.tsx', 'screens/UnitGate.tsx',
+    'components/Chrome.tsx', 'screens/HistoryScreen.tsx', 'screens/AccountScreen.tsx',
+    'screens/SignInScreen.tsx', 'screens/CaptureScreen.tsx', 'screens/CompanyScreen.tsx',
+  ];
+  for (const f of files) {
+    const src = code(f);
+    assert.doesNotMatch(src, /dismissed\s*[:=]\s*true/, `${f} sets the dismissed flag itself`);
+    assert.doesNotMatch(src, /noticeDismissed\s*=\s*true/, `${f} forces the notice off`);
+  }
+  // And the shell reaches the flag only through the module's own updaters.
+  const shell = code('App.tsx');
+  assert.match(shell, /setGuestNotice\(dismiss\)/, 'the shell does not dismiss through the predicate');
+});
+
+test('ST-F02 AC 1: the dismiss control does not exist until it is offered', () => {
+  // Absent, not disabled. A greyed X invites a tap and teaches that the notice is
+  // an obstacle; the whole construction depends on there being nothing to press
+  // before an answer has landed.
+  const src = code('components/Chrome.tsx');
+  const guard = /\{onDismiss && \([\s\S]{0,600}?<Pressable/.exec(src);
+  assert.ok(guard, 'the dismiss Pressable is not inside an {onDismiss && …} guard');
+  assert.doesNotMatch(src, /disabled=\{!onDismiss\}/, 'a disabled dismiss control is not the design');
+
+  // And both call sites pass it only when the predicate says so, so the guard is
+  // reachable in both directions rather than always-true.
+  const shell = code('App.tsx');
+  const offers = [...shell.matchAll(/onDismissNotice=\{canDismiss\(guestNotice\) \?/g)];
+  assert.equal(offers.length, 2, 'both screens must gate the control on canDismiss');
+});
+
+test('ST-F02 AC 2: the dismiss control clears the 48dp floor as real layout', () => {
+  const src = code('components/Chrome.tsx');
+  const rule = /guestDismiss:\s*\{([\s\S]*?)\n {2}\}/.exec(src);
+  assert.ok(rule, 'no guestDismiss style rule');
+  assert.match(rule[1], /minHeight:\s*MIN_TOUCH/);
+  assert.match(rule[1], /minWidth:\s*MIN_TOUCH/);
+});
+
+test('ST-F02 AC 3: the dismiss copy is a receipt, not a bypass affordance', () => {
+  // The exact patterns tests/suites/e5-safety.mjs greps every app source for. A
+  // control worded "I understand the risks" is how a refusal gets clicked past,
+  // and this notice is not a risk waiver — it is an acknowledgement that the
+  // technician has read what guest mode costs.
+  const BYPASS_PATTERNS = [
+    /show\s+me\s+anyway/i,
+    /continue\s+anyway/i,
+    /proceed\s+anyway/i,
+    /i\s+understand\s+the\s+risks?/i,
+    /override\s+(the\s+)?(safety|refusal|warning)/i,
+    /dismiss\s+(the\s+)?refusal/i,
+    /skip\s+(the\s+)?(safety|warning)/i,
+  ];
+  for (const f of ['components/Chrome.tsx', 'lib/accountCopy.ts']) {
+    const src = code(f);
+    for (const p of BYPASS_PATTERNS) {
+      assert.doesNotMatch(src, p, `${f} contains a bypass phrasing matching ${p}`);
+    }
+  }
+});
+
+test('ST-F02 AC 4: neither screen holds its own dismissal state', () => {
+  // One state, in the shell, shared by both surfaces — so an answer taken at the
+  // gate earns dismissal on the composer. Two useStates would silently become two
+  // rules.
+  for (const f of ['screens/ChatScreen.tsx', 'screens/UnitGate.tsx']) {
+    const src = code(f);
+    assert.doesNotMatch(src, /useState[^;]{0,80}(dismiss|noticeDismissed|answersSeen)/i, `${f} owns dismissal state`);
+    assert.doesNotMatch(src, /INITIAL_GUEST_NOTICE/, `${f} initialises its own copy of the state`);
+  }
+  const shell = code('App.tsx');
+  assert.match(shell, /useState\(INITIAL_GUEST_NOTICE\)/, 'the shell does not own the state');
+});
+
+test('ST-F02 AC 5: every assistant turn is reported, on both surfaces', () => {
+  const chat = code('screens/ChatScreen.tsx');
+  // Both places a reply is appended — the ordinary send, and the retry of a
+  // question that was saved but never answered.
+  const reported = [...chat.matchAll(/onAnswerDelivered\?\.\(reply\.kind\)/g)];
+  assert.equal(reported.length, 2, 'a reply is appended somewhere without being counted');
+  // The kind is passed through rather than filtered, so a refusal and the new
+  // conversational reply both count.
+  assert.doesNotMatch(chat, /onAnswerDelivered\?\.\([^)]*kind !== 'refusal'/);
+
+  const gate = code('screens/UnitGate.tsx');
+  assert.match(gate, /onAnswerDelivered\?\.\('refusal'\)/, 'the gate\'s refusal does not count as an answer');
+});
+
+test('ST-F02 AC 6: dismissal resets when the phone changes hands', () => {
+  const shell = code('App.tsx');
+  // Wired to the existing lastUser effect rather than to a second one.
+  const effect = shell.slice(shell.indexOf('const lastUser'), shell.indexOf('function openSession'));
+  assert.match(effect, /resetGuestNotice\(\)/, 'a change of user does not reset the disclosure');
+  assert.match(effect, /setNoticeSignedIn/, 'the disclosure state does not track auth');
 });
 
 test('ST-A06 AC 6: the unit gate carries it too, because the gate answers', () => {

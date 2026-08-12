@@ -12,11 +12,13 @@
  *    the answer stays on screen behind or next to it.
  */
 
-import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, Pressable, Modal, ScrollView, StyleSheet, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScalePressable } from './Tactile';
 import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
-import { resolve } from '../lib/citations';
+import { resolve, PAGE_TEXT_COPY } from '../lib/citations';
+import { fetchPageText, withPageAnchor, type PageText } from '../lib/pageText';
 import type { Citation } from '../lib/supabase';
 
 /** Rendered chip height. Kept in one place so the slop math can't drift from it. */
@@ -190,6 +192,8 @@ function SourceBody({ citation, onClose }: { citation: Citation; onClose: () => 
         </View>
       )}
 
+      <WholePage citation={citation} />
+
       <Text style={s.protoWarn}>
         The passage is verbatim from the manual; whether it supports the claim
         attached to it has not been scored yet — that is Run B's eval.
@@ -204,6 +208,129 @@ function SourceBody({ citation, onClose }: { citation: Citation; onClose: () => 
         <Text style={s.closeText}>Back to the answer</Text>
       </Pressable>
     </>
+  );
+}
+
+/**
+ * ST-F14 / F4 — the whole page the passage came from.
+ *
+ * The owner asked to "see a preview of the manual page". This is Route B from
+ * `.pipeline/02-user-stories-fixes.md` §2.3, chosen by the owner over page
+ * rasters: the page's **extracted text**, with the cited block marked where it
+ * sits on the page, plus a link to the manufacturer's own PDF where one exists.
+ * `lib/pageText.ts` carries the pricing of the route not taken.
+ *
+ * Three rules this component holds:
+ *
+ *  1. **The snippet is not demoted.** `FROM THE PAGE` stays exactly where it was,
+ *     above this, because it is the passage the claim actually rests on. This sits
+ *     below it, collapsed, so the sheet still opens on the evidence rather than on
+ *     a wall of page text.
+ *  2. **The honesty line is not collapsible and comes first.** It renders above
+ *     the text, every time the page is open — the shape ST-A18 AC 3 established
+ *     for the company privacy notice. Extracted text is not a photograph of the
+ *     page and a technician hunting a wiring diagram has to be told that.
+ *  3. **A failure is a sentence, never an error card.** `fetchPageText` resolves
+ *     `null` for every failure there is, and there is nothing here a technician on
+ *     a roof can act on, so the fallback is one plain line. No retry, no red, no
+ *     empty expansion.
+ */
+function WholePage({ citation }: { citation: Citation }) {
+  const [page, setPage] = useState<PageText | null>(null);
+  const [state, setState] = useState<'loading' | 'ready' | 'unavailable'>(
+    citation.chunk_id ? 'loading' : 'unavailable'
+  );
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // Pre-sql/006 citations carry no chunk_id and there is nothing to fetch, so
+    // the control is never offered for one. `fetchPageText` returns null rather
+    // than throwing, so there is no catch here and no error state to render.
+    if (!citation.chunk_id) return;
+    let live = true;
+    setState('loading');
+    setOpen(false);
+    fetchPageText(citation).then((result) => {
+      if (!live) return;
+      setPage(result);
+      setState(result ? 'ready' : 'unavailable');
+    });
+    return () => {
+      live = false;
+    };
+  }, [citation]);
+
+  // Nothing to say, and nothing the technician could do about it: a citation
+  // saved before passages were stored already explains itself above.
+  if (state === 'unavailable' && !citation.chunk_id) return null;
+
+  if (state === 'loading') {
+    return <Text style={s.pageStatus}>{PAGE_TEXT_COPY.loading}</Text>;
+  }
+
+  if (state === 'unavailable' || !page) {
+    return <Text style={s.pageStatus}>{PAGE_TEXT_COPY.unavailable}</Text>;
+  }
+
+  return (
+    <View style={s.pageWrap}>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        style={({ pressed }) => [s.pageToggle, pressed && s.pageTogglePressed]}
+        accessibilityRole="button"
+        accessibilityLabel={open ? PAGE_TEXT_COPY.collapse : PAGE_TEXT_COPY.expand}
+        accessibilityState={{ expanded: open }}
+      >
+        <Ionicons
+          name={open ? 'chevron-down' : 'chevron-forward'}
+          size={16}
+          color={color.accent}
+        />
+        <Text style={s.pageToggleText}>
+          {open ? PAGE_TEXT_COPY.collapse : PAGE_TEXT_COPY.expand}
+        </Text>
+      </Pressable>
+
+      {open && (
+        <>
+          <Text style={s.pageHonesty}>{PAGE_TEXT_COPY.honesty}</Text>
+
+          {/* maxHeight, matching `snippetScroll`: a twelve-block page must not
+              push "Back to the answer" off a 667dp screen. */}
+          <ScrollView style={s.pageScroll} nestedScrollEnabled>
+            {page.blocks.map((block) => (
+              <View
+                key={block.chunkId}
+                style={[s.pageBlock, block.cited && s.pageBlockCited]}
+                accessibilityRole="text"
+                accessibilityLabel={
+                  block.cited ? `${PAGE_TEXT_COPY.cited}. ${block.text}` : block.text
+                }
+              >
+                {block.cited && <Text style={s.pageCitedLabel}>{PAGE_TEXT_COPY.cited}</Text>}
+                <Text style={s.pageBlockText}>{block.text}</Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          {page.sourceUrl && (
+            <View style={s.pageLinkWrap}>
+              <Pressable
+                onPress={() => void Linking.openURL(withPageAnchor(page.sourceUrl!, page.page))}
+                style={({ pressed }) => [s.pageLink, pressed && s.pageTogglePressed]}
+                accessibilityRole="link"
+                accessibilityLabel={PAGE_TEXT_COPY.link}
+                accessibilityHint={PAGE_TEXT_COPY.linkNote}
+              >
+                <Ionicons name="open-outline" size={16} color={color.accent} />
+                <Text style={s.pageLinkText}>{PAGE_TEXT_COPY.link}</Text>
+              </Pressable>
+              <Text style={s.pageLinkNote}>{PAGE_TEXT_COPY.linkNote}</Text>
+            </View>
+          )}
+        </>
+      )}
+    </View>
   );
 }
 
@@ -390,6 +517,49 @@ const s = StyleSheet.create({
 
   unavailable: { marginBottom: space.md },
   unavailableText: { ...type.caption, color: color.textSecondary },
+
+  /* ST-F14 — the whole page, below the snippet and collapsed by default. */
+  pageWrap: { marginBottom: space.md, gap: space.sm },
+  pageStatus: { ...type.caption, color: color.textSecondary, marginBottom: space.md },
+  pageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.md,
+  },
+  pageTogglePressed: { backgroundColor: color.surfaceRaised },
+  pageToggleText: { ...type.label, color: color.accent },
+  pageHonesty: { ...type.caption, color: color.textSecondary },
+  pageScroll: {
+    maxHeight: 260,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.background,
+  },
+  pageBlock: { paddingHorizontal: space.md, paddingVertical: space.sm, gap: space.xs },
+  /* The cited block, marked where it sits on the page — the whole gain of this
+     route over the snippet alone. Existing tokens only; E6.8 forbids new hex. */
+  pageBlockCited: {
+    backgroundColor: color.accentSurface,
+    borderLeftWidth: 3,
+    borderLeftColor: color.accentBorder,
+  },
+  pageCitedLabel: { ...type.overline, color: color.accent },
+  pageBlockText: { ...type.body, color: color.textPrimary },
+  pageLinkWrap: { gap: space.xs },
+  pageLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.md,
+  },
+  pageLinkText: { ...type.label, color: color.accent },
+  pageLinkNote: { ...type.caption, color: color.textSecondary },
 
   protoWarn: { ...type.caption, color: color.refusalText, marginBottom: space.lg },
 

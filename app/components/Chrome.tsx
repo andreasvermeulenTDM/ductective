@@ -24,7 +24,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScalePressable } from './Tactile';
-import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
+import { color, type, space, radius, MIN_TOUCH, touchSlop } from '../theme/tokens';
 import { isLive } from '../lib/diagnose';
 import { RAIL_WIDTH } from '../theme/layout';
 import { GUEST_DISCLOSURE, SAVED_FROM_HERE, type CopyTone } from '../lib/accountCopy';
@@ -278,13 +278,51 @@ export function InlineNotice({
  *
  * The wording is in `accountCopy.ts` so the "what is lost, not what is offered"
  * rule lives beside the reasoning for it rather than buried in JSX.
+ *
+ * ---------------------------------------------------------------------------
+ * ST-F02 — `onDismiss`, and why it is optional rather than always present
+ * ---------------------------------------------------------------------------
+ *
+ * The owner's report was that this notice can never be removed. It now can — but
+ * only once the technician has had an answer with it on screen the whole way
+ * there, which is `canDismiss` in `lib/guestNotice.ts` and is the caller's
+ * decision, not this component's.
+ *
+ * When `onDismiss` is absent the dismiss affordance **does not exist**. Not
+ * disabled, not greyed, not 40% opacity: absent. A disabled X invites a tap and
+ * teaches that the notice is an obstacle to get past, which is precisely the
+ * reading ST-A06 AC 6 exists to prevent. The `{onDismiss && …}` guard below is
+ * the whole mechanism and it is asserted statically by `accountUi.test.mjs`.
  */
-export function GuestNotice({ onSignIn }: { onSignIn: () => void }) {
+export function GuestNotice({
+  onSignIn,
+  onDismiss,
+}: {
+  onSignIn: () => void;
+  /** Absent until an answer has been delivered — see the note above. */
+  onDismiss?: () => void;
+}) {
   return (
     <View style={s.guest}>
       <View style={s.guestHead}>
         <Ionicons name="cloud-offline-outline" size={18} color={color.refusalText} />
         <Text style={s.guestLabel}>{GUEST_DISCLOSURE.label}</Text>
+        {onDismiss && (
+          // Real 48dp of layout, not `hitSlop`: react-native-web does not
+          // implement hitSlop, so a slop-only target would silently be 20dp on
+          // the platform this is most often reviewed on. Same reasoning as the
+          // citation chip (Citation.tsx `chipTouch`).
+          <Pressable
+            onPress={onDismiss}
+            hitSlop={touchSlop(20)}
+            style={({ pressed }) => [s.guestDismiss, pressed && s.guestDismissPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={GUEST_DISCLOSURE.dismissLabel}
+            accessibilityHint="Clears this notice until you restart the app"
+          >
+            <Text style={s.guestDismissText}>{GUEST_DISCLOSURE.dismiss}</Text>
+          </Pressable>
+        )}
       </View>
       <Text style={s.guestBody}>{GUEST_DISCLOSURE.body}</Text>
       <Pressable
@@ -610,6 +648,18 @@ const s = StyleSheet.create({
   guestHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   guestLabel: { ...type.overline, color: color.refusalText, flex: 1 },
   guestBody: { ...type.caption, color: color.textPrimary },
+  /* The dismiss receipt. `minHeight`/`minWidth` reach the 48dp floor as real
+     layout; the label inside keeps the header's rhythm. */
+  guestDismiss: {
+    minHeight: MIN_TOUCH,
+    minWidth: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: space.sm,
+    borderRadius: radius.md,
+  },
+  guestDismissPressed: { backgroundColor: color.surfaceRaised },
+  guestDismissText: { ...type.chip, color: color.textPrimary },
 
   /* SavedFromHere — the mid-transcript boundary marker. */
   boundary: { gap: space.xs, marginBottom: space.xl },

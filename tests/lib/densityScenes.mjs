@@ -53,7 +53,12 @@ const GUEST_NOTICE = {
   file: 'app/components/Chrome.tsx',
   fn: 'GuestNotice',
   why: 'rendered for a signed-out technician before the first answer (ST-A06 AC 6)',
-  state: {},
+  // ST-F02: the dismiss control is `{onDismiss && …}` and `onDismiss` is absent
+  // until an answer has been delivered. Both scenes here are first-open states —
+  // nothing has been answered yet — so the control is not rendered and the count
+  // does not include it. Declared rather than inferred, which is what stops the
+  // tool from quietly counting a control a technician cannot see.
+  state: { onDismiss: false },
 };
 
 export const SCENES = [
@@ -67,7 +72,7 @@ export const SCENES = [
         file: 'app/screens/UnitGate.tsx',
         fn: 'UnitGate',
         why: 'the first screen a cold start lands on (App.tsx:249)',
-        state: { signedIn: false, urgentOpen: false, refusal: false, needsUnit: false, error: false, checking: false },
+        state: { signedIn: false, noticeDismissed: false, urgentOpen: false, refusal: false, needsUnit: false, error: false, checking: false },
       },
       GUEST_NOTICE,
     ],
@@ -82,7 +87,7 @@ export const SCENES = [
         file: 'app/screens/UnitGate.tsx',
         fn: 'UnitGate',
         why: 'the first screen a cold start lands on (App.tsx:249)',
-        state: { signedIn: false, urgentOpen: false, refusal: false, needsUnit: false, error: false, checking: false },
+        state: { signedIn: false, noticeDismissed: false, urgentOpen: false, refusal: false, needsUnit: false, error: false, checking: false },
       },
       GUEST_NOTICE,
     ],
@@ -106,6 +111,7 @@ export const SCENES = [
           loading: false,
           canShowSourceBeside: false,
           signedIn: false,
+          noticeDismissed: false,
           'photos.length': 0,
           busy: false,
           attaching: false,
@@ -157,5 +163,5 @@ export const FENCED_COPY = [
   { name: 'NO_DOCUMENTATION', file: 'lib/diagnose.mjs', keys: null },
   { name: 'UNIT_REQUIRED', file: 'lib/diagnose.mjs', keys: null },
   { name: 'refusalBody', file: 'lib/safety.mjs', keys: null },
-  { name: 'CoverageLine verdicts', file: 'app/screens/ChatScreen.tsx', keys: null, lines: [762, 772, 781] },
+  { name: 'CoverageLine verdicts', file: 'app/screens/ChatScreen.tsx', keys: null, lines: [787, 797, 806] },
 ];

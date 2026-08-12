@@ -39,28 +39,86 @@ export const palette = {
  * floor, and E5.2 explicitly requires refusal contrast to pass on dark. The most
  * safety-critical label in the app was the one failing.
  *
- * This keeps the hue (4°) and saturation (0.52) of #C0453C exactly and raises
- * lightness to the lowest value that clears 4.5:1 on refusalSurface, Ink, and
- * Steel900 at once — 5.31 / 5.49 / 4.59. It reads as the same red; it is legible.
+ * ST-F17 raised it again, and the reason is not cosmetic. #D1746D measured
+ * **3.88:1 on `surfaceRaised`** — the pressed state of a history row, i.e. while
+ * a gloved finger is on the row containing a "refused" chip. That failed the
+ * floor on the *shipped* palette, before this run lifted anything
+ * (`.pipeline/05-test-report.md`, ST-F16 AC 5), and lifting the surfaces one rung
+ * would have made it worse. It is fixed here by moving the colour, never by
+ * relaxing the check.
+ *
+ * Provenance unchanged: hue 4° and saturation 0.52 of #C0453C held exactly, with
+ * lightness raised to the lowest value clearing **4.7:1 on the new
+ * `surfaceRaised`** — the lightest backdrop this colour ever lands on, and the
+ * one that binds. 4.7 rather than 4.5 so the safety label keeps a margin rather
+ * than sitting on the line. Measured: 4.71 on surfaceRaised, 5.28 on the accent
+ * wash, 5.57 on surface, 6.57 on background, 7.60 on the refusal card. Every one
+ * of those is higher than it was before this change.
  */
-const alertRedText = '#D1746D';
+const alertRedText = '#DE9B96';
 
-/** Semantic roles. Screens use these, not `palette` directly. */
+/**
+ * Steel400 lifted, for the same reason and by the same method.
+ *
+ * `textSecondary` was `palette.steel400` (#7D93AB), which measured **4.00:1 on
+ * `surfaceRaised`** on the shipped palette — the second of the two pairings the
+ * rebuilt contrast matrix found failing (ST-F16 AC 5). Steel400 was already thin
+ * at 4.72 on the old `surface`, so it could not survive the surfaces moving up a
+ * rung: it is the binding constraint on any lightening
+ * (`.pipeline/02-user-stories-fixes.md` §1g), and the stories called for a
+ * derived mid-tone rather than a palette swap. Steel200 (#C6D3E0) is too close to
+ * `textPrimary` and collapses the hierarchy.
+ *
+ * So: hue 211° and saturation 0.215 of Steel400 held exactly, lightness raised
+ * from 0.58 to 0.669 — the lowest value clearing 4.7:1 on the new
+ * `surfaceRaised`. Measured: 4.72 on surfaceRaised, 5.28 on the accent wash,
+ * 5.57 on surface, 6.58 on background. `palette.steel400` itself is untouched and
+ * still carries `borderStrong`.
+ */
+const steelText = '#9DAEC0';
+
+/**
+ * Semantic roles. Screens use these, not `palette` directly.
+ *
+ * **ST-F17 — the one-step lift.** The owner's report was "the color scheme is
+ * showing a little too dark", and the decision recorded against OQ-F4 was Option
+ * 1: move up one rung, not invert to light. The rungs are the ones this file
+ * already had — the shipped ladder steps by a consistent ~1.19 in relative
+ * luminance (ink → steel900 → #1D3450 → #24405E), so "one step lighter" is
+ * exactly "every surface takes the next rung", and the values below are mostly
+ * values that were already here, one role further up.
+ *
+ *   background        ink       → steel900   (surface's old value)
+ *   surface           steel900  → #1D3450    (surfaceRaised's old value)
+ *   surfaceRaised     #1D3450   → #233F62    (one rung on, derived)
+ *   border            #24405E   → #2A4B6F    (one rung on, so a hairline on the
+ *                                             new surfaceRaised is still visible)
+ *   backgroundSunken  #050B12   → ink
+ *   backgroundRail    #0A1421   → ink
+ *
+ * `palette` is untouched — it is the brand pack verbatim — and `accent` is still
+ * `palette.cyanRead`, which `brand/README.txt:31` forbids recolouring and which
+ * still carries text at 8.40:1 on the new background. Only the semantic roles
+ * moved. Every pairing the app actually draws is measured in
+ * `tests/lib/contrastMatrix.mjs`; all 30 text pairings clear 4.5:1 after this
+ * change, and the two that did not clear it before now do.
+ */
 export const color = {
-  background: palette.ink,
-  surface: palette.steel900,
-  surfaceRaised: '#1D3450',
+  background: palette.steel900,
+  surface: '#1D3450',
+  surfaceRaised: '#233F62',
 
   /**
    * Deeper than `background`, for surfaces that sit *under* the UI rather than
    * behind it: the camera viewfinder and the tablet nav rail. The mockup drew
-   * these as #050B12 and #0A1421; both are here so no screen invents its own.
+   * these as #050B12 and #0A1421 against an Ink background; with the background
+   * itself now Steel900, Ink is the rung below it and is what both become.
    */
-  backgroundSunken: '#050B12',
-  backgroundRail: '#0A1421',
+  backgroundSunken: palette.ink,
+  backgroundRail: palette.ink,
 
   textPrimary: palette.mist,
-  textSecondary: palette.steel400,
+  textSecondary: steelText,
   /** On the cyan accent — cyan is light, so this is ink. */
   textOnAccent: palette.ink,
   /** On signalBlue / ductBlue fills, which are dark enough for white. */
@@ -82,10 +140,21 @@ export const color = {
   /** Darkened DuctBlue, so the pressed state stays above the contrast floor too. */
   pressed: '#0E409A',
 
-  border: '#24405E',
+  border: '#2A4B6F',
   borderStrong: palette.steel400,
 
-  /** Fill and border only — never text. Use `refusalText` for words and glyphs. */
+  /**
+   * Fill and border only — never text. Use `refusalText` for words and glyphs.
+   *
+   * These three deliberately did **not** move with the lift. The refusal card is
+   * the one surface in the app whose job is to be unmistakable rather than to sit
+   * in the ladder, and its identity is the 2dp alert border against a deep red
+   * fill: lifting `refusalSurface` a rung tested at 2.89:1 for `refusal` on it and
+   * 1.83:1 for `refusalBorder`, down from 3.42 and 2.17. Weakening the refusal
+   * card to keep a surface ladder tidy is not a trade this project makes. Left
+   * where it is, the card now reads a shade deeper than the page instead of a
+   * shade above it, and `refusalText` on it *improved* from 5.29 to 7.60.
+   */
   refusal: palette.alertRed,
   refusalText: alertRedText,
   refusalSurface: '#2A1512',
