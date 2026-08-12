@@ -27,7 +27,8 @@ import {
   NON_TEXT_FILLS,
   FLOOR,
 } from './contrastMatrix.mjs';
-import { extractColorRoles, resolveBackdrop, composite, asHex } from './colorRoles.mjs';
+import { extractColorRoles, resolveBackdrop, resolveForeground, composite, asHex } from './colorRoles.mjs';
+import { contrastRatio } from './contrast.mjs';
 import { blankComments } from './jsx.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -50,7 +51,14 @@ const labelsOf = (failures) => failures.join(' | ');
 
 test('the matrix reads color.background, not palette.ink', () => {
   const { roles, palette } = extractColorRoles(TOKENS);
-  assert.equal(roles.background, palette.ink, 'today they are the same value');
+  // They were the same value when this test was written, which is precisely why
+  // the old palette-name check could not tell them apart. ST-F17's lift moved
+  // `color.background` to Steel900 and left `palette.ink` alone, so the two are
+  // now different values and the distinction is load-bearing rather than
+  // theoretical.
+  assert.equal(roles.background, palette.steel900);
+  assert.notEqual(roles.background, palette.ink);
+  assert.equal(palette.ink, '#0C1826', 'the brand palette is verbatim and does not move');
 
   const lightened = withRole(TOKENS, 'background', '#FFFFFF');
   const after = extractColorRoles(lightened);
@@ -199,15 +207,35 @@ test('the shipped tree has no coverage gap', () => {
 // What the matrix says about the tree as it stands
 // ---------------------------------------------------------------------------
 
-test('the matrix reports the two pairings the shipped palette does not clear', () => {
-  // Deliberately pinned rather than asserted green. These are pre-existing
-  // defects the old six-pair check could not see, they are ST-F17's to fix, and
-  // this test exists so that fixing them is noticed rather than assumed. It is
-  // NOT an acceptance of them: E6.7 and E5.2 both report FAIL on the same data.
+test('every pairing the app draws clears the floor', () => {
+  // This test used to pin **two failures** — `textSecondary → surfaceRaised` at
+  // 4.00:1 and `refusalText → surfaceRaised` at 3.88:1 — which the shipped dark
+  // palette had never cleared and which the old six-pair check could not see
+  // (ST-F16 AC 5). ST-F17 fixed both by moving the colours in `tokens.ts`: the
+  // pressed history row is now 4.72 and 4.71. The pin is replaced by the stronger
+  // statement rather than deleted, so a regression is a failing test again.
   const { failures } = evaluateMatrix(TOKENS);
-  const labels = failures.map((f) => f.split(' at ')[0]).sort();
-  assert.deepEqual(labels, [
-    'refusalText → surfaceRaised [pressed]',
-    'textSecondary → surfaceRaised [pressed]',
-  ], `the set of failing pairings moved:\n${failures.join('\n')}`);
+  assert.deepEqual(failures, [], `pairings under the ${FLOOR}:1 floor:\n${failures.join('\n')}`);
+});
+
+test('the two pairings ST-F17 fixed stay fixed, with their margin visible', () => {
+  // Named individually because they are the two the instrument caught, and
+  // because `refusalText` on a pressed row is the safety-critical one: E5.2
+  // requires the refusal label to clear the floor on dark, and a technician
+  // holding a gloved finger on a history row containing a refusal is exactly the
+  // state that was failing. Asserted above 4.5 rather than at it, so a later
+  // tweak that shaves the margin to the line is visible here.
+  const { roles } = extractColorRoles(TOKENS);
+  const raised = resolveBackdrop(roles, ['surfaceRaised']);
+  for (const role of ['refusalText', 'textSecondary']) {
+    const ratio = contrastRatio(resolveForeground(roles, role, raised), raised);
+    assert.ok(
+      ratio >= FLOOR,
+      `${role} on surfaceRaised is ${ratio.toFixed(2)}:1 — under the ${FLOOR}:1 floor`
+    );
+    assert.ok(
+      ratio >= 4.6,
+      `${role} on surfaceRaised is ${ratio.toFixed(2)}:1 — clears the floor with no margin left`
+    );
+  }
 });
