@@ -92,7 +92,7 @@ export const TEXT_PAIRS = [
   { fg: 'accent', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:498', what: 'source sheet icon glyph' },
 
   // --- the camera viewfinder and the tablet nav rail ---------------------------
-  { fg: 'textPrimary', on: ['backgroundSunken'], at: 'app/screens/CaptureScreen.tsx:668', what: 'viewfinder hint' },
+  { fg: 'textPrimary', on: ['backgroundSunken'], at: 'app/screens/CaptureScreen.tsx:815', what: 'viewfinder hint' },
   { fg: 'textSecondary', on: ['backgroundRail'], at: 'app/components/Chrome.tsx:708', what: 'rail tab label' },
   { fg: 'accent', on: ['backgroundRail'], at: 'app/components/Chrome.tsx:709', what: 'rail active tab label' },
   {
