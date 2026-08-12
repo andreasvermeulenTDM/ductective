@@ -26,7 +26,6 @@ import {
   reset,
   sawTurn,
   setSignedIn,
-  shouldShow,
 } from './guestNotice.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -49,15 +48,17 @@ test('AC 3: a signed-in technician can never reach a dismissal state', () => {
   // every answer count, because "signed in" must win regardless of history.
   for (const answersSeen of [0, 1, 5]) {
     assert.equal(canDismiss({ signedIn: true, answersSeen, dismissed: false }), false);
-    assert.equal(shouldShow({ signedIn: true, answersSeen, dismissed: false }), false);
   }
 });
 
-test('the notice shows for a guest and stops showing once dismissed', () => {
-  assert.equal(shouldShow(INITIAL_GUEST_NOTICE), true);
+test('an answer alone does not clear the notice — only a tap does', () => {
+  // The screens render on `!signedIn && !noticeDismissed`, so `dismissed` is the
+  // only thing that takes it off screen. Delivering an answer offers the control;
+  // it does not press it.
+  assert.equal(INITIAL_GUEST_NOTICE.dismissed, false);
   const seen = sawTurn(INITIAL_GUEST_NOTICE, 'answer');
-  assert.equal(shouldShow(seen), true, 'an answer alone does not clear it — a tap does');
-  assert.equal(shouldShow(dismiss(seen)), false);
+  assert.equal(seen.dismissed, false);
+  assert.equal(dismiss(seen).dismissed, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -115,7 +116,7 @@ test('AC 5: no sequence of user turns alone can reach dismissed', () => {
     let s = INITIAL_GUEST_NOTICE;
     for (let i = 0; i < n; i++) s = sawTurn(s, 'user');
     assert.equal(dismiss(s).dismissed, false, `${n} user turns reached dismissed`);
-    assert.equal(shouldShow(dismiss(s)), true, `the notice disappeared after ${n} user turns`);
+    assert.equal(canDismiss(s), false, `${n} user turns offered a dismiss control`);
   }
 });
 

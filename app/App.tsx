@@ -40,6 +40,15 @@ import { SignInScreen } from './screens/SignInScreen';
 import { AccountScreen } from './screens/AccountScreen';
 import { startAuth } from './lib/auth';
 import { INITIAL_AUTH_STATE, isDetermining, nextAuthState } from './lib/authState';
+import {
+  INITIAL_GUEST_NOTICE,
+  canDismiss,
+  dismiss,
+  reset as resetGuestNotice,
+  sawTurn,
+  setSignedIn as setNoticeSignedIn,
+  type TurnKind,
+} from './lib/guestNotice';
 
 /**
  * Required once, at module scope, by `expo-auth-session`: it closes the browser
@@ -109,6 +118,23 @@ export default function App() {
    */
   const [auth, dispatch] = useReducer(nextAuthState, INITIAL_AUTH_STATE);
 
+  /**
+   * ST-F02 — the guest disclosure's dismissal, owned here and nowhere else.
+   *
+   * The shell holds it because **both** surfaces show the notice and they must
+   * share one counter: U7 lets `UnitGate` answer with a refusal before a unit
+   * exists, and a refusal is an answer. If each screen kept its own state, a
+   * technician who cleared the notice at the gate would meet it again on the
+   * composer, and the gate's refusal would not earn anything.
+   *
+   * The rule about *when* it may be cleared lives in `lib/guestNotice.ts` and is
+   * unit-tested there. Nothing in this file decides it; `dismiss()` is a no-op
+   * before an answer has landed, so even a wrongly-wired call site cannot make the
+   * disclosure skippable.
+   */
+  const [guestNotice, setGuestNotice] = useState(INITIAL_GUEST_NOTICE);
+  const noteAnswer = (kind: TurnKind) => setGuestNotice((s) => sawTurn(s, kind));
+
   useEffect(() => {
     // `startAuth` returns its unsubscribe, so returning it here *is* the cleanup
     // (ST-A02 AC 6). A leaked onAuthStateChange listener across sign-out/sign-in
@@ -134,7 +160,17 @@ export default function App() {
     if (auth.phase === 'determining') return;
     const previous = lastUser.current;
     lastUser.current = auth.userId;
-    if (previous !== null && previous !== auth.userId) goHome();
+    // ST-F02 AC 6. A change of user means a different person is now holding this
+    // phone and they have seen nothing, so the answer counter and the dismissal
+    // both go back to zero — otherwise the next technician gets a screen that
+    // never told them nothing is being saved. The auth flag is re-applied either
+    // way, so a signed-in technician can never be holding a dismissal
+    // (ST-F01 AC 3).
+    const handedOver = previous !== null && previous !== auth.userId;
+    if (handedOver) goHome();
+    setGuestNotice((s) =>
+      setNoticeSignedIn(handedOver ? resetGuestNotice() : s, auth.phase === 'signed-in')
+    );
     // `goHome` only calls setState functions, which React guarantees are stable,
     // so it is deliberately not a dependency: adding it would re-run this on
     // every render and clear the screen under the technician.
@@ -184,6 +220,11 @@ export default function App() {
       onSignIn={goSignIn}
       justSignedIn={auth.justSignedIn}
       onBoundaryDrawn={() => dispatch({ type: 'boundary-acknowledged' })}
+      noticeDismissed={guestNotice.dismissed}
+      // Absent, not disabled, until an answer has been delivered. The predicate
+      // is the single rule; this screen does not get to have an opinion.
+      onDismissNotice={canDismiss(guestNotice) ? () => setGuestNotice(dismiss) : undefined}
+      onAnswerDelivered={noteAnswer}
     />
   );
 
@@ -209,10 +250,14 @@ export default function App() {
     <UnitGate
       onIdentify={(mode) => setCapture(mode)}
       onCarryOver={setCarried}
-      // U7 lets this screen answer — with a refusal — before a unit exists, so
-      // the guest disclosure belongs here too (ST-A06 AC 6).
       signedIn={signedIn}
       onSignIn={goSignIn}
+      // U7 lets this screen answer — with a refusal — before a unit exists, so
+      // the guest disclosure belongs here too (ST-A06 AC 6), and the refusal it
+      // returns counts as an answer for the dismissal rule (ST-F02 AC 5).
+      noticeDismissed={guestNotice.dismissed}
+      onDismissNotice={canDismiss(guestNotice) ? () => setGuestNotice(dismiss) : undefined}
+      onAnswerDelivered={noteAnswer}
     />
   );
 

@@ -51,6 +51,20 @@ test('a guarded block is kept when true and dropped when false', () => {
   assert.doesNotMatch(pruneBranches(jsx, { shown: false }), /visible/);
 });
 
+test('a chained guard evaluates both conditions, and counts neither as copy', () => {
+  // `{a && b && (<jsx>)}` used to resolve only `a` and then hand `b && (<jsx>)`
+  // to the counter as text, so the block survived a false `b` and the word "b"
+  // was counted as visible copy. Both screens gate the guest disclosure on two
+  // conditions (ST-F02), so this is a live shape, not a hypothetical.
+  const jsx = '<View>{!signedIn && !dismissed && (<Text>notice</Text>)}</View>';
+  assert.match(pruneBranches(jsx, { signedIn: false, dismissed: false }), /notice/);
+  assert.doesNotMatch(pruneBranches(jsx, { signedIn: false, dismissed: true }), /notice/);
+  assert.doesNotMatch(pruneBranches(jsx, { signedIn: true, dismissed: false }), /notice/);
+  assert.equal(countWords(pruneBranches(jsx, { signedIn: false, dismissed: false }), {}), 1);
+  // And an undeclared second condition still throws rather than being guessed.
+  assert.throws(() => pruneBranches(jsx, { signedIn: false }), /no value declared for `dismissed`/);
+});
+
 test('a ternary keeps exactly one arm', () => {
   const jsx = '<View>{expanded ? (<Text>full</Text>) : (<View style={s.hairline} />)}</View>';
   const on = pruneBranches(jsx, { expanded: true });

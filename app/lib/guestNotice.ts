@@ -78,10 +78,17 @@ export function canDismiss(state: GuestNoticeState): boolean {
   return state.answersSeen >= 1;
 }
 
-/** True when the notice should be on screen. The only render condition either screen uses. */
-export function shouldShow(state: GuestNoticeState): boolean {
-  return !state.signedIn && !state.dismissed;
-}
+/**
+ * There is deliberately no `shouldShow(state)` helper here.
+ *
+ * Both screens spell the render condition out as `!signedIn && !noticeDismissed`,
+ * which is what `accountUi.test.mjs` reads statically to prove the disclosure is
+ * gated on auth state and the shared flag and on *nothing else* — in particular
+ * not on `messages.length`. A helper would hide that condition behind a call the
+ * static check cannot see through, which is how the original ST-A06 AC 6
+ * regression would get back in unnoticed. `canDismiss` is the rule that needs a
+ * home; "is it on screen" is two booleans and belongs where a reader is looking.
+ */
 
 /** A turn arrived. User turns do not move the counter (ST-F01 AC 4). */
 export function sawTurn(state: GuestNoticeState, kind: TurnKind): GuestNoticeState {

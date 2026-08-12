@@ -227,12 +227,39 @@ export function copyForError(code: string | null | undefined): AccountCopy {
  * The second half exists so the disclosure cannot be read as a downgrade warning.
  * A guest's answers are the real thing — same knowledge base, same citations,
  * same refusals (§1j). Only persistence differs.
+ *
+ * ---------------------------------------------------------------------------
+ * ST-F02 — `dismiss` / `dismissLabel`, the words on the control that clears it
+ * ---------------------------------------------------------------------------
+ *
+ * The owner reported that this notice can never be removed. It now can, but only
+ * after an answer has been delivered — `canDismiss` in lib/guestNotice.ts owns
+ * that rule and this file owns only the wording.
+ *
+ * **The wording is a receipt, not a risk waiver.** "I understand the risks" is
+ * the phrase that comes to mind and it is wrong twice: nothing here is a risk to
+ * accept, and the bypass grep in tests/suites/e5-safety.mjs matches that exact
+ * phrasing across every source under app/, because a control worded that way is
+ * how a refusal gets clicked past. accountUi.test.mjs runs those same patterns
+ * over this file.
+ *
+ * The three fields above are **unchanged** by that addition and stay unchanged. A
+ * dismiss control is not a licence to soften the disclosure (ST-F02 AC 7), and
+ * accountCopy.test.mjs still pins the body's claims.
+ *
+ * Note for the density fence: keep quote and backtick characters out of the
+ * object literal below. tests/lib/copyInventory.mjs counts every quoted span
+ * inside the declaration, so a comment *inside* the braces is counted as copy and
+ * the fenced word count stops meaning anything. Rationale lives up here instead.
  */
 export const GUEST_DISCLOSURE = {
   label: 'NOTHING HERE IS BEING SAVED',
   body:
     'You are not signed in, so this conversation exists only on this screen. Close the app and it is gone — there is no copy of it anywhere and no way to get it back. The answers and their citations are exactly the same either way.',
   action: 'Sign in or create an account',
+  // ST-F02. A receipt, not a risk waiver — see the note above this declaration.
+  dismiss: 'Got it',
+  dismissLabel: 'Dismiss the not-saved notice',
 } as const;
 
 /** ST-A06 AC 7 — the History tab for a guest. An explanation with a way forward. */

@@ -1,28 +1,28 @@
 {
   "recordedAt": "2026-08-10",
-  "note": "ST-F18 baseline. Rendered-in-branch, not visible-without-scrolling. Regenerate with: node tests/density-baseline.mjs --json > tests/fixtures/density-baseline.json",
+  "note": "ST-F18 baseline, corrected by ST-F19. Rendered-in-branch, not visible-without-scrolling. Regenerate with: node tests/density-baseline.mjs --json",
   "scenes": {
     "(a) UnitGate · guest · no unit · t=0": {
       "D1": 9,
       "D2": 14,
-      "D3": 109,
+      "D3": 108,
       "D4": 9
     },
     "(a) UnitGate · guest · no unit · t=6s": {
       "D1": 9,
       "D2": 13,
-      "D3": 109,
+      "D3": 108,
       "D4": 9
     },
     "(b) ChatScreen + EmptyAsk · unit chosen · no messages · guest · t=6s": {
-      "D1": 14,
-      "D2": 20,
-      "D3": 121,
-      "D4": 19
+      "D1": 13,
+      "D2": 17,
+      "D3": 89,
+      "D4": 17
     }
   },
   "fencedWords": {
-    "GUEST_DISCLOSURE": 56,
+    "GUEST_DISCLOSURE": 62,
     "GUEST_HISTORY": 40,
     "SAVED_FROM_HERE": 22,
     "COMPANY_PRIVACY": 60,
@@ -30,5 +30,29 @@
     "UNIT_REQUIRED": 38,
     "refusalBody": 64,
     "CoverageLine verdicts": 29
+  },
+  "supersedes": {
+    "recordedAt": "2026-08-10",
+    "why": "The ST-F18 figures here were measured with a chained-guard reader bug: `{a && b && (<jsx>)}` evaluated only `a`, kept the block whatever `b` was, and counted `b` as a word of visible copy. Fixed in tests/lib/density.mjs during ST-F19 and pinned by a standing test. The correction removes one phantom word from every scene (the word `capture`, from App.tsx's TabBar guard) and removes the unanswered-retry card from scene (b), which is not rendered in that state. No screen changed to produce this delta; the instrument did.",
+    "scenes": {
+      "(a) UnitGate · guest · no unit · t=0": {
+        "D1": 9,
+        "D2": 14,
+        "D3": 109,
+        "D4": 9
+      },
+      "(a) UnitGate · guest · no unit · t=6s": {
+        "D1": 9,
+        "D2": 13,
+        "D3": 109,
+        "D4": 9
+      },
+      "(b) ChatScreen + EmptyAsk · unit chosen · no messages · guest · t=6s": {
+        "D1": 14,
+        "D2": 20,
+        "D3": 121,
+        "D4": 19
+      }
+    }
   }
 }

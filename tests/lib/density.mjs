@@ -279,7 +279,18 @@ function resolveExpression(inner, state) {
 
   const guard = splitTop(trimmed, '&&');
   if (guard && /<[A-Za-z]/.test(guard[1])) {
-    return evalCondition(guard[0], state) ? pruneBranches(stripWrap(guard[1]), state) : '';
+    if (!evalCondition(guard[0], state)) return '';
+    const rest = guard[1].trim();
+    // `{a && b && (<jsx>)}` — the right-hand side is another guard, not the JSX.
+    // `stripWrap` would hand the whole `b && (<jsx>)` string to the counter,
+    // which then reads `b` as a word of visible copy and keeps the block whether
+    // `b` is true or not. Both halves of a chained condition have to be
+    // evaluated, so recurse rather than strip. `ChatScreen` and `UnitGate` both
+    // gate the guest disclosure on two conditions (`!signedIn &&
+    // !noticeDismissed`), which is where this surfaced.
+    return rest.startsWith('<') || rest.startsWith('(')
+      ? pruneBranches(stripWrap(rest), state)
+      : resolveExpression(rest, state);
   }
 
   // A render-prop child — `{({ pressed }) => (<View …/>)}`. What it returns is

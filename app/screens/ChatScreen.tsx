@@ -52,6 +52,9 @@ export function ChatScreen({
   onSignIn,
   justSignedIn,
   onBoundaryDrawn,
+  noticeDismissed,
+  onDismissNotice,
+  onAnswerDelivered,
 }: {
   sessionId: string | null;
   onSession: (id: string) => void;
@@ -67,6 +70,17 @@ export function ChatScreen({
    */
   justSignedIn?: boolean;
   onBoundaryDrawn?: () => void;
+  /**
+   * ST-F02 — the guest disclosure's dismissal, owned by `App.tsx` and shared
+   * with `UnitGate`. This screen holds no `useState` for it, deliberately: the
+   * gate can answer too (U7's refusal), and one counter across both surfaces is
+   * what makes "an answer earns the dismissal" mean the same thing on each.
+   */
+  noticeDismissed?: boolean;
+  /** Absent until an answer has been delivered — see `lib/guestNotice.ts`. */
+  onDismissNotice?: () => void;
+  /** Every assistant turn this screen renders, reported once, as it lands. */
+  onAnswerDelivered?: (kind: Message['kind']) => void;
   /** The unit's coverage verdict, for the "do we have this unit" line. */
   coverage?: { status: string | null; docs: string[] } | null;
   /**
@@ -256,6 +270,10 @@ export function ChatScreen({
       );
       if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
+      // ST-F02 AC 5 — every assistant kind counts, including a refusal and the
+      // conversational reply. Reported here rather than derived from
+      // `messages.length`, which would count the technician's own turns too.
+      onAnswerDelivered?.(reply.kind);
       setOffline(false);
       requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
     } catch (e) {
@@ -369,6 +387,7 @@ export function ChatScreen({
       );
       if (reply.kind === 'refusal') void fireHaptic('warning');
       setMessages((prev) => [...prev, reply]);
+      onAnswerDelivered?.(reply.kind);
       setOffline(false);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -529,10 +548,16 @@ export function ChatScreen({
 
         Above the unit gate notice deliberately: what you are about to lose
         outranks which unit you are asking about.
+
+        ST-F02 adds one term and only one: `!noticeDismissed`, the shared flag
+        from the shell. It is deliberately **not** gated on `messages.length` —
+        that was the original ST-A06 AC 6 failure, and it would make the
+        disclosure vanish on the first question rather than after the technician
+        has read it and cleared it themselves.
       */}
-      {!signedIn && (
+      {!signedIn && !noticeDismissed && (
         <View style={s.guestWrap}>
-          <GuestNotice onSignIn={() => onSignIn?.()} />
+          <GuestNotice onSignIn={() => onSignIn?.()} onDismiss={onDismissNotice} />
         </View>
       )}
 

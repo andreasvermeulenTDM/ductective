@@ -40,9 +40,28 @@ type Props = {
    */
   signedIn?: boolean;
   onSignIn?: () => void;
+  /**
+   * ST-F02. The dismissal state lives in `App.tsx` and is shared with
+   * `ChatScreen`, so an answer taken here earns dismissal on the composer and
+   * vice versa. This screen holds no state of its own for it and must not: two
+   * copies of the rule is how one surface starts disagreeing with the other.
+   */
+  noticeDismissed?: boolean;
+  /** Absent until an answer has been delivered — then the control appears. */
+  onDismissNotice?: () => void;
+  /** A refusal here is an answer (U7), and it is what earns the dismissal. */
+  onAnswerDelivered?: (kind: 'refusal') => void;
 };
 
-export function UnitGate({ onIdentify, onCarryOver, signedIn, onSignIn }: Props) {
+export function UnitGate({
+  onIdentify,
+  onCarryOver,
+  signedIn,
+  onSignIn,
+  noticeDismissed,
+  onDismissNotice,
+  onAnswerDelivered,
+}: Props) {
   const [question, setQuestion] = useState('');
   const [urgentOpen, setUrgentOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -61,8 +80,12 @@ export function UnitGate({ onIdentify, onCarryOver, signedIn, onSignIn }: Props)
       // Live only. With no core configured there is nothing to classify against,
       // and a locally-invented hazard list would be a second, diverging guardrail.
       const hit = isLive ? await refusalCheck(text) : null;
-      if (hit) setRefusal(hit);
-      else {
+      if (hit) {
+        setRefusal(hit);
+        // A refusal is an answer. This is the whole reason the disclosure is on
+        // this screen at all, so it is also what earns the right to clear it.
+        onAnswerDelivered?.('refusal');
+      } else {
         setNeedsUnit(true);
         onCarryOver(text);
       }
@@ -86,7 +109,9 @@ export function UnitGate({ onIdentify, onCarryOver, signedIn, onSignIn }: Props)
 
         {/* Before the doors, because it is true before anything else on this
             screen is: whatever happens next is not being kept. */}
-        {!signedIn && <GuestNotice onSignIn={() => onSignIn?.()} />}
+        {!signedIn && !noticeDismissed && (
+          <GuestNotice onSignIn={() => onSignIn?.()} onDismiss={onDismissNotice} />
+        )}
 
         {/* Co-equal front doors — U1 and U2. Neither is the fallback. */}
         <View style={s.doors}>
