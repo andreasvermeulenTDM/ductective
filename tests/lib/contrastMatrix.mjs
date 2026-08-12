@@ -89,7 +89,7 @@ export const TEXT_PAIRS = [
   { fg: 'accent', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:266', what: 'step number' },
   { fg: 'refusalText', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:849', what: 'not-covered verdict' },
   { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:850', what: 'unknown-coverage verdict' },
-  { fg: 'accent', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:371', what: 'source sheet icon glyph' },
+  { fg: 'accent', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:498', what: 'source sheet icon glyph' },
 
   // --- the camera viewfinder and the tablet nav rail ---------------------------
   { fg: 'textPrimary', on: ['backgroundSunken'], at: 'app/screens/CaptureScreen.tsx:668', what: 'viewfinder hint' },
@@ -117,14 +117,14 @@ export const NON_TEXT_PAIRS = [
   { fg: 'border', on: ['surface'], at: 'app/components/Chrome.tsx:607', what: 'card hairline' },
   { fg: 'border', on: ['background'], at: 'app/components/Chrome.tsx:566', what: 'session header rule' },
   { fg: 'borderStrong', on: ['background'], at: 'app/components/Chrome.tsx:677', what: 'secondary button outline' },
-  { fg: 'borderStrong', on: ['surface'], at: 'app/components/Citation.tsx:344', what: 'sheet grabber' },
+  { fg: 'borderStrong', on: ['surface'], at: 'app/components/Citation.tsx:471', what: 'sheet grabber' },
   { fg: 'borderStrong', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:843', what: 'change-unit outline' },
   { fg: 'accentBorder', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:261', what: 'step number ring' },
-  { fg: 'accentBorder', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:367', what: 'source icon ring' },
+  { fg: 'accentBorder', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:494', what: 'source icon ring' },
   { fg: 'refusalBorder', on: ['refusalSurface'], at: 'app/components/Chrome.tsx:645', what: 'guest disclosure outline' },
   { fg: 'refusal', on: ['refusalSurface'], at: 'app/components/Message.tsx:308', what: 'refusal card outline' },
   { fg: 'accent', on: ['surfaceRaised'], at: 'app/components/Chrome.tsx:553', what: 'banner underline' },
-  { fg: 'scrim', on: ['background'], at: 'app/components/Citation.tsx:330', what: 'modal scrim over the screen' },
+  { fg: 'scrim', on: ['background'], at: 'app/components/Citation.tsx:457', what: 'modal scrim over the screen' },
 ];
 
 /**
@@ -203,8 +203,8 @@ export const NON_TEXT_FILLS = {
   'app/components/Chrome.tsx:548': 'bannerHairline — a 3dp accent rule above the prototype banner, no child',
   'app/components/Chrome.tsx:583': 'offlineDot — a 6dp status dot beside the offline chip label, no child',
   'app/components/Chrome.tsx:666': 'boundaryRule — a 1dp accentBorder rule above the saved-from-here marker, no child',
-  'app/components/Citation.tsx:330': 'backdrop — the modal scrim; the sheet on top of it is opaque `surface`',
-  'app/components/Citation.tsx:344': 'grabber — the 40×4 sheet handle, no child',
+  'app/components/Citation.tsx:457': 'backdrop — the modal scrim; the sheet on top of it is opaque `surface`',
+  'app/components/Citation.tsx:471': 'grabber — the 40×4 sheet handle, no child',
   'app/screens/ChatScreen.tsx:955': 'thumb — a 64dp attachment image placeholder, covered by the image',
   'app/screens/SignInScreen.tsx:260': 'divider — a 1dp rule between the sign-in modes, no child',
 };
