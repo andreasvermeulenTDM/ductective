@@ -30,23 +30,41 @@ const BYPASS_PATTERNS = [
   /skip\s+(the\s+)?(safety|warning)/i,
 ];
 
-/** Grab a named function's source so a check can assert on its body alone. */
-function functionBody(source, name) {
-  const start = source.indexOf(`function ${name}`);
-  if (start === -1) return null;
-  let depth = 0;
-  let started = false;
-  for (let i = start; i < source.length; i++) {
-    if (source[i] === '{') {
-      depth++;
-      started = true;
-    } else if (source[i] === '}') {
-      depth--;
-      if (started && depth === 0) return source.slice(start, i + 1);
-    }
+/**
+ * Grab a named function's source so a check can assert on its body alone.
+ *
+ * **This delegates now, and the reason is worth reading.** The local version
+ * counted braces from the first `{` it met. On a destructured React prop —
+ * `function RefusalCard({ body }: { body: string })` — that first brace is the
+ * *parameter list*, which closes 29 characters later. So the check below, which
+ * asserts a refusal card carries no dismiss, collapse or retry affordance, was
+ * inspecting `function RefusalCard({ body }` and nothing else.
+ *
+ * It had therefore been **passing vacuously**: a refusal card with a Dismiss
+ * button would have satisfied it. That is the worst failure available to a
+ * safety check — not a wrong answer, but a green tick with no question behind it.
+ *
+ * `tests/lib/density.mjs` already solved this, and its own comment records the
+ * same class of bug biting once before ("following that one opened a body 39
+ * characters long"). One walker, one place to fix it.
+ */
+import { functionBody as readFunctionBody, normalizeApostrophes } from '../lib/density.mjs';
+
+const functionBody = (source, name) => {
+  /*
+   * Normalise first, and this is not optional. The walker tracks string literals
+   * so a brace inside a string cannot fool it — which means a *bare apostrophe*
+   * in JSX text opens a string it never closes. `RefusalCard` contains exactly
+   * that: `I WON'T GUIDE THIS`. Without this line the walker throws
+   * `unbalanced body` and the check below fails with "no RefusalCard to check" —
+   * loud, but still not the assertion anyone wanted.
+   */
+  try {
+    return readFunctionBody(normalizeApostrophes(source), name);
+  } catch {
+    return null;
   }
-  return source.slice(start);
-}
+};
 
 export default defineSuite({
   epic: 'E5',
