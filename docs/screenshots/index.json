@@ -1,0 +1,38 @@
+[
+  {
+    "name": "01-unit-gate",
+    "caption": "Cold start. The app establishes which unit you are in front of before it takes a question."
+  },
+  {
+    "name": "02-manual-entry",
+    "caption": "Typing the unit in — a front door, not a fallback, for a plate that is painted over."
+  },
+  {
+    "name": "03-unit-typed",
+    "caption": "Partial model numbers are fine — a faded plate is the normal case, not the edge case."
+  },
+  {
+    "name": "04-composer",
+    "caption": "The composer, unlocked and scoped to the confirmed unit, with starting points for that machine."
+  },
+  {
+    "name": "05-answer",
+    "caption": "A cited answer: ordered checks, the reading to take, and a source chip per claim."
+  },
+  {
+    "name": "06-citation-source",
+    "caption": "Tapping a citation opens the passage without losing the answer behind it."
+  },
+  {
+    "name": "07-refusal",
+    "caption": "A hard safety refusal. Alert red, no dismiss, no retry, no way past it."
+  },
+  {
+    "name": "08-history",
+    "caption": "History. A job is identifiable by its unit and what came of it."
+  },
+  {
+    "name": "09-account",
+    "caption": "Account. Signed out it is the sign-in screen; signed in it is the profile."
+  }
+]
