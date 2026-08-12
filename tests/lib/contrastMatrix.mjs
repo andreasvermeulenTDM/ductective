@@ -60,7 +60,7 @@ export const TEXT_PAIRS = [
   {
     fg: 'textSecondary', on: ['surfaceRaised'], state: 'pressed',
     at: 'app/screens/HistoryScreen.tsx:264', what: 'history row timestamp, row pressed',
-    also: ['app/screens/UnitGate.tsx:237 door hint while the door is pressed', 'app/components/Chrome.tsx:708 tab label while the tab is pressed'],
+    also: ['app/components/Chrome.tsx:708 tab label while the tab is pressed'],
   },
   {
     fg: 'refusalText', on: ['surfaceRaised'], state: 'pressed',

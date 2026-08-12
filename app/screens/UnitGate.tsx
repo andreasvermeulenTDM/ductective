@@ -101,9 +101,13 @@ export function UnitGate({
       <ScrollView contentContainerStyle={s.scroll}>
         <View>
           <Text style={s.title}>Which unit are you at?</Text>
+          {/* ST-F19 — one clause shorter, and the clause that went was the one
+              restating the ordering the screen already demonstrates. The citation
+              promise is the half that matters and it is untouched: it is the
+              reason the gate exists at all (U1). */}
           <Text style={s.sub}>
-            Everything I say is cited to that unit's manuals, so I need to know the
-            machine before the symptom.
+            Everything I say is cited to that unit's manuals, so I need the machine
+            first.
           </Text>
         </View>
 
@@ -113,33 +117,52 @@ export function UnitGate({
           <GuestNotice onSignIn={() => onSignIn?.()} onDismiss={onDismissNotice} />
         )}
 
-        {/* Co-equal front doors — U1 and U2. Neither is the fallback. */}
-        <View style={s.doors}>
-          <Pressable
+        {/*
+          Co-equal front doors — U1 and U2. Neither is the fallback, and **both
+          stay**: ST-F19 AC 4 forbids removing the only route to a capability, and
+          manual entry is the only one that works with no signal and no camera
+          permission.
+
+          ST-F19 — what changed is that they are now two rows of one card rather
+          than two separate cards. The owner's complaint about this screen was that
+          it is over-complicated, and the measurable form of that is competing
+          blocks: this takes the gate from four to three before the technician has
+          done anything, with no route lost.
+
+          The hints went into the labels. "Fastest when the plate is readable" was
+          advice about a choice the order of the rows already makes; "works
+          offline" is the one fact that changes which door a technician on a roof
+          with no signal picks, so it stayed. The camera-denied case is not lost —
+          `PermissionDenied` routes straight here and says so at the moment it is
+          true, which is better than a line read before it happens.
+
+          `ScalePressable`, not `Pressable`: the press is felt as scale and haptic
+          rather than drawn as a fill, which is what keeps each row from being a
+          block of its own. The same pattern the urgent toggle below and the lockup
+          in `App.tsx` already use.
+        */}
+        <View style={s.doorCard}>
+          <ScalePressable
             onPress={() => onIdentify('camera')}
-            style={({ pressed }) => [s.door, s.doorPrimary, pressed && s.doorPressed]}
+            haptic="tap"
+            style={s.doorRow}
             accessibilityRole="button"
             accessibilityLabel="Photograph the data plate"
           >
             <Ionicons name="camera-outline" size={20} color={color.accent} />
-            <View style={s.doorTextWrap}>
-              <Text style={s.doorText}>Shoot the data plate</Text>
-              <Text style={s.doorHint}>Fastest when the plate is readable</Text>
-            </View>
-          </Pressable>
+            <Text style={s.doorText}>Shoot the data plate</Text>
+          </ScalePressable>
 
-          <Pressable
+          <ScalePressable
             onPress={() => onIdentify('manual')}
-            style={({ pressed }) => [s.door, pressed && s.doorPressed]}
+            haptic="tap"
+            style={s.doorRow}
             accessibilityRole="button"
             accessibilityLabel="Type the unit in"
           >
             <Ionicons name="keypad-outline" size={20} color={color.accent} />
-            <View style={s.doorTextWrap}>
-              <Text style={s.doorText}>Type the unit in</Text>
-              <Text style={s.doorHint}>Works offline, and with the camera denied</Text>
-            </View>
-          </Pressable>
+            <Text style={s.doorText}>Type the unit in — works offline</Text>
+          </ScalePressable>
         </View>
 
         {/*
@@ -242,24 +265,22 @@ const s = StyleSheet.create({
   title: { ...type.display, color: color.textPrimary },
   sub: { ...type.body, color: color.textSecondary, marginTop: space.sm },
 
-  doors: { gap: space.sm },
-  door: {
-    minHeight: MIN_TOUCH + 20,
+  /* One card, two routes. ST-F19: fewer competing blocks, both doors intact. */
+  doorCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.accentBorder,
+    backgroundColor: color.accentSurface,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.xs,
+  },
+  doorRow: {
+    minHeight: MIN_TOUCH + 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: color.border,
   },
-  doorPrimary: { borderColor: color.accentBorder, backgroundColor: color.accentSurface },
-  doorPressed: { backgroundColor: color.surfaceRaised },
-  doorGlyph: { ...type.title, color: color.accent },
-  doorTextWrap: { flex: 1 },
-  doorText: { ...type.bodyStrong, color: color.textPrimary },
-  doorHint: { ...type.caption, color: color.textSecondary },
+  doorText: { ...type.bodyStrong, color: color.textPrimary, flex: 1 },
 
   safety: { gap: space.sm },
   urgentToggle: {
