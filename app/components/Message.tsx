@@ -41,6 +41,13 @@ export function Message({ kind, body, citations = [], onCitationPress }: Props) 
   if (kind === 'user') return <UserTurn body={body} />;
   if (kind === 'refusal') return <RefusalCard body={body} />;
   if (kind === 'clarify') return <ClarifyTurn body={body} />;
+  // ST-F07. This branch has to sit *above* the empty-citations check below, and
+  // the ordering is the whole point: `conversational` is the one assistant kind
+  // that is correctly citation-free (03-backend-fixes.md §2.1), and every other
+  // kind that arrives with no citation must keep falling through to
+  // `UncitedDefect`. Move this line down and a conversational reply renders as a
+  // defect; move the check below it up and an uncited answer renders as prose.
+  if (kind === 'conversational') return <ConversationalTurn body={body} />;
 
   if (citations.length === 0) return <UncitedDefect body={body} />;
 
@@ -181,6 +188,38 @@ function ClarifyTurn({ body }: { body: string }) {
 }
 
 /**
+ * A conversational turn — "that worked", "thanks", "morning" (ST-F07 / F2).
+ *
+ * The lightest thing this component draws, on purpose. It is deliberately *not*:
+ *
+ *  - an **answer**: no `CHECK IN THIS ORDER` overline, no numbered steps, no
+ *    citation chip row, no advise-only footer, and no empty-citation affordance.
+ *    Those exist to carry and qualify a diagnostic claim; this reply makes none,
+ *    so drawing any of them would dress a pleasantry as guidance.
+ *  - a **refusal**: no `color.refusal*` anything and no alert role. Red in this
+ *    app means stop, and reserving it is what keeps it loud when it is used.
+ *  - a **clarification**: no cyan ring or wash. `ClarifyTurn` is ringed because a
+ *    question waiting on the technician needs to be found again after scrolling;
+ *    nothing here is owed an answer.
+ *
+ * What is left is a muted label and the server's own sentence. The label is the
+ * one thing added rather than removed, and it earns its place: without it, the
+ * only signal that this turn carries no claim is the *absence* of citations, and
+ * an absence is not something a technician reads at arm's length on a roof.
+ *
+ * The body is a server-side constant (`lib/conversation.mjs`) — no model text
+ * reaches this component — so there is no prose here to parse or structure.
+ */
+function ConversationalTurn({ body }: { body: string }) {
+  return (
+    <View style={s.conversational}>
+      <Text style={s.conversationalLabel}>NOT A DIAGNOSIS</Text>
+      <Text style={s.body}>{body}</Text>
+    </View>
+  );
+}
+
+/**
  * Safety refusal. Alert red per plan v3 §1, ring and fill per mockup s8.
  *
  * Deliberately absent: any close button, any collapse toggle, any retry, any
@@ -288,6 +327,12 @@ const s = StyleSheet.create({
     borderColor: color.border,
   },
   adviseOnlyText: { ...type.caption, color: color.textSecondary, flex: 1 },
+
+  /* No border, no fill, no card: the least chrome of any assistant turn, for the
+     turn that carries the least. Both roles are already measured on
+     `background` in tests/lib/contrastMatrix.mjs. */
+  conversational: { marginBottom: space.xl, gap: space.sm },
+  conversationalLabel: { ...type.overline, color: color.textSecondary },
 
   clarify: {
     marginBottom: space.xl,

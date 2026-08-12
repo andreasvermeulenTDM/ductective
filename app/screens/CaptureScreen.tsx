@@ -10,7 +10,10 @@ import { color, type, space, radius, MIN_TOUCH } from '../theme/tokens';
 import { fireHaptic } from '../components/Tactile';
 import { OfflineState, PermissionDenied } from '../components/Chrome';
 import { looksOffline } from '../lib/net';
-import { DiagnoseError, isLive, requestIdentifyUnit, requestResolveUnit } from '../lib/diagnose';
+import {
+  DiagnoseError, isLive, requestIdentifyUnit, requestResolveUnit, requestSuggestUnits,
+} from '../lib/diagnose';
+import { SUGGEST_DEBOUNCE_MS, worthSuggesting, type UnitSuggestion } from '../lib/suggest';
 import {
   base64Bytes,
   confirmedUnitFrom,
@@ -106,6 +109,58 @@ function ConfirmEntrance({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * The type-ahead list under the manual-entry field (ST-F11 / F3).
+ *
+ * Three states, and the quiet one is the point:
+ *
+ *  - **rows** — what the live corpus can answer on for what has been typed. Each
+ *    row renders `label` exactly as the server sent it. Nothing is composed from
+ *    `manufacturer` and `family` here, because a display string assembled in the
+ *    app is a second place the corpus gets described and the two drift.
+ *  - **in flight, nothing to show yet** — one muted line. It says a lookup is
+ *    happening; it does not say a match is coming, because often there is none.
+ *    Once rows are on screen they stay put through the next lookup rather than
+ *    blinking out, so a list does not flicker under a finger about to tap it.
+ *  - **nothing** — and this is the honest half of the story. No suggestions, an
+ *    unreachable server, no server at all: all three render *nothing*. Not an
+ *    error, not a retry, not "no matches found". A suggestion is a promise the
+ *    corpus can answer, so the absence of one is not a failure the technician can
+ *    act on — and free typing, which never needed this route, still works.
+ */
+function SuggestionList({
+  suggestions,
+  loading,
+  onChoose,
+}: {
+  suggestions: UnitSuggestion[];
+  loading: boolean;
+  onChoose: (s: UnitSuggestion) => void;
+}) {
+  if (suggestions.length === 0) {
+    return loading ? <Text style={s.suggestHint}>Looking for units I hold manuals for…</Text> : null;
+  }
+
+  return (
+    <View style={s.suggestList}>
+      {/* Same voice as the confirmation screen's I'LL ANSWER FROM, and the same
+          claim: these rows exist because the documents behind them do. */}
+      <Text style={s.overline}>I HAVE MANUALS FOR</Text>
+      {suggestions.map((suggestion) => (
+        <Pressable
+          key={`${suggestion.manufacturer}|${suggestion.family}`}
+          onPress={() => onChoose(suggestion)}
+          style={({ pressed }) => [s.suggestion, pressed && s.suggestionPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Use ${suggestion.manufacturer} ${suggestion.family}`}
+        >
+          <Text style={s.suggestionText}>{suggestion.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function CancelBar({ onCancel }: { onCancel: () => void }) {
   return (
     <View style={s.cancelBar}>
@@ -180,6 +235,89 @@ export function CaptureScreen({
     } finally {
       setResolving(false);
     }
+  }
+
+  /* ---------------------------------------------------------------------- *
+   * Type-ahead (ST-F11 / F3)
+   * ---------------------------------------------------------------------- */
+
+  /** The live corpus's answer for what is typed so far. `[]` means show nothing. */
+  const [suggestions, setSuggestions] = useState<UnitSuggestion[]>([]);
+  /** A lookup is in flight. Never an error state — see the effect below. */
+  const [suggesting, setSuggesting] = useState(false);
+
+  /**
+   * Ask `/suggest-units` what the corpus has, debounced, aborting the previous ask.
+   *
+   * Three rules from the story shape this, and none of them is optional:
+   *
+   *  1. **A suggestion is a coverage claim.** So the list comes from the server,
+   *     which derives it from the live `documents` table — never from a literal
+   *     here, which would go stale the day a manual is added or withdrawn.
+   *  2. **A failure renders nothing.** `requestSuggestUnits` resolves to `[]` for
+   *     every failure there is — no server configured, unreachable, non-200,
+   *     malformed, timed out, or aborted by the next keystroke — and there is
+   *     deliberately no way to tell those from "nothing matched"
+   *     (03-backend-fixes.md §2.4). A dead server therefore degrades to plain
+   *     typing, which is what this field always was.
+   *  3. **The constants are the module's**, not new literals here: the 3-character
+   *     floor is `worthSuggesting`, mirroring `units.mjs`'s MIN_PREFIX, and the
+   *     debounce is `SUGGEST_DEBOUNCE_MS`.
+   *
+   * The abort is the pattern already used for `/identify-unit` above. Because an
+   * abort resolves `[]` rather than throwing, the only thing the cleanup has to
+   * prevent is a stale response overwriting a newer one — hence the signal check
+   * before either setState, which also covers the unmount case.
+   */
+  useEffect(() => {
+    if (state !== 'manual') return;
+    const query = model.trim();
+    if (!worthSuggesting(query)) {
+      setSuggestions([]);
+      setSuggesting(false);
+      return;
+    }
+    setSuggesting(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void requestSuggestUnits(query, controller.signal).then((rows) => {
+        if (controller.signal.aborted) return;
+        setSuggestions(rows);
+        setSuggesting(false);
+      });
+    }, SUGGEST_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [model, state]);
+
+  /**
+   * Take a suggestion as the unit — with the server's own scope, unaltered.
+   *
+   * `documentIds` goes through verbatim. Re-running `/resolve-unit` on the label
+   * would be a *second* derivation of "what this unit is covered by", and two
+   * derivations are two answers waiting to disagree; the backend already returns
+   * `classifyUnit`'s own array, so tapping a row and typing the same text by hand
+   * scope retrieval identically.
+   *
+   * `status: 'covered'` is not a client-side coverage claim. A row only exists
+   * because `suggestUnits` found the corpus can answer on it — ST-F10 AC 2 asserts
+   * exactly that over the whole live manifest — so the alternative, leaving it
+   * null, would make the next screen say "coverage not checked" about a unit the
+   * app had just offered as covered. `coverage` is the family string as sent, for
+   * the same reason: it is the manifest's own words, not a sentence composed here.
+   */
+  function chooseSuggestion(suggestion: UnitSuggestion) {
+    if (resolving) return;
+    setModel(suggestion.label);
+    setSuggestions([]);
+    onDone({
+      equipment: suggestion.label,
+      documentIds: suggestion.documentIds,
+      status: 'covered',
+      coverage: [suggestion.family],
+    });
   }
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -399,8 +537,11 @@ export function CaptureScreen({
   }
 
   if (state === 'manual') {
+    // `keyboardShouldPersistTaps` is what makes a suggestion tappable on the first
+    // tap: without it the tap is consumed dismissing the keyboard, and a technician
+    // in gloves reads that as the list not working.
     return (
-      <ScrollView style={s.fill} contentContainerStyle={s.confirm}>
+      <ScrollView style={s.fill} contentContainerStyle={s.confirm} keyboardShouldPersistTaps="handled">
         <CancelBar onCancel={onCancel} />
         <Text style={s.overline}>TYPE THE MODEL</Text>
         <Text style={s.hint}>
@@ -417,6 +558,12 @@ export function CaptureScreen({
           autoCapitalize="characters"
           autoCorrect={false}
           accessibilityLabel="Unit model number"
+        />
+
+        <SuggestionList
+          suggestions={suggestions}
+          loading={suggesting}
+          onChoose={chooseSuggestion}
         />
 
         <View style={s.actions}>
@@ -728,6 +875,32 @@ const s = StyleSheet.create({
     borderColor: color.border,
     paddingHorizontal: space.lg,
   },
+
+  /**
+   * The type-ahead. Rows are `MIN_TOUCH` tall with a hairline between them rather
+   * than a card each: eight cards under the field would out-weigh the field, and
+   * the list is scanned, not read. Colour roles are `surface`, `border`,
+   * `textPrimary` and `textSecondary` — all four already measured in
+   * `tests/lib/contrastMatrix.mjs`, so no new pairing is introduced.
+   */
+  suggestList: {
+    gap: space.xs,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surface,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+  },
+  suggestion: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    paddingHorizontal: space.sm,
+    borderRadius: radius.sm,
+  },
+  suggestionPressed: { backgroundColor: color.surfaceRaised },
+  suggestionText: { ...type.bodyStrong, color: color.textPrimary },
+  suggestHint: { ...type.caption, color: color.textSecondary },
 
   errorCard: {
     gap: space.md,

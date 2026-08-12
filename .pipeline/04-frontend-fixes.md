@@ -536,3 +536,405 @@ scene nobody complained about is unrequested change:
   to answer; the ratios print on every run either way. Note that the lift moved
   three `borderStrong` pairings down (§3), so if 1.4.11 is ever adopted, that is
   where it will bite first.
+
+---
+---
+
+# 04 — Frontend · Device-feedback fixes, **Wave 2** (F2, F3)
+
+Appended, not a rewrite: everything above is Wave 1 and stands. This section is
+**§W2** and covers the two stories Wave 1 explicitly left (see §8 rows 2 and 3).
+
+Reads `.pipeline/00-brief-fixes.md`, `.pipeline/02-user-stories-fixes.md` (§2.2 and
+§2.4 for the design reasoning, §3 for the decisions already taken),
+`.pipeline/03-backend-fixes.md` (§2 for the contracts, §7 for the handoff),
+`app/AGENTS.md` and `CLAUDE.md`.
+Branch `stage/frontend-fixes-wave2`, cut from `main` at `b160ee5`.
+
+**Scope taken:** **ST-F07** (render a conversational turn) and **ST-F11**
+(type-ahead in unit entry). Nothing else. `lib/`, `sql/`, `scripts/serve.mjs` and
+`app/theme/tokens.ts` are byte-unchanged on this branch.
+
+## Contents
+
+- [W2.1 Precondition check](#w21-precondition-check)
+- [W2.2 ST-F07 — what landed, and why it looks like that](#w22-st-f07--what-landed-and-why-it-looks-like-that)
+- [W2.3 ST-F11 — what landed, and the three rules that shaped it](#w23-st-f11--what-landed-and-the-three-rules-that-shaped-it)
+- [W2.4 How to verify each acceptance criterion](#w24-how-to-verify-each-acceptance-criterion)
+- [W2.5 Gate status — lint, build, test, honestly](#w25-gate-status--lint-build-test-honestly)
+- [W2.6 What I could not verify, and why](#w26-what-i-could-not-verify-and-why)
+- [W2.7 Accessibility and responsiveness — what applied](#w27-accessibility-and-responsiveness--what-applied)
+- [W2.8 Instrument defect found — reported, not absorbed](#w28-instrument-defect-found--reported-not-absorbed)
+- [W2.9 CONTRACT MISMATCH / BLOCKED ON BACKEND](#w29-contract-mismatch--blocked-on-backend)
+- [W2.10 OPEN QUESTIONs, with the default taken](#w210-open-questions-with-the-default-taken)
+
+---
+
+## W2.1 Precondition check
+
+Checked before writing a line, because both stories are the UI half of something
+that already shipped and the failure mode is reimplementing it.
+
+| Requirement | State |
+|---|---|
+| `03-backend-fixes.md` committed | yes, in the tree at `b160ee5` |
+| `lib/conversation.mjs` present | yes — `classifyConversational` + `CONVERSATIONAL_BODIES` |
+| `conversational` wired into `diagnose()` | yes — after the hazard gate, before the unit gate |
+| `sql/015_conversational_kind.sql` present | yes (application state: see W2.9) |
+| `MessageKind` / `DiagnoseReply['kind']` carry `'conversational'` | yes — `app/lib/supabase.ts:70`, `app/lib/diagnose.ts:46` |
+| `app/lib/suggest.ts` present and complete | yes — `postSuggestUnits`, `worthSuggesting`, `parseSuggestResponse`, `MIN_QUERY_CHARS`, `SUGGEST_DEBOUNCE_MS`, `SUGGEST_TIMEOUT_MS`, `UnitSuggestion` |
+| `requestSuggestUnits` present | yes — `app/lib/diagnose.ts:308` |
+| `POST /suggest-units` live on `scripts/serve.mjs` | route present at `serve.mjs:204,253`, under the bearer gate |
+| Wave 1 frontend merged | yes — dismissible notice, page preview, palette lift, density cut all present |
+
+Stage 3 has merged. No backend was reimplemented and no backend file was edited.
+
+---
+
+## W2.2 ST-F07 — what landed, and why it looks like that
+
+**The defect.** `Message.tsx` dispatched `user`, `refusal`, `clarify` and fell
+through to the answer path for everything else, so a `conversational` reply — the
+one assistant kind that is citation-free *by design* — landed in the component
+whose entire job is carrying citations, and came out the other side as
+`UncitedDefect`. Correct as a fail-safe, wrong as an answer: the technician says
+"that worked" and the app shows them a red-labelled defect card.
+
+**The change** (`app/components/Message.tsx`):
+
+```
+  if (kind === 'clarify')        return <ClarifyTurn body={body} />;
+  if (kind === 'conversational') return <ConversationalTurn body={body} />;   ← new
+
+  if (citations.length === 0)    return <UncitedDefect body={body} />;        ← net, unmoved
+```
+
+One line of dispatch and one component. The ordering is the whole story and is
+asserted, not commented: `conversational` is handled **above** the empty-citations
+check so the reply renders, and the check is left **below** it, unguarded by
+anything about the kind, so every *other* kind arriving without a citation still
+renders as a visible defect. `app/components/messageUi.test.mjs` pins that as an
+ordering over three landmarks in the dispatcher, so a refactor that hoists the
+check or drops the branch fails rather than being noticed a round later.
+
+**Why the turn looks the way it does.** It is the lightest thing the component
+draws: a muted `NOT A DIAGNOSIS` overline and the server's own sentence. No card,
+no border, no fill.
+
+- Not an **answer**: no `CHECK IN THIS ORDER`, no numbered steps, no citation chip
+  row, no advise-only footer, and — deliberately — **no empty-citation
+  affordance**. A "no sources" placeholder would imply sources were expected.
+- Not a **refusal**: no `color.refusal*` anything, no `accessibilityRole="alert"`.
+  Red in this app means stop, and it stays loud by being rare.
+- Not a **clarification**: no cyan ring or wash. `ClarifyTurn` is ringed because a
+  question waiting on the technician has to be findable after scrolling; nothing
+  here is owed an answer.
+
+The label is the one thing **added** rather than removed, and it earns its place:
+without it the only signal that the turn carries no claim is the *absence* of
+citations, and an absence is not something a technician reads at arm's length on a
+roof. The wording was also checked against `tests/suites/e5-safety.mjs`'s
+`BYPASS_PATTERNS` — new copy on an assistant turn is exactly where one of those
+could appear by accident.
+
+**Colour roles:** `textSecondary` on `background` (label) and `textPrimary` on
+`background` (body). Both pairings are already in `tests/lib/contrastMatrix.mjs`
+and measure 6.58:1 and 15.83:1. **No new colour role, so no new pairing to
+measure**, and the matrix stays at 30 text pairings, all green.
+
+**Three things I did not build, because they already hold** (03-backend §7, and I
+re-checked each rather than taking it on trust — they are asserted in the new test
+file so they cannot quietly stop holding):
+
+1. `ChatScreen`'s `unanswered` retry derives from *the last message being a user
+   turn*. A conversational reply is appended after it, so the retry state is
+   unreachable — no kind filter needed, and a kind filter would be a list to
+   forget one from.
+2. `listSessions`' derived counters key `refused` off `kind === 'refusal'` and
+   `citationCount` off actual citation rows. A conversational turn is neither.
+3. `store.ts` passes the wire kind verbatim and needed no change. It got none.
+
+---
+
+## W2.3 ST-F11 — what landed, and the three rules that shaped it
+
+`app/lib/suggest.ts` was complete, tested and had **no caller**. It has one now:
+the manual-entry branch of `app/screens/CaptureScreen.tsx`.
+
+**The data path.** A debounced effect keyed on `[model, state]` calls
+`requestSuggestUnits(query, signal)` — the client that already exists. No second
+fetch was written, and `lib/units.mjs` is not imported into the app; both are
+`03-backend-fixes.md` §7's instructions and either would create the second
+definition of "covered" that OQ-F3 exists to prevent. The constants are the
+module's own: `worthSuggesting` for the 3-character floor and
+`SUGGEST_DEBOUNCE_MS` for the debounce. A test fails the build if a numeric
+debounce or length literal reappears in the file.
+
+**Three rules governed every decision here, and all three are the same rule: a
+suggestion is a coverage claim.**
+
+1. **Never suggest what the corpus cannot answer on.** The list is the server's,
+   derived from the live `documents` table. Nothing is filtered, re-ranked,
+   re-labelled or padded on the client. `label` renders exactly as sent — the app
+   never composes a display string from `manufacturer` and `family`, because that
+   would be a second place the corpus is described and the two would drift.
+2. **A tapped suggestion produces the same scope as typing the text by hand.**
+   `documentIds` goes into `onDone` **verbatim** — no `/resolve-unit` round trip to
+   "confirm" it, no slice, no filter. The backend returns `classifyUnit`'s own
+   array, so tap and type scope retrieval identically.
+3. **Nothing reassuring where there is nothing.** No suggestions, an unreachable
+   server, a non-200, a malformed body, a timeout, or `isLive === false` — all six
+   render **nothing at all**. Not an error card, not a retry, not "no matches
+   found". `requestSuggestUnits` resolves `[]` for every failure there is and gives
+   the client no way to tell them apart, on purpose; there is nothing here a
+   technician can act on. A dead server degrades to plain typing, which is what
+   this field always was.
+
+**States.** Rows (the list, with an `I HAVE MANUALS FOR` overline in the same voice
+as the confirmation screen's `I'LL ANSWER FROM`); in-flight with nothing yet (one
+muted caption — it says a lookup is happening, it does not say a match is coming,
+and a test asserts that wording says neither "found" nor "matches" nor "results");
+and nothing. Rows already on screen **stay put** through the next lookup rather
+than blinking out, so the list does not flicker under a finger about to tap it.
+
+**`status: 'covered'` on the chosen unit is not a client-side coverage claim.** A
+row only exists because `suggestUnits` found the corpus can answer on it — ST-F10
+AC 2 asserts exactly that against the whole live manifest — so passing `null`
+instead would make the next screen say "coverage not checked" about a unit the app
+had just offered as covered. `coverage` is `[suggestion.family]`, the manifest's
+own words as sent.
+
+**Untouched on purpose:** the confirm button's `disabled` is still
+`!model.trim() || resolving` and depends on nothing about suggestions; the
+`TextInput` is unchanged; `confirmTyped` is unchanged. Free typing worked before
+this route existed and still does.
+
+**Colour roles:** `surface`, `surfaceRaised` (pressed), `border`, `textPrimary`,
+`textSecondary` — every one already measured. No new pairing, no new hex.
+
+**Density.** `tests/lib/densityScenes.mjs` measures `UnitGate` and the `ChatScreen`
+empty state; `CaptureScreen`'s manual branch is not a scene, and neither screen was
+touched. `node tests/density-baseline.mjs` prints the same numbers as before this
+branch (gate 9/12/93/8 at t=0, 9/11/93/8 at t=6s, chat 13/17/89/17) and
+`tests/lib/density.test.mjs` passes against the committed fixture unmodified.
+**The Wave 1 density cut is not regressed and no baseline number was changed.**
+
+---
+
+## W2.4 How to verify each acceptance criterion
+
+Run `npm test` for all of it; the per-criterion route is below.
+
+### ST-F07
+
+| AC | how | state |
+|---|---|---|
+| 1 — explicit branch before the empty-citations check | `node --test app/components/messageUi.test.mjs` — "AC 1" and "AC 4: the fail-safe … is an ordering" | pass |
+| 2 — no chip row, no `CHECK IN THIS ORDER`, no step numbering | same file, "AC 2" ×2. Also asserts no advise-only footer and no empty-citation placeholder | pass |
+| 3 — visually distinct from a refusal | same file, "AC 3" ×5 — no `color.refusal*` in the component or either style rule, no alert role, no cyan ring, no hex, nothing tappable, and the copy clears `BYPASS_PATTERNS` | pass |
+| 4 — the `UncitedDefect` net is asserted, not assumed | same file, "AC 4" ×2, including the all-broken strict reading | pass |
+| 5 — `unanswered` does not treat it as unanswered | same file, "AC 5" ×2 — the derivation still keys on a trailing user turn and has grown no kind list | pass |
+| 6 — history counters ignore it | same file, "AC 6" ×2 over `store.ts` | pass |
+| 7 — on device, short plain reply in under a second | **[H]** — not verifiable here, see W2.6 | open |
+
+### ST-F11
+
+| AC | how | state |
+|---|---|---|
+| 1 — list under the field, from `/suggest-units` | `node --test app/screens/captureUi.test.mjs` — "AC 1" ×2, including no second `fetch(` and no `lib/units.mjs` import | pass |
+| 2 — debounced, in-flight request aborted | same file, "AC 2" ×2 — exported constants only, `AbortController`, `clearTimeout`, and a signal check so a stale response cannot overwrite a newer one | pass |
+| 3 — selection sets the input and carries `documentIds` verbatim | same file, "AC 3" ×3, including that the typed path is unchanged | pass |
+| 4 — ≥ 48dp rows with a label naming manufacturer and family | same file, "AC 4" ×3, including `keyboardShouldPersistTaps` so the first tap is not eaten | pass |
+| 5 — free typing never blocked | same file, "AC 5" ×2 — the confirm `disabled` prop is pinned by exact string | pass |
+| 6 — a failed lookup renders nothing | same file, "AC 6" ×3 — no catch, no error state, no retry, no reassuring empty copy, and the in-flight line promises only a lookup | pass |
+| 7 — no invented suggestion text | same file, "AC 7" ×2 — all 14 corpus manufacturers grepped out of the screen (the pre-existing field placeholder is the one named, pinned exemption), and the row draws `{suggestion.label}` and nothing else | pass |
+| 8 — on device, `48` → `48L` → `48LC` narrows; readable at 200% | **[H]** — not verifiable here, see W2.6 | open |
+
+### Brief acceptance criteria
+
+- **AC 2** (F2) — the frontend half is done: a conversational reply now renders as
+  conversation carrying no citation and no claim. The wire proof is ST-F08 (Test).
+- **AC 3** (F3) — typing a partial manufacturer or model now surfaces the live
+  corpus's own suggestions. The truthfulness standing check is ST-F12 (Test).
+- **AC 6** — see W2.5.
+
+---
+
+## W2.5 Gate status — lint, build, test, honestly
+
+Run from the worktree root at `8ab382c`.
+
+| command | before this branch (`b160ee5`) | after | note |
+|---|---|---|---|
+| `npm run lint` | exit 0 — **0 errors, 0 warnings** | exit 0 — **0 errors, 0 warnings** | three `no-regex-spaces` errors I introduced in my own new test file were fixed before commit; none shipped |
+| `npm run build` (`tsc --noEmit`) | exit 0, clean | exit 0, clean | see the environment note below |
+| `npm test` | **598 tests, 597 pass, 1 fail** | **631 tests, 630 pass, 1 fail** | +33 tests, all mine (15 + 18). The single failure is the same one, unchanged and not mine |
+
+**The one failing test, named plainly.** `ingest/reconcile.scope.test.mjs` fails at
+import with `ENOENT: scandir 'HVAC Data'`. That directory is the owner's gitignored
+local corpus and does not exist in a worktree, so `reconcile()` throws before any
+assertion runs. It fails identically on `b160ee5` with none of my changes applied,
+and it is the reason the count here is 598/631 rather than the **603** quoted in my
+assignment: the tests inside that file never register when the import throws.
+I did not touch it, did not skip it, and did not weaken anything to move the
+number.
+
+**Environment note, because it affects reproducing the build result.** The worktree
+shipped with **no `node_modules`**, so `tsc` resolved `expo/tsconfig.base` out of
+the parent checkout, lost `jsx` and `lib`, and reported **911 errors in app source
+that do not exist** — plus 12 in `@supabase/*` type files. I ran
+`npm install` in `app/` (no `package.json` or lockfile change — verify with
+`git status`) and the build is clean, before and after my changes. Anyone
+re-running `npm run build` in a fresh worktree must install first or they will be
+reading an artifact of the environment.
+
+No new lint or build warning was introduced. Baseline warnings: 0 before, 0 after.
+
+---
+
+## W2.6 What I could not verify, and why
+
+Said plainly rather than implied.
+
+- **I did not see either screen.** This worktree has no `.env`, no device, no
+  simulator and no browser I can drive. Nothing in this section should be read as
+  visual confirmation.
+- **`npx expo export --platform web` succeeds** on this branch (1.56 MB web
+  bundle). That proves the tree **bundles** with both changes in it — it is not
+  visual verification and is not offered as any. The export directory was deleted
+  and is not committed.
+- **There is no component or E2E test runner in this repo** — no React Testing
+  Library, no react-test-renderer, no jest, no Playwright — and this run did not
+  add one. So the changed views were **not rendered through a runner**, because
+  there is none to render them through. Both new test files say so in their header,
+  as `accountUi.test.mjs` and `citationUi.test.mjs` already do. The structural
+  criteria are asserted by reading source; the criteria that need a rendered tree
+  (ST-F07 AC 7, ST-F11 AC 8) stay **[H]** rather than being dressed up as passing.
+- **No live `/suggest-units` call was made from the app.** The wire contract is
+  covered by `app/lib/suggest.test.mjs`, which shipped in Wave 1 and passes; the
+  route itself was exercised by Backend against a running server
+  (`03-backend-fixes.md` §2.4 shows the live response).
+- **The conversational path was not exercised end-to-end.** That is ST-F08's job
+  and it needs a running server with a key.
+
+---
+
+## W2.7 Accessibility and responsiveness — what applied
+
+The bar the existing screens set, and which of it bit here:
+
+| rule | applied |
+|---|---|
+| **48dp touch targets** (`MIN_TOUCH`, E6.7) | yes — every suggestion row is `minHeight: MIN_TOUCH`, asserted. ST-F07 adds no control at all |
+| **Accessibility labels on every control** | yes — each row is `accessibilityRole="button"` with a label naming manufacturer and family, so a screen reader announces the unit rather than "button". Asserted |
+| **Focus / press feedback visible** | yes — `suggestionPressed` fills with `surfaceRaised`, the same pressed language as the history rows |
+| **First tap must land** | `keyboardShouldPersistTaps="handled"` on the manual-entry ScrollView. Without it the tap that arrives while the keyboard is up only dismisses it, and the list reads as broken — a gloves-on-a-roof failure, not a nicety |
+| **Text contrast ≥ 4.5:1 on every surface drawn on** | yes, and by construction: both changes use only roles the matrix already measures. 30 text pairings, all green, unchanged |
+| **200% font scale / small-device overflow** | the suggestion list sits inside the existing `ScrollView` that `CaptureScreen.tsx` grew specifically for this (the 667dp overflow documented at its `viewfinder` style), so eight rows push the confirm button down but never off an unreachable screen. **Whether it is comfortable at 200% is ST-F11 AC 8 and stays [H]** |
+| **No alert role on a calm reply** | yes — the refusal and defect cards keep `accessibilityRole="alert"`; the conversational turn deliberately has none |
+
+Nothing here required a new breakpoint; both changes live inside layouts that
+already handle phone and tablet.
+
+---
+
+## W2.8 Instrument defect found — reported, not absorbed
+
+**`tests/suites/e5-safety.mjs`'s "no bypass affordance" check has been passing
+vacuously.** Its local `functionBody` (`:34`) counts braces only, so on
+
+```
+function RefusalCard({ body }: { body: string }) {
+```
+
+it closes on the **parameter list** and returns 29 characters:
+`"function RefusalCard({ body }"`. Every one of the check's `filter` patterns —
+`Pressable`, `onPress`, `TouchableOpacity`, `Button`, collapse/expand/toggle — then
+finds nothing in those 29 characters and the check reports **pass without reading
+the component**. Reproduce:
+
+```
+node -e "const s=require('fs').readFileSync('app/components/Message.tsx','utf8');
+function fb(x,n){const a=x.indexOf('function '+n);let d=0,s0=false;
+for(let i=a;i<x.length;i++){if(x[i]==='{'){d++;s0=true}else if(x[i]==='}'){d--;
+if(s0&&d===0)return x.slice(a,i+1)}}}; console.log(JSON.stringify(fb(s,'RefusalCard')))"
+```
+
+**Owner: Test.** The fix is already written elsewhere in the tree —
+`tests/lib/density.mjs`'s `functionBody` matches the parameter list properly and
+its comment records this exact lesson ("opened a 'body' 39 characters long"). It
+needs `normalizeApostrophes` alongside it, because `RefusalCard` contains
+`I WON'T GUIDE THIS` and a string-tracking walker treats that apostrophe as an
+opening quote.
+
+**I did not edit that suite** — it is Stage 5's file and its ACs are theirs. What I
+did instead, in my own file: `app/components/messageUi.test.mjs` now asserts the
+same property with a walker that reads the whole card, so the guarantee is covered
+from today rather than after the fix lands. The check passes: `RefusalCard` has no
+interactive affordance, which was true all along — it simply was not being checked.
+
+**Also fixed here, mechanically:** `tests/lib/contrastMatrix.mjs`'s `at` citations
+for `Message.tsx` (245→284, 261→300, 266→305, 308→353, 324→369) and
+`CaptureScreen.tsx` (668→815) follow the edits. The matrix asserts each cited line
+really draws that role, so these are maintenance of the evidence, not a change to
+what is measured: the same 30 text pairings, the same 11 non-text pairings, the
+same values.
+
+---
+
+## W2.9 CONTRACT MISMATCH / BLOCKED ON BACKEND
+
+**No CONTRACT MISMATCH.** Both contracts in `03-backend-fixes.md` §2 matched the
+tree exactly and no adapter was needed or written:
+
+- §2.1 — `kind: 'conversational'`, `citations: []`, `meta.model: null`. The type
+  already carried the kind; `store.ts` already passed it through.
+- §2.4 — `{suggestions: [{manufacturer, family, documentIds, label, matchedOn}]}`,
+  empty is a 200 with `[]`, `label` rendered as sent, `documentIds` passed verbatim.
+  `requestSuggestUnits` and the parser were consumed as documented; I read
+  neither `lib/units.mjs` nor `scripts/serve.mjs` for behaviour and edited neither.
+
+**BLOCKED ON BACKEND: nothing.** Both stories are complete.
+
+**Still open against the owner, restated because ST-F07 makes it reachable from
+the UI for the first time:** `sql/015_conversational_kind.sql` is written and
+committed but **not applied** (`03-backend-fixes.md` §3). Until the owner runs it,
+a **guest** gets the conversational reply and sees it rendered correctly — state
+only, nothing written — and a **signed-in** technician's first "thanks" fails the
+insert on `messages.kind`. My assignment stated the migration was applied; the
+backend artifact says it is not, and I could not check the live instance from here
+without a key. Nothing in this wave works around it, and nothing should: the fix is
+six lines of SQL, and a client-side workaround would be a second definition of
+which kinds may be persisted. **Flagged for Stage 5 to confirm against the live
+instance before scoring brief AC 2.**
+
+---
+
+## W2.10 OPEN QUESTIONs, with the default taken
+
+**OQ-FE5 — what does a tapped suggestion file the session under?**
+*Default taken: the server's `label` verbatim* — "Carrier — 48/50LC single package
+rooftop 4-6 ton" — as both the field value and `equipment`. The alternatives were
+keeping the technician's fragment ("48LC"), which files the job under something
+that will not mean anything in the history list next week, and composing
+`manufacturer + family` client-side, which the contract forbids for exactly the
+reason it forbids it. The cost is a longer session title than a typed
+"Trane YSC072E3". If the owner finds it unwieldy on device, the lever is a shorter
+server-authored field on the suggestion payload — a Backend change, not a client
+one, because the app must not start summarising the corpus.
+
+**OQ-FE6 — should tapping a suggestion confirm immediately, or only fill the
+field?** *Default taken: confirm immediately*, per ST-F11 AC 3 ("sets the input
+**and** calls `confirmTyped`'s path"). One tap rather than two matters in gloves,
+and a mis-tap is recoverable — the unit is changeable from the chat screen, and the
+field is left holding the label. If device testing shows mis-taps, the fallback is
+fill-only with an explicit confirm, which costs a tap on every correct selection to
+save one on a rare wrong one.
+
+**OQ-FE7 — the conversational label's wording.** *Default taken: `NOT A
+DIAGNOSIS`.* It is direct, it fits the register of the app's other overlines
+(`ONE THING FIRST`, `I WON'T GUIDE THIS`, `WITHHELD — NO SOURCE`), and it states
+the fact that makes the missing citations correct rather than defective. The risk
+is that it reads as a warning when the reply is meant to be calm; it is drawn in
+muted `textSecondary`, not red, specifically to keep it a caption rather than an
+alarm. Worth a look on device alongside ST-F20.
