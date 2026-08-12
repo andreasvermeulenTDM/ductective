@@ -46,7 +46,7 @@ export const TEXT_PAIRS = [
   { fg: 'textPrimary', on: ['background'], at: 'app/components/Chrome.tsx:569', what: 'session header unit' },
   { fg: 'textSecondary', on: ['background'], at: 'app/components/Chrome.tsx:570', what: 'session header symptom' },
   { fg: 'accent', on: ['background'], at: 'app/screens/AccountScreen.tsx:502', what: 'back link' },
-  { fg: 'refusalText', on: ['background'], at: 'app/components/Message.tsx:324', what: 'uncited-defect label' },
+  { fg: 'refusalText', on: ['background'], at: 'app/components/Message.tsx:369', what: 'uncited-defect label' },
 
   // --- on a card / sheet surface -----------------------------------------------
   { fg: 'textPrimary', on: ['surface'], at: 'app/components/Chrome.tsx:612', what: 'error card title' },
@@ -78,7 +78,7 @@ export const TEXT_PAIRS = [
     fg: 'textOnInteractive', on: ['pressed'], state: 'pressed',
     at: 'app/components/Chrome.tsx:690', what: 'primary button label, pressed',
   },
-  { fg: 'textOnInteractive', on: ['pressed'], at: 'app/components/Message.tsx:245', what: 'the technician’s own message bubble' },
+  { fg: 'textOnInteractive', on: ['pressed'], at: 'app/components/Message.tsx:284', what: 'the technician’s own message bubble' },
   {
     fg: 'textOnInteractive', on: ['border'], state: 'disabled',
     at: 'app/screens/ChatScreen.tsx:905', what: 'retry / send label while disabled',
@@ -86,7 +86,7 @@ export const TEXT_PAIRS = [
 
   // --- on the translucent accent wash, composited over its real backdrop -------
   { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:834', what: 'chosen-unit card' },
-  { fg: 'accent', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:266', what: 'step number' },
+  { fg: 'accent', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:305', what: 'step number' },
   { fg: 'refusalText', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:849', what: 'not-covered verdict' },
   { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:850', what: 'unknown-coverage verdict' },
   { fg: 'accent', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:498', what: 'source sheet icon glyph' },
@@ -119,10 +119,10 @@ export const NON_TEXT_PAIRS = [
   { fg: 'borderStrong', on: ['background'], at: 'app/components/Chrome.tsx:677', what: 'secondary button outline' },
   { fg: 'borderStrong', on: ['surface'], at: 'app/components/Citation.tsx:471', what: 'sheet grabber' },
   { fg: 'borderStrong', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:843', what: 'change-unit outline' },
-  { fg: 'accentBorder', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:261', what: 'step number ring' },
+  { fg: 'accentBorder', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:300', what: 'step number ring' },
   { fg: 'accentBorder', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:494', what: 'source icon ring' },
   { fg: 'refusalBorder', on: ['refusalSurface'], at: 'app/components/Chrome.tsx:645', what: 'guest disclosure outline' },
-  { fg: 'refusal', on: ['refusalSurface'], at: 'app/components/Message.tsx:308', what: 'refusal card outline' },
+  { fg: 'refusal', on: ['refusalSurface'], at: 'app/components/Message.tsx:353', what: 'refusal card outline' },
   { fg: 'accent', on: ['surfaceRaised'], at: 'app/components/Chrome.tsx:553', what: 'banner underline' },
   { fg: 'scrim', on: ['background'], at: 'app/components/Citation.tsx:457', what: 'modal scrim over the screen' },
 ];
