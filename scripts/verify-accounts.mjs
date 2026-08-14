@@ -379,6 +379,70 @@ if (!url || !anonKey || !serviceKey) {
               ? pass('AC 6 NEGATIVE: a member cannot add a membership (including promoting themselves)')
               : fail('AC 6 NEGATIVE: a member INSERTED a membership');
 
+            /*
+             * sql/017 — an OWNER cannot add somebody else either.
+             *
+             * The check above proves a *member* cannot write to `memberships`.
+             * It passed while the real hole was open, because the hole needed an
+             * owner: `memberships_insert_owner` constrained which company a row
+             * went into and never whose membership it was, so anyone could
+             * `create_company` and then add a stranger to it. That makes
+             * `is_co_member(victim)` true and hands the attacker a standing read
+             * of the victim's profile — surviving removal from the shop where
+             * they learned the uuid.
+             *
+             * B owns their own company here, so this is the exact attacker
+             * position, and A is the unconsenting subject.
+             */
+            const ownCompany = await B.client.rpc('create_company', { name: 'Subject Guard Co' });
+            if (ownCompany.error) {
+              fail(`sql/017: B could not create a company to test with: ${ownCompany.error.message}`);
+            } else {
+              const victimAdd = await B.client
+                .from('memberships')
+                .insert({ company_id: ownCompany.data, user_id: A.id, role: 'member' })
+                .select('id');
+              victimAdd.error || count(victimAdd) === 0
+                ? pass('sql/017 NEGATIVE: an owner cannot add a user who did not ask to join')
+                : fail('sql/017 NEGATIVE: an owner ADDED another user without consent');
+
+              // The same end by the other road: rewrite an existing row's subject.
+              const ownRow = await B.client
+                .from('memberships')
+                .select('id')
+                .eq('company_id', ownCompany.data)
+                .eq('user_id', B.id)
+                .single();
+              if (!ownRow.error) {
+                await B.client.from('memberships').update({ user_id: A.id }).eq('id', ownRow.data.id);
+                /*
+                 * Read the result back with SERVICE ROLE, not with B's client.
+                 * B's own select cannot answer this: a successful rewrite points
+                 * the row at A, which removes B from the company, which makes the
+                 * row invisible to B — so "0 rows" would look identical whether
+                 * the write was blocked or whether it worked perfectly. That is a
+                 * check that passes hardest exactly when it should fail.
+                 */
+                const actual = await admin
+                  .from('memberships').select('user_id').eq('id', ownRow.data.id).maybeSingle();
+                actual.data?.user_id === B.id
+                  ? pass("sql/017 NEGATIVE: an owner cannot rewrite a membership's subject")
+                  : fail(`sql/017 NEGATIVE: membership subject was rewritten to ${actual.data?.user_id ?? 'gone'}`);
+              }
+              /*
+               * No "role changes still work" check here on purpose. The first
+               * attempt demoted B — the *sole* owner of this throwaway company —
+               * which `guard_last_owner` correctly refuses, so it failed for a
+               * reason that had nothing to do with sql/017's column grant. The
+               * capability is already covered properly above, on A's company,
+               * where a second member exists: "ST-A08 AC 1: the owner removed B"
+               * and the two last-owner guard checks all exercise UPDATE on `role`.
+               * A second, weaker copy of an existing assertion is not coverage.
+               */
+
+              await admin.from('companies').delete().eq('id', ownCompany.data);
+            }
+
             // --- ST-A08 AC 3, the last-owner guard --------------------------
             const ownerMembership = await A.client
               .from('memberships')
