@@ -42,8 +42,23 @@ export function normalizeApostrophes(source) {
   return source.replace(/([A-Za-z])'([A-Za-z])/g, '$1’$2');
 }
 
-/** The body of `function name(…) { … }`, brace-balanced. */
-export function functionBody(source, name) {
+/**
+ * The body of `function name(…) { … }`, brace-balanced.
+ *
+ * **The one walker.** Four copies of this existed across the tree and one of them
+ * — in `tests/suites/e5-safety.mjs` — counted braces from the first `{` it met,
+ * which on a destructured React prop is the *parameter list*. It read 29
+ * characters and the safety check asserting "a refusal card is not dismissible"
+ * passed on nothing for as long as it existed. Every consumer now imports this.
+ *
+ * Apostrophes are normalised **here** rather than by each caller. The string
+ * tracking below is what stops a brace inside a literal fooling the walker, and
+ * the cost of that is a bare apostrophe in JSX text opening a string it never
+ * closes — `I WON'T GUIDE THIS` in `RefusalCard` did exactly that and threw
+ * `unbalanced body`. Doing it inside means no future caller has to know.
+ */
+export function functionBody(rawSource, name) {
+  const source = normalizeApostrophes(rawSource);
   const re = new RegExp(`function\\s+${name}\\s*[(<]`);
   const m = re.exec(source);
   if (!m) throw new Error(`no function ${name} in this source`);
@@ -71,6 +86,19 @@ export function functionBody(source, name) {
     }
   }
   throw new Error(`unbalanced body for ${name}`);
+}
+
+/**
+ * `functionBody` for callers that treat a missing component as a check failure
+ * rather than a crash — the UI suites say "the dispatcher is gone" with their own
+ * message, which is more useful than a stack trace.
+ */
+export function functionBodyOrNull(source, name) {
+  try {
+    return functionBody(source, name);
+  } catch {
+    return null;
+  }
 }
 
 /** The parenthesised expression starting at the '(' at `from`. */

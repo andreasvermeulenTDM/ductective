@@ -48,23 +48,7 @@ const BYPASS_PATTERNS = [
  * same class of bug biting once before ("following that one opened a body 39
  * characters long"). One walker, one place to fix it.
  */
-import { functionBody as readFunctionBody, normalizeApostrophes } from '../lib/density.mjs';
-
-const functionBody = (source, name) => {
-  /*
-   * Normalise first, and this is not optional. The walker tracks string literals
-   * so a brace inside a string cannot fool it — which means a *bare apostrophe*
-   * in JSX text opens a string it never closes. `RefusalCard` contains exactly
-   * that: `I WON'T GUIDE THIS`. Without this line the walker throws
-   * `unbalanced body` and the check below fails with "no RefusalCard to check" —
-   * loud, but still not the assertion anyone wanted.
-   */
-  try {
-    return readFunctionBody(normalizeApostrophes(source), name);
-  } catch {
-    return null;
-  }
-};
+import { functionBodyOrNull as functionBody } from '../lib/density.mjs';
 
 export default defineSuite({
   epic: 'E5',

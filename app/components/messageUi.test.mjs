@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { blankComments } from '../../tests/lib/jsx.mjs';
+import { functionBodyOrNull as functionBody } from '../../tests/lib/density.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // `core.autocrlf` is on, so the working tree is CRLF and a pattern anchored on a
@@ -34,33 +35,6 @@ const read = (rel) =>
 
 const SRC = read('Message.tsx');
 
-/**
- * The named function's source, braces balanced.
- *
- * Parenthesis depth is tracked as well as brace depth, and that is not
- * incidental: every component in this file destructures its props
- * (`function ConversationalTurn({ body }: { body: string })`), so a walker that
- * counts only braces closes on the parameter list and returns a two-line stub.
- * Every `doesNotMatch` assertion against that stub then passes without reading a
- * line of the component — a check that cannot fail. See the cross-stage note in
- * `.pipeline/04-frontend-fixes.md` §W2.
- */
-function functionBody(source, name) {
-  const start = source.indexOf(`function ${name}`);
-  if (start === -1) return null;
-  let paren = 0;
-  let depth = 0;
-  let started = false;
-  for (let i = start; i < source.length; i++) {
-    const ch = source[i];
-    if (ch === '(') paren++;
-    else if (ch === ')') paren--;
-    else if (paren > 0) continue;
-    else if (ch === '{') { depth++; started = true; }
-    else if (ch === '}') { depth--; if (started && depth === 0) return source.slice(start, i + 1); }
-  }
-  return source.slice(start);
-}
 
 /** A named entry of the StyleSheet at the foot of the file, braces balanced. */
 function styleRule(source, name) {
@@ -98,13 +72,32 @@ test('AC 4: the fail-safe behind it is an ordering, not a hope', () => {
   const dispatch = functionBody(SRC, 'Message');
   assert.ok(dispatch, 'the Message dispatcher is gone');
 
-  const conversational = dispatch.indexOf("kind === 'conversational'");
-  const emptyCheck = dispatch.indexOf('citations.length === 0');
-  const defect = dispatch.indexOf('<UncitedDefect');
-  const answer = dispatch.indexOf('<AnswerTurn');
+  /*
+   * Each landmark must be FOUND before its position means anything.
+   *
+   * `indexOf` returns -1 when absent, and -1 is less than every real index — so
+   * `conversational < emptyCheck` passed when the conversational branch was
+   * **deleted outright**. A mutation test caught it: removing the branch left all
+   * fifteen checks green. An ordering assertion that a deletion satisfies is not
+   * an ordering assertion, and this file's own comment claims it pins three
+   * landmarks "so a future refactor cannot quietly remove it" — which was exactly
+   * what it could not do.
+   */
+  const at = (needle, what) => {
+    const i = dispatch.indexOf(needle);
+    assert.notEqual(i, -1, `${what} is gone from the dispatcher — not moved, missing`);
+    return i;
+  };
+
+  const conversational = at("kind === 'conversational'", 'the conversational branch');
+  const emptyCheck = at('citations.length === 0', 'the empty-citations check');
+  const defect = at('<UncitedDefect', 'the uncited-defect render');
+  const answer = at('<AnswerTurn', 'the answer render');
 
   assert.ok(conversational < emptyCheck, 'conversational must be handled before the empty-citations check');
-  assert.ok(emptyCheck < defect || defect > 0, 'the empty-citations check no longer reaches UncitedDefect');
+  // Was `emptyCheck < defect || defect > 0`, where the second clause passed
+  // whenever UncitedDefect appeared anywhere at all, order be damned.
+  assert.ok(emptyCheck < defect, 'the empty-citations check no longer reaches UncitedDefect');
   assert.ok(emptyCheck < answer, 'an answer can now be rendered without passing the empty-citations check');
   // And the check itself is unguarded by anything about the kind: it applies to
   // every kind that reaches it, which is what makes it a net rather than a case.

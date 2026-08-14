@@ -204,7 +204,6 @@ export function CompanyScreen({
   company,
   role,
   membershipId,
-  membershipIdByUser,
   myUserId,
   onBack,
   onChanged,
@@ -213,13 +212,6 @@ export function CompanyScreen({
   /** Your role. Drives what is *rendered*, never what is *permitted*. */
   role: CompanyRole;
   membershipId: string;
-  /**
-   * `user_id → membership id` for this company, from `accountsAdapter`.
-   * CM-3: `public.company_roster` cannot supply it and the mutations are keyed
-   * by it. A user missing from this map gets no controls rather than a control
-   * that cannot work.
-   */
-  membershipIdByUser: Record<string, string>;
   myUserId: string;
   onBack: () => void;
   /** Membership changed under us — the hub reloads and may drop this screen. */
@@ -352,7 +344,11 @@ export function CompanyScreen({
               isMe={entry.user_id === myUserId}
               // Cosmetic only. ST-A08's policies are the enforcement.
               canManage={isOwner && entry.user_id !== myUserId}
-              membershipId={membershipIdByUser[entry.user_id] ?? null}
+              // From the roster row itself. `company_roster` exposes
+              // `membership_id` since the CM-3 fix, so the id arrives with the
+              // person it belongs to rather than through a second read of
+              // `memberships` threaded down as a prop.
+              membershipId={entry.membership_id}
               busy={busy}
               onRemove={(mid) => confirmRemove(entry, mid)}
               onRole={(mid, next) => run(`role-${mid}`, () => setMemberRole(mid, next))}
@@ -429,7 +425,14 @@ function RosterRow({
   entry: RosterEntry;
   isMe: boolean;
   canManage: boolean;
-  /** CM-3 — supplied by `accountsAdapter`, null when it could not be resolved. */
+  /**
+   * The roster row's own key, straight from `company_roster.membership_id`.
+   *
+   * Nullable no longer means "the adapter could not resolve it" — the view
+   * supplies it with the person, so a row either exists or is not rendered. The
+   * type stays nullable because `RosterRow` renders controls only when it has an
+   * id, and that guard is cheap insurance rather than dead code.
+   */
   membershipId: string | null;
   busy: string | null;
   onRemove: (membershipId: string) => void;

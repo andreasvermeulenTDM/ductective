@@ -45,7 +45,7 @@ export const TEXT_PAIRS = [
   // --- on the screen background ------------------------------------------------
   { fg: 'textPrimary', on: ['background'], at: 'app/components/Chrome.tsx:569', what: 'session header unit' },
   { fg: 'textSecondary', on: ['background'], at: 'app/components/Chrome.tsx:570', what: 'session header symptom' },
-  { fg: 'accent', on: ['background'], at: 'app/screens/AccountScreen.tsx:502', what: 'back link' },
+  { fg: 'accent', on: ['background'], at: 'app/screens/AccountScreen.tsx:511', what: 'back link' },
   { fg: 'refusalText', on: ['background'], at: 'app/components/Message.tsx:369', what: 'uncited-defect label' },
 
   // --- on a card / sheet surface -----------------------------------------------

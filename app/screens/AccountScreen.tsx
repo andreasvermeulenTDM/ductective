@@ -43,9 +43,22 @@ import { Button, Field, Section } from '../components/Form';
 import { ErrorState, InlineNotice } from '../components/Chrome';
 import { HistorySkeleton } from '../components/Skeleton';
 import { ScalePressable } from '../components/Tactile';
-import { AccountFailure, deleteMyAccount, setActiveCompany, updateMyProfile } from '../lib/accounts';
+import {
+  AccountFailure, deleteMyAccount, getMyProfile, listMyMemberships, setActiveCompany, updateMyProfile,
+} from '../lib/accounts';
 import { linkedProviders, signOut } from '../lib/auth';
-import { membershipIds, mine, myProfile, readableMemberships, type MembershipRow } from '../lib/accountsAdapter';
+import type { Company, Membership } from '../lib/supabase';
+
+/**
+ * A membership with its company attached — what `listMyMemberships` returns.
+ *
+ * Was `MembershipRow` from `accountsAdapter`, a module that existed only to
+ * compensate for three contract defects that have since been fixed at source:
+ * `listMyMemberships` filters to the caller now, `getMyProfile` filters to the
+ * caller, and `company_roster` carries `membership_id` so the roster no longer
+ * needs a second read of `memberships` threaded down as a prop.
+ */
+type MembershipRow = Membership & { company: Company };
 import {
   COMPANY_OPTIONAL,
   DELETE_ACCOUNT,
@@ -81,17 +94,14 @@ export function AccountScreen({ userId, email }: { userId: string; email: string
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [memberships, setMemberships] = useState<MembershipRow[] | null>(null);
-  const [allRows, setAllRows] = useState<MembershipRow[]>([]);
   const [providers, setProviders] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<AccountCopy | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      const rows = await readableMemberships();
-      setAllRows(rows);
-      setMemberships(mine(rows, userId));
-      setProfile(await myProfile(userId));
+      setMemberships(await listMyMemberships());
+      setProfile(await getMyProfile());
       setProviders(await linkedProviders());
     } catch (e) {
       setLoadError(noticeFor(e));
@@ -134,7 +144,6 @@ export function AccountScreen({ userId, email }: { userId: string; email: string
         company={row.company}
         role={row.role}
         membershipId={row.id}
-        membershipIdByUser={membershipIds(allRows, row.company_id)}
         myUserId={userId}
         onBack={() => setPanel({ name: 'hub' })}
         onChanged={load}
