@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { blankComments, findTags, attributeValue } from '../../tests/lib/jsx.mjs';
+import { functionBodyOrNull as functionBody } from '../../tests/lib/density.mjs';
 import { MIN_QUERY_CHARS, SUGGEST_DEBOUNCE_MS } from '../lib/suggest.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -38,23 +39,6 @@ const read = (rel) =>
 
 const SRC = read('CaptureScreen.tsx');
 
-/** The named function's source, braces balanced, parameter list skipped. */
-function functionBody(source, name) {
-  const start = source.indexOf(`function ${name}`);
-  if (start === -1) return null;
-  let paren = 0;
-  let depth = 0;
-  let started = false;
-  for (let i = start; i < source.length; i++) {
-    const ch = source[i];
-    if (ch === '(') paren++;
-    else if (ch === ')') paren--;
-    else if (paren > 0) continue;
-    else if (ch === '{') { depth++; started = true; }
-    else if (ch === '}') { depth--; if (started && depth === 0) return source.slice(start, i + 1); }
-  }
-  return source.slice(start);
-}
 
 // ---------------------------------------------------------------------------
 // AC 1 — the list is under the field, and it comes from the server

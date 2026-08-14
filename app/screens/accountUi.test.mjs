@@ -98,7 +98,7 @@ test('ST-A04 AC 8 / OQ-A9: an in-use address routes instead of stranding history
 });
 
 test('ST-A04 AC 9: no password, email or token can reach a log line', () => {
-  for (const f of NEW_SCREENS.concat(['lib/accountCopy.ts', 'lib/accountsAdapter.ts'])) {
+  for (const f of NEW_SCREENS.concat(['lib/accountCopy.ts'])) {
     assert.doesNotMatch(code(f), /console\.(log|warn|error|info|debug)/, `${f} logs`);
   }
 });
@@ -340,7 +340,7 @@ test('ST-A12 AC 10: a guest has no deletion surface, because the screen is not m
 });
 
 test('ST-A12: the service-role key appears nowhere under app/', () => {
-  for (const f of NEW_SCREENS.concat(['App.tsx', 'lib/accountCopy.ts', 'lib/accountsAdapter.ts'])) {
+  for (const f of NEW_SCREENS.concat(['App.tsx', 'lib/accountCopy.ts'])) {
     assert.doesNotMatch(read(f), /SUPABASE_SERVICE_ROLE_KEY/);
   }
 });

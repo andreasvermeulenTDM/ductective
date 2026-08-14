@@ -209,7 +209,7 @@ limits the expected number of guesses is far beyond any realistic rate, but
 needs either pg_cron-based throttling or an Edge Function in front of
 `redeem_join_code`.
 
-## OPEN · `L` · Remove `app/lib/accountsAdapter.ts` (filed 10 Aug 2026)
+## ✅ L — Remove `app/lib/accountsAdapter.ts` · DONE 11 Aug 2026
 
 Stage 4 raised three CONTRACT MISMATCHes against Stage 3 and, correctly, worked
 around them in one named module rather than reaching into Backend's files. All
