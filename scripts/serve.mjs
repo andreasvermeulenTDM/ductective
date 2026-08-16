@@ -29,7 +29,10 @@ import { diagnose, DiagnoseError, MAX_PHOTOS } from '../lib/diagnose.mjs';
 import { resolveUnit, suggestUnitsLive } from '../lib/units.mjs';
 import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
 import { budget, recordModelCall, appendRequestLog } from '../lib/ledger.mjs';
-import { estimateCostUsd, modelCallHappened, quotaConsumedByError } from '../lib/metrics.mjs';
+import {
+  estimateCostUsd, modelCallHappened, quotaConsumedByError,
+  diagnoseLogFields, diagnoseLogLine,
+} from '../lib/metrics.mjs';
 
 /**
  * The commit this process is actually running, resolved once at start.
@@ -279,19 +282,11 @@ const server = createServer(async (req, res) => {
     // reached from the wire.
     const { symptom, equipment, history, documentIds, image, images, mimeType } = body;
     const result = await diagnose({ symptom, equipment, history, documentIds, image, images, mimeType });
-    const { b, cost } = instrument(route, result, {
-      kind: result.kind,
-      ...(result.meta.scopedTo !== undefined ? { scopedTo: result.meta.scopedTo } : {}),
-      ...(result.meta.scopeFallback ? { scopeFallback: true } : {}),
-    });
-    console.log(
-      `${result.kind.padEnd(8)} ${result.meta.latencyMs}ms  ` +
-        `retrieved=${result.meta.retrieved ?? '-'} cites=${result.citations.length}` +
-        (result.meta.scopedTo !== undefined ? ` scope=${result.meta.scopedTo}` : '') +
-        (result.meta.scopeFallback ? ' SCOPE-FALLBACK' : '') +
-        (result.meta.dropped ? ` dropped=${result.meta.dropped}` : '') +
-        usageSuffix(result.meta, cost, b)
-    );
+    // ST-R01 — `kind`, `noDocumentation` and `cites` on EVERY /diagnose row,
+    // refusal and conversational included. Built by a pure helper so the four
+    // outcome signatures are pinned by a unit test rather than by this call site.
+    const { b, cost } = instrument(route, result, diagnoseLogFields(result));
+    console.log(diagnoseLogLine(result) + usageSuffix(result.meta, cost, b));
     send(res, 200, result);
   } catch (e) {
     const status = e instanceof DiagnoseError ? e.status : 500;
