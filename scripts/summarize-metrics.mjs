@@ -43,6 +43,21 @@ console.log(
     ')'
 );
 console.log('');
+// ST-R01 / brief AC 6 — the line that tells an honest withhold from a cited
+// answer. `UNCITED-ANSWER` is impossible by construction (validateAnswer forces
+// noDocumentation when nothing survived); it is printed anyway, and loudly, so
+// that if it ever becomes reachable nobody has to go looking for it.
+const o = s.outcomes;
+console.log(
+  `outcomes    cited=${o.answers} withheld=${o.withholds} refused=${o.refusals} ` +
+    `conversational=${o.conversational} clarify=${o.clarifies} unit-required=${o.unitRequired}  ` +
+    `UNCITED-ANSWER: ${o.uncitedAnswers}` +
+    (o.unclassified ? `  (${o.unclassified} row${o.unclassified === 1 ? '' : 's'} carry no outcome — pre-ST-R01 format, /identify-unit or errors)` : '')
+);
+if (o.uncitedAnswers > 0) {
+  console.log('  !! an answer was logged with citations:0 and noDocumentation:false — the citation guarantee has a hole');
+}
+console.log('');
 console.log(`latency     p50 ${ms(s.latencyMs.p50)}   p95 ${ms(s.latencyMs.p95)}`);
 console.log(`retrieval   p50 ${ms(s.retrievalMs.p50)}   p95 ${ms(s.retrievalMs.p95)}`);
 console.log(`generation  p50 ${ms(s.generationMs.p50)}   p95 ${ms(s.generationMs.p95)}`);

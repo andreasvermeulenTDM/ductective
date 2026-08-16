@@ -92,3 +92,18 @@ test('the 404 message names /suggest-units, so the route list stays discoverable
   assert.match(j.message, /\/resolve-unit/);
   assert.match(j.message, /\/identify-unit/);
 });
+
+// --- ST-R15: the unit-suggestions route sits behind the same gate -------------
+
+test('/unit-suggestions is covered by the bearer gate like every other POST route', async () => {
+  // Same reasoning as /suggest-units: a suggestion is a coverage claim about the
+  // corpus, and it gets no weaker a gate than the route that answers the same
+  // question about one unit.
+  const r = await post('/unit-suggestions', { body: JSON.stringify({ documentIds: ['doc_a'] }) });
+  assert.equal(r.status, 401);
+});
+
+test('the 404 message names /unit-suggestions too', async () => {
+  const j = await (await post('/nope')).json();
+  assert.match(j.message, /\/unit-suggestions/);
+});

@@ -420,5 +420,80 @@ export default defineSuite({
           : fail(ev, 'artifact does not state both re-ingest cost and wall-clock runtime');
       },
     },
+
+    /*
+     * ST-R12 (D1) — the corpus does not hold the same manual twice.
+     *
+     * Brief AC 5's "a re-run proves no duplicate pair remains", inside the suite
+     * rather than only in `npm run verify:duplicates`, so a future duplicate is
+     * caught by Stage 5 and not by a technician reading eight sources that are
+     * really seven.
+     *
+     * Detected by **parsed content**, not by filename or URL: `documentId` hashes
+     * the SourceURL, so two copies of one manual under two names minted two
+     * identities and nothing stored in the tree could see they were the same.
+     *
+     * A group whose loser has been retired (OUT-OF-SCOPE, per OQ-R8) is still
+     * reported — nothing was deleted, so nothing vanished — and no longer fails:
+     * the defect was two *answerable* copies, not two rows.
+     */
+    {
+      story: 'ST-R12',
+      ac: 'round-4 brief AC 5',
+      what: 'no two in-scope documents hold identical parsed content',
+      needsEnv: ['EXPO_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'],
+      async run(c) {
+        const { supabaseAdmin } = await import('../../lib/clients.mjs');
+        const { pageContentHash } = await import('../../ingest/chunk.mjs');
+        const { findDuplicates, hasUnresolvedDuplicates } = await import('../../ingest/duplicates.mjs');
+
+        let db;
+        try { db = supabaseAdmin(); } catch (e) { return blocked(`no service key: ${e.message}`); }
+
+        const { data: docs, error: dErr } = await db
+          .from('documents').select('id, label, source_url, manufacturer, in_scope, page_count');
+        if (dErr) return blocked(`documents read failed: ${dErr.message}`);
+        if (!docs?.length) return blocked('no documents ingested yet');
+
+        const byDoc = new Map(docs.map((d) => [d.id, { doc: d, rows: [] }]));
+        // Paged and memory-bounded: the chunk body is hashed on arrival and never
+        // retained, so ~10,000 chunks cost kilobytes.
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await db
+            .from('chunks').select('document_id, page_number, chunk_index, text')
+            .order('document_id').order('page_number').order('chunk_index')
+            .range(from, from + 999);
+          if (error) return blocked(`chunks read failed at ${from}: ${error.message}`);
+          if (!data?.length) break;
+          for (const r of data) {
+            byDoc.get(r.document_id)?.rows.push({
+              page_number: r.page_number, chunk_index: r.chunk_index,
+              hash: pageContentHash(r.page_number, r.text),
+            });
+          }
+          if (data.length < 1000) break;
+        }
+
+        const report = findDuplicates(byDoc);
+        const unresolved = report.exact.filter((g) => g.inScopeCount > 1);
+        const describe = (g) =>
+          `  fingerprint ${g.fingerprint} — ${g.inScopeCount} in scope\n` +
+          g.documents.map((d) => `    ${d.id}  ${d.chunks} chunks  ${d.in_scope === false ? 'OUT-OF-SCOPE' : 'in scope'}  ${d.label}`).join('\n') +
+          `\n    OQ-R9 keeps ${g.keep}`;
+
+        const ev = c.fromCheck(
+          'fingerprint every document from the chunks table and group by content',
+          `documents: ${report.documents}\n` +
+            `exact duplicate groups: ${report.exact.length} (${unresolved.length} unresolved)\n` +
+            `near-duplicate candidates (reported only): ${report.candidates.length}\n` +
+            `documents with no chunks: ${report.noContent.length}\n\n` +
+            (report.exact.map(describe).join('\n\n') || 'no exact duplicate groups')
+        );
+
+        return hasUnresolvedDuplicates(report)
+          ? fail(ev, `${unresolved.length} duplicate group(s) still have more than one in-scope document`)
+          : pass(ev, `${report.exact.length} exact group(s), all resolved; ${report.candidates.length} candidate(s) for a human`);
+      },
+    },
   ],
 });

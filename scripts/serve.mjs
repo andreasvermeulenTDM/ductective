@@ -27,9 +27,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { diagnose, DiagnoseError, MAX_PHOTOS } from '../lib/diagnose.mjs';
 import { resolveUnit, suggestUnitsLive } from '../lib/units.mjs';
+import { suggestionsForScope } from '../lib/suggestions.mjs';
 import { identifyUnit, MAX_IMAGE_BYTES } from '../lib/vision.mjs';
 import { budget, recordModelCall, appendRequestLog } from '../lib/ledger.mjs';
-import { estimateCostUsd, modelCallHappened, quotaConsumedByError } from '../lib/metrics.mjs';
+import {
+  estimateCostUsd, modelCallHappened, quotaConsumedByError,
+  diagnoseLogFields, diagnoseLogLine,
+} from '../lib/metrics.mjs';
 
 /**
  * The commit this process is actually running, resolved once at start.
@@ -201,8 +205,12 @@ const server = createServer(async (req, res) => {
     return send(res, 200, { ok: true, model: process.env.GEMINI_MODEL ?? 'default', commit: COMMIT, startedAt: STARTED_AT });
   }
   const route = req.method === 'POST' ? (req.url ?? '').split('?')[0] : null;
-  if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/suggest-units' && route !== '/identify-unit') {
-    return send(res, 404, { status: 404, message: 'POST /diagnose, /resolve-unit, /suggest-units or /identify-unit' });
+  if (route !== '/diagnose' && route !== '/resolve-unit' && route !== '/suggest-units' &&
+      route !== '/unit-suggestions' && route !== '/identify-unit') {
+    return send(res, 404, {
+      status: 404,
+      message: 'POST /diagnose, /resolve-unit, /suggest-units, /unit-suggestions or /identify-unit',
+    });
   }
 
   // Shared-secret gate, when enabled. Before body parsing, so an unauthenticated
@@ -215,7 +223,7 @@ const server = createServer(async (req, res) => {
     // Three ceilings, one per route's actual payload: /resolve-unit is text only,
     // /identify-unit carries one plate photo, /diagnose up to MAX_PHOTOS of the part.
     const limit =
-      route === '/resolve-unit' || route === '/suggest-units'
+      route === '/resolve-unit' || route === '/suggest-units' || route === '/unit-suggestions'
         ? LIMIT
         : route === '/identify-unit'
           ? IMAGE_LIMIT
@@ -257,6 +265,39 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { suggestions });
     }
 
+    /*
+     * N4 / ST-R15 — the questions this unit's own manuals can answer.
+     *
+     * Its own route rather than a field on `/resolve-unit`, for the reason
+     * `/suggest-units` is its own route: `/resolve-unit` answers "is this unit
+     * covered" and its verdict shape is a contract the camera path also carries.
+     * A list of questions is not a verdict.
+     *
+     * Every row served here was mined from a chunk in one of these documents,
+     * gated by `classifyHazard`, and proved by running the same `match_chunks`
+     * retrieval that will answer it. The app renders `text` verbatim and never
+     * composes a suggestion of its own — the defect this replaces was a
+     * hardcoded list in the client.
+     *
+     * **Empty is `{"suggestions": []}` with a 200.** There is no not-found shape
+     * and no error shape: nothing to suggest is a normal answer, and it is what
+     * a unit whose manuals support no pre-canned question honestly gets. This
+     * restates `03-backend-fixes.md` §2.4's contract for the new route so the
+     * two cannot diverge.
+     *
+     * Costs no model quota and no embedding — one select — so it is deliberately
+     * NOT instrumented into the day ledger, exactly as `/resolve-unit` and
+     * `/suggest-units` are not.
+     */
+    if (route === '/unit-suggestions') {
+      const ids = Array.isArray(body.documentIds)
+        ? body.documentIds.filter((id) => typeof id === 'string' && id.trim())
+        : [];
+      const suggestions = await suggestionsForScope(ids);
+      console.log(`suggestions ${String(suggestions.length).padStart(2)} for scope=${ids.length}`);
+      return send(res, 200, { suggestions });
+    }
+
     // ST-05 — nameplate photo in, identification + coverage verdict out.
     // The log line carries sizes and the verdict only: image bytes never touch
     // the log, per the story's no-image-in-logs criterion.
@@ -279,19 +320,11 @@ const server = createServer(async (req, res) => {
     // reached from the wire.
     const { symptom, equipment, history, documentIds, image, images, mimeType } = body;
     const result = await diagnose({ symptom, equipment, history, documentIds, image, images, mimeType });
-    const { b, cost } = instrument(route, result, {
-      kind: result.kind,
-      ...(result.meta.scopedTo !== undefined ? { scopedTo: result.meta.scopedTo } : {}),
-      ...(result.meta.scopeFallback ? { scopeFallback: true } : {}),
-    });
-    console.log(
-      `${result.kind.padEnd(8)} ${result.meta.latencyMs}ms  ` +
-        `retrieved=${result.meta.retrieved ?? '-'} cites=${result.citations.length}` +
-        (result.meta.scopedTo !== undefined ? ` scope=${result.meta.scopedTo}` : '') +
-        (result.meta.scopeFallback ? ' SCOPE-FALLBACK' : '') +
-        (result.meta.dropped ? ` dropped=${result.meta.dropped}` : '') +
-        usageSuffix(result.meta, cost, b)
-    );
+    // ST-R01 — `kind`, `noDocumentation` and `cites` on EVERY /diagnose row,
+    // refusal and conversational included. Built by a pure helper so the four
+    // outcome signatures are pinned by a unit test rather than by this call site.
+    const { b, cost } = instrument(route, result, diagnoseLogFields(result));
+    console.log(diagnoseLogLine(result) + usageSuffix(result.meta, cost, b));
     send(res, 200, result);
   } catch (e) {
     const status = e instanceof DiagnoseError ? e.status : 500;
