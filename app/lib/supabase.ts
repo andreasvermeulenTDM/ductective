@@ -69,6 +69,24 @@ export const CONFIG_HINT =
  */
 export type MessageKind = 'user' | 'answer' | 'clarify' | 'refusal' | 'conversational';
 
+/**
+ * ST-R05 / ST-R06 — how an `answer` should be *drawn*, not what it is.
+ *
+ * A reference answer is an answer: cited, validated, and degradable to
+ * no-documentation exactly like any other. OQ-R2 records the decision not to
+ * give it its own `kind` on the wire, for two reasons that both still hold —
+ * `Message.tsx`'s uncited-defect net must stay in front of it, which reusing
+ * `answer` guarantees by construction; and a new kind needs a `messages.kind`
+ * CHECK migration, while `sql/015` is still unapplied, so it would fail the
+ * insert for every signed-in technician.
+ *
+ * **Deliberately not a column.** It rides on the reply and is dropped on
+ * persistence, so reopening a session redraws a reference answer as a plain
+ * cited answer. That is the accepted cost in OQ-R2 and it is one screen, not a
+ * lost citation.
+ */
+export type AnswerShape = 'reference';
+
 export type Citation = {
   id: string;
   source_document: string;
@@ -92,6 +110,15 @@ export type Message = {
   body: string;
   seq: number;
   citations?: Citation[];
+  /**
+   * ST-R06 — rendering shape for this turn, when the server sent one.
+   *
+   * Never read from the database and never written to it: `appendMessage`'s
+   * insert names its columns explicitly, so this cannot reach a row by accident.
+   * Absent on every persisted turn, which is why `Message.tsx` treats absence as
+   * "draw the ordinary answer" rather than as an error. See `AnswerShape`.
+   */
+  shape?: AnswerShape;
 };
 
 export type Session = {

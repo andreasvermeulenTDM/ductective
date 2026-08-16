@@ -46,16 +46,16 @@ export const TEXT_PAIRS = [
   { fg: 'textPrimary', on: ['background'], at: 'app/components/Chrome.tsx:615', what: 'session header unit' },
   { fg: 'textSecondary', on: ['background'], at: 'app/components/Chrome.tsx:616', what: 'session header symptom' },
   { fg: 'accent', on: ['background'], at: 'app/screens/AccountScreen.tsx:511', what: 'back link' },
-  { fg: 'refusalText', on: ['background'], at: 'app/components/Message.tsx:495', what: 'uncited-defect label' },
-  { fg: 'textSecondary', on: ['background'], at: 'app/components/Message.tsx:466', what: 'reference answer overline (ST-R06)' },
-  { fg: 'textPrimary', on: ['background'], at: 'app/components/Message.tsx:468', what: 'reference answer value (ST-R06)' },
+  { fg: 'refusalText', on: ['background'], at: 'app/components/Message.tsx:565', what: 'uncited-defect label' },
+  { fg: 'textSecondary', on: ['background'], at: 'app/components/Message.tsx:491', what: 'reference answer overline (ST-R06)' },
+  { fg: 'textPrimary', on: ['background'], at: 'app/components/Message.tsx:502', what: 'reference answer value (ST-R06)' },
 
   // --- on a card / sheet surface -----------------------------------------------
   { fg: 'textPrimary', on: ['surface'], at: 'app/components/Chrome.tsx:658', what: 'error card title' },
   { fg: 'textSecondary', on: ['surface'], at: 'app/components/Chrome.tsx:681', what: 'inline notice detail' },
   { fg: 'accent', on: ['surface'], at: 'app/components/Chrome.tsx:757', what: 'active tab label' },
   { fg: 'refusalText', on: ['surface'], at: 'app/components/Chrome.tsx:657', what: 'error card glyph' },
-  { fg: 'textSecondary', on: ['surface'], at: 'app/components/Message.tsx:481', what: 'reference hazard-adjacent note (ST-R06)' },
+  { fg: 'textSecondary', on: ['surface'], at: 'app/components/Message.tsx:516', what: 'reference hazard-adjacent note (ST-R06)' },
 
   // --- on the raised surface ---------------------------------------------------
   { fg: 'textPrimary', on: ['surfaceRaised'], at: 'app/screens/HistoryScreen.tsx:280', what: 'history unit badge' },
@@ -85,23 +85,18 @@ export const TEXT_PAIRS = [
     fg: 'textOnInteractive', on: ['pressed'], state: 'pressed',
     at: 'app/components/Chrome.tsx:738', what: 'primary button label, pressed',
   },
-  { fg: 'textOnInteractive', on: ['pressed'], at: 'app/components/Message.tsx:399', what: 'the technician’s own message bubble' },
+  { fg: 'textOnInteractive', on: ['pressed'], at: 'app/components/Message.tsx:446', what: 'the technician’s own message bubble' },
   {
     fg: 'textOnInteractive', on: ['border'], state: 'disabled',
-    at: 'app/screens/ChatScreen.tsx:1041', what: 'retry / send label while disabled',
+    at: 'app/screens/ChatScreen.tsx:910', what: 'retry / send label while disabled',
   },
 
   // --- on the translucent accent wash, composited over its real backdrop -------
-  { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:970', what: 'chosen-unit card' },
-  { fg: 'accent', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:420', what: 'step number' },
-  { fg: 'refusalText', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:985', what: 'not-covered verdict' },
-  { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:986', what: 'unknown-coverage verdict' },
+  { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:839', what: 'chosen-unit card' },
+  { fg: 'accent', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:467', what: 'step number' },
+  { fg: 'refusalText', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:854', what: 'not-covered verdict' },
+  { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:855', what: 'unknown-coverage verdict' },
   { fg: 'accent', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:498', what: 'source sheet icon glyph' },
-  // ST-R16. The coverage statement that replaces the chips when a unit's
-  // documents support no validated suggestion — drawn inside the unit card, on
-  // the same accent wash the verdict lines above sit on.
-  { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:991', what: 'nothing-to-suggest coverage statement (ST-R16)' },
-  { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:992', what: 'nothing-to-suggest invitation (ST-R16)' },
 
   // --- the camera viewfinder and the tablet nav rail ---------------------------
   { fg: 'textPrimary', on: ['backgroundSunken'], at: 'app/screens/CaptureScreen.tsx:815', what: 'viewfinder hint' },
@@ -130,11 +125,11 @@ export const NON_TEXT_PAIRS = [
   { fg: 'border', on: ['background'], at: 'app/components/Chrome.tsx:612', what: 'session header rule' },
   { fg: 'borderStrong', on: ['background'], at: 'app/components/Chrome.tsx:725', what: 'secondary button outline' },
   { fg: 'borderStrong', on: ['surface'], at: 'app/components/Citation.tsx:471', what: 'sheet grabber' },
-  { fg: 'borderStrong', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:979', what: 'change-unit outline' },
-  { fg: 'accentBorder', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:415', what: 'step number ring' },
+  { fg: 'borderStrong', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:848', what: 'change-unit outline' },
+  { fg: 'accentBorder', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:462', what: 'step number ring' },
   { fg: 'accentBorder', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:494', what: 'source icon ring' },
   { fg: 'refusalBorder', on: ['refusalSurface'], at: 'app/components/Chrome.tsx:691', what: 'guest disclosure outline' },
-  { fg: 'refusal', on: ['refusalSurface'], at: 'app/components/Message.tsx:468', what: 'refusal card outline' },
+  { fg: 'refusal', on: ['refusalSurface'], at: 'app/components/Message.tsx:549', what: 'refusal card outline' },
   { fg: 'accent', on: ['surfaceRaised'], at: 'app/components/Chrome.tsx:599', what: 'banner underline' },
   { fg: 'scrim', on: ['background'], at: 'app/components/Citation.tsx:457', what: 'modal scrim over the screen' },
 ];
@@ -217,7 +212,7 @@ export const NON_TEXT_FILLS = {
   'app/components/Chrome.tsx:714': 'boundaryRule — a 1dp accentBorder rule above the saved-from-here marker, no child',
   'app/components/Citation.tsx:457': 'backdrop — the modal scrim; the sheet on top of it is opaque `surface`',
   'app/components/Citation.tsx:471': 'grabber — the 40×4 sheet handle, no child',
-  'app/screens/ChatScreen.tsx:1091': 'thumb — a 64dp attachment image placeholder, covered by the image',
+  'app/screens/ChatScreen.tsx:960': 'thumb — a 64dp attachment image placeholder, covered by the image',
   'app/screens/SignInScreen.tsx:260': 'divider — a 1dp rule between the sign-in modes, no child',
 };
 

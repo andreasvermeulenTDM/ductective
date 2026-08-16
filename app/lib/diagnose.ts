@@ -14,6 +14,11 @@
  */
 
 import { NativeModules, Platform } from 'react-native';
+// Type-only, so it is erased at compile and pulls no Supabase client in behind
+// it. `supabase.ts` is where the rendering contract lives — `MessageKind`,
+// `Citation`, and now `AnswerShape` — and having two homes for it is how the
+// wire and the renderer start disagreeing about what a shape is.
+import type { AnswerShape } from './supabase';
 import { postIdentify, type IdentifyResult, type UnitVerdict } from './identify';
 import {
   SUGGEST_TIMEOUT_MS,
@@ -46,6 +51,19 @@ export type DiagnoseReply = {
   kind: 'answer' | 'clarify' | 'refusal' | 'conversational';
   body: string;
   citations: DiagnoseCitation[];
+  /**
+   * ST-R05 / OQ-R2 — a *rendering* hint, never a licence.
+   *
+   * `meta.shape: 'reference'` marks an answer whose body is published data
+   * rather than ordered checks. It rides on `kind: 'answer'` precisely so that
+   * nothing about it can exempt the reply from citation: the same `citations`
+   * array, the same validation, the same degradation to no-documentation when
+   * every item is dropped. `Message.tsx` reads it **after** both citation nets.
+   *
+   * Optional and forward-compatible: a server that has not landed ST-R05 sends
+   * no `meta` and every reply renders exactly as it does today.
+   */
+  meta?: { shape?: AnswerShape };
 };
 
 /**
@@ -215,7 +233,18 @@ export async function requestDiagnosis(
       throw new DiagnoseError(502, 'Malformed response from the diagnostic core');
     }
 
-    return { kind: json.kind, body: json.body, citations: json.citations };
+    // `meta` is read narrowly and defensively: only the one value the renderer
+    // knows how to draw survives, and anything else — a future shape, a typo, a
+    // non-object `meta` — is dropped so the reply renders as an ordinary cited
+    // answer. A rendering hint is never worth failing a good answer over, and it
+    // must never be able to *become* something by arriving unrecognised.
+    const shape = (json.meta as { shape?: unknown } | undefined)?.shape;
+    return {
+      kind: json.kind,
+      body: json.body,
+      citations: json.citations,
+      meta: shape === 'reference' ? { shape } : undefined,
+    };
   } catch (e) {
     // A cancel and a timeout both surface as AbortError; only one of them is a
     // failure, and telling a technician their own cancel "failed" is noise.

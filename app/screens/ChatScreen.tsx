@@ -420,10 +420,15 @@ export function ChatScreen({
             {/* The rule is drawn between turns, so it reads as a point in time
                 rather than as a label on a message. */}
             {boundaryAt === i && <SavedFromHere />}
+            {/* ST-R06: `shape` is passed through, never derived. The screen has
+                no opinion about what a reference answer is, and `undefined` on a
+                turn reopened from history is the documented OQ-R2 cost — not a
+                case to reconstruct here. */}
             <MessageView
               kind={m.kind}
               body={m.body}
               citations={m.citations}
+              shape={m.shape}
               onCitationPress={setCitation}
             />
           </Fragment>

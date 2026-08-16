@@ -163,5 +163,5 @@ export const FENCED_COPY = [
   { name: 'NO_DOCUMENTATION', file: 'lib/diagnose.mjs', keys: null },
   { name: 'UNIT_REQUIRED', file: 'lib/diagnose.mjs', keys: null },
   { name: 'refusalBody', file: 'lib/safety.mjs', keys: null },
-  { name: 'CoverageLine verdicts', file: 'app/screens/ChatScreen.tsx', keys: null, lines: [787, 797, 806] },
+  { name: 'CoverageLine verdicts', file: 'app/screens/ChatScreen.tsx', keys: null, lines: [792, 802, 811] },
 ];
