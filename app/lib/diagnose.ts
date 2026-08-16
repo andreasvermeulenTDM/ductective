@@ -26,6 +26,11 @@ import {
   worthSuggesting,
   type UnitSuggestion,
 } from './suggest';
+import {
+  UNIT_SUGGEST_TIMEOUT_MS,
+  postUnitSuggestions,
+  type DocumentSuggestion,
+} from './starters';
 
 export type DiagnoseCitation = {
   source_document: string;
@@ -347,6 +352,45 @@ export async function requestSuggestUnits(
 
   try {
     return await postSuggestUnits(fetch, BASE, query, controller.signal, serverHeaders());
+  } finally {
+    clearTimeout(timer);
+    cancel?.removeEventListener('abort', onCancel);
+  }
+}
+
+/**
+ * What this unit's own manuals can actually be asked — `POST /unit-suggestions`
+ * (N4 / ST-R15 AC 11).
+ *
+ * Resolves to `[]` for **every** failure: no server configured, unreachable,
+ * non-200 (including the 404 this returns until `sql/018` is applied and the
+ * route exists), malformed body, timeout, or the abort a unit change fires. It
+ * never throws.
+ *
+ * That is not laziness about errors, it is the story's design. §2.3 makes
+ * "nothing to suggest" a **designed state with its own copy**, so a failed
+ * lookup and an honest zero land on the same screen — and that screen says what
+ * the app does hold rather than showing an error the technician cannot act on.
+ * The composer, both front doors and the change-unit control are untouched in
+ * every one of those cases: nothing is disabled because a suggestion list came
+ * back empty.
+ *
+ * `requestSuggestUnits` above is the construction being reused, down to the
+ * abort plumbing and the resolve-don't-throw rule.
+ */
+export async function requestUnitSuggestions(
+  documentIds: string[] | null | undefined,
+  cancel?: AbortSignal
+): Promise<DocumentSuggestion[]> {
+  if (!BASE || !documentIds?.length) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UNIT_SUGGEST_TIMEOUT_MS);
+  const onCancel = () => controller.abort();
+  cancel?.addEventListener('abort', onCancel);
+
+  try {
+    return await postUnitSuggestions(fetch, BASE, documentIds, controller.signal, serverHeaders());
   } finally {
     clearTimeout(timer);
     cancel?.removeEventListener('abort', onCancel);

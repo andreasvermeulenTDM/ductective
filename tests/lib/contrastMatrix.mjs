@@ -88,18 +88,23 @@ export const TEXT_PAIRS = [
   { fg: 'textOnInteractive', on: ['pressed'], at: 'app/components/Message.tsx:446', what: 'the technician’s own message bubble' },
   {
     fg: 'textOnInteractive', on: ['border'], state: 'disabled',
-    at: 'app/screens/ChatScreen.tsx:910', what: 'retry / send label while disabled',
+    at: 'app/screens/ChatScreen.tsx:1034', what: 'retry / send label while disabled',
   },
 
   // --- on the translucent accent wash, composited over its real backdrop -------
-  { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:839', what: 'chosen-unit card' },
+  { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:950', what: 'chosen-unit card' },
   { fg: 'accent', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:467', what: 'step number' },
-  { fg: 'refusalText', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:854', what: 'not-covered verdict' },
-  { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:855', what: 'unknown-coverage verdict' },
+  { fg: 'refusalText', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:978', what: 'not-covered verdict' },
+  { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:979', what: 'unknown-coverage verdict' },
   { fg: 'accent', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:498', what: 'source sheet icon glyph' },
+  // ST-R16. The statement of what we hold, shown in place of the chips when a
+  // unit's documents support no validated suggestion. It sits inside the unit
+  // card, so it is measured on the same accent wash the verdict lines are.
+  { fg: 'textPrimary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:973', what: 'nothing-to-suggest coverage statement (ST-R16)' },
+  { fg: 'textSecondary', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:974', what: 'nothing-to-suggest invitation (ST-R16)' },
 
   // --- the camera viewfinder and the tablet nav rail ---------------------------
-  { fg: 'textPrimary', on: ['backgroundSunken'], at: 'app/screens/CaptureScreen.tsx:815', what: 'viewfinder hint' },
+  { fg: 'textPrimary', on: ['backgroundSunken'], at: 'app/screens/CaptureScreen.tsx:824', what: 'viewfinder hint' },
   { fg: 'textSecondary', on: ['backgroundRail'], at: 'app/components/Chrome.tsx:756', what: 'rail tab label' },
   { fg: 'accent', on: ['backgroundRail'], at: 'app/components/Chrome.tsx:757', what: 'rail active tab label' },
   {
@@ -125,7 +130,7 @@ export const NON_TEXT_PAIRS = [
   { fg: 'border', on: ['background'], at: 'app/components/Chrome.tsx:612', what: 'session header rule' },
   { fg: 'borderStrong', on: ['background'], at: 'app/components/Chrome.tsx:725', what: 'secondary button outline' },
   { fg: 'borderStrong', on: ['surface'], at: 'app/components/Citation.tsx:471', what: 'sheet grabber' },
-  { fg: 'borderStrong', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:848', what: 'change-unit outline' },
+  { fg: 'borderStrong', on: ['accentSurface', 'background'], at: 'app/screens/ChatScreen.tsx:959', what: 'change-unit outline' },
   { fg: 'accentBorder', on: ['accentSurface', 'background'], at: 'app/components/Message.tsx:462', what: 'step number ring' },
   { fg: 'accentBorder', on: ['accentSurface', 'surface'], at: 'app/components/Citation.tsx:494', what: 'source icon ring' },
   { fg: 'refusalBorder', on: ['refusalSurface'], at: 'app/components/Chrome.tsx:691', what: 'guest disclosure outline' },
@@ -212,7 +217,7 @@ export const NON_TEXT_FILLS = {
   'app/components/Chrome.tsx:714': 'boundaryRule — a 1dp accentBorder rule above the saved-from-here marker, no child',
   'app/components/Citation.tsx:457': 'backdrop — the modal scrim; the sheet on top of it is opaque `surface`',
   'app/components/Citation.tsx:471': 'grabber — the 40×4 sheet handle, no child',
-  'app/screens/ChatScreen.tsx:960': 'thumb — a 64dp attachment image placeholder, covered by the image',
+  'app/screens/ChatScreen.tsx:1084': 'thumb — a 64dp attachment image placeholder, covered by the image',
   'app/screens/SignInScreen.tsx:260': 'divider — a 1dp rule between the sign-in modes, no child',
 };
 

@@ -88,10 +88,25 @@ export type ConfirmedUnit = {
   status?: UnitVerdict['status'] | null;
   /**
    * The resolved documents' coverage strings — the manifest's own words about what
-   * each manual covers. Drives the equipment-class suggestions in `starters.ts`, so
-   * the suggestion and the retrieval scope are derived from the same source.
+   * each manual covers. Rendered by `CoverageLine`; no longer used to pick
+   * suggestions, since ST-R16 deleted the class taxonomy that read it.
    */
   coverage?: string[];
+  /**
+   * The resolved documents' `doc_type` values — "Install", "IOM", "Service
+   * Manual", "Troubleshooting Guide" — the manifest's own `DocType` column,
+   * carried verbatim.
+   *
+   * ST-R16 AC 2. When a unit's manuals support no validated suggestion, the
+   * screen says what it *does* hold instead of showing chips that fail, and this
+   * is what makes that sentence a statement of record rather than a guess.
+   *
+   * Optional, and one path genuinely cannot supply it: the type-ahead hands back
+   * a family string and no document rows, so it arrives empty and
+   * `coverageStatement` states the count alone rather than a breakdown whose
+   * numbers would not add up.
+   */
+  docTypes?: string[];
 };
 
 /**
@@ -219,6 +234,7 @@ export function confirmedUnitFrom(result: IdentifyResult): ConfirmedUnit | null 
     documentIds: result.unit.documentIds,
     status: result.unit.status,
     coverage: (result.unit.documents ?? []).map((d) => d.coverage).filter(Boolean),
+    docTypes: (result.unit.documents ?? []).map((d) => d.doc_type).filter(Boolean),
   };
 }
 

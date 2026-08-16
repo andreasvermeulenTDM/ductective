@@ -14,9 +14,13 @@ import { Message as MessageView } from '../components/Message';
 import { ErrorState, GuestNotice, OfflineNotice, SavedFromHere, SessionHeader } from '../components/Chrome';
 import { CitationSheet, SourcePanel } from '../components/Citation';
 import { looksOffline } from '../lib/net';
-import { startersFor } from '../lib/starters';
+import {
+  coverageStatement,
+  NOTHING_TO_SUGGEST_INVITATION,
+  type DocumentSuggestion,
+} from '../lib/starters';
 import { answerExisting, askQuestion, createSession, loadMessages } from '../lib/store';
-import { DiagnoseError } from '../lib/diagnose';
+import { DiagnoseError, requestUnitSuggestions } from '../lib/diagnose';
 import { isConfigured, CONFIG_HINT, type Citation, type Message } from '../lib/supabase';
 
 /**
@@ -408,10 +412,15 @@ export function ChatScreen({
   const conversation = (
     <ScrollView ref={scroller} style={s.fill} contentContainerStyle={s.scroll}>
       {messages.length === 0 ? (
+        // ST-R16 AC 7 — `documentIds` is the same scope the composer sends with,
+        // passed down so the lookup and the answer are grounded in one array. A
+        // tapped chip goes through `send`, which reads `documentIds` from this
+        // screen: the scope is never re-derived from the suggestion.
         <EmptyAsk
           onPick={(sug) => send(sug)}
           onIdentify={onCapture}
           equipment={equipment}
+          documentIds={documentIds}
           coverage={coverage}
         />
       ) : (
@@ -688,19 +697,99 @@ export function ChatScreen({
  * wrong one to answer here — by this point a unit is selected, so the *specific*
  * question ("do you have THIS unit?") is both answerable and the one that matters.
  * `CoverageLine` answers that instead, from the unit's own verdict.
+ *
+ * ---------------------------------------------------------------------------
+ * ST-R16 — the chips come from the manuals now, or they do not come at all
+ * ---------------------------------------------------------------------------
+ *
+ * They used to come from `startersFor` — four hardcoded strings per equipment
+ * class. On the Bosch unit that started this round, four taps produced four
+ * no-documentation replies, because that corpus is installation literature and
+ * the taxonomy only knew how to offer diagnosis. `starters.ts` records the
+ * deletion; this is the render side of it.
+ *
+ * **Three states, and the third is designed rather than left over:**
+ *
+ *  - *looking* — the chip area draws **nothing**. Not a skeleton, not a
+ *    placeholder (AC 4). A chip that appears a beat late is better than a shape
+ *    that promises one and then does not deliver it, and on this screen the
+ *    promise is the whole problem being fixed.
+ *  - *suggestions* — up to four chips, each the server's own `text`, sent with
+ *    this session's `documentIds` verbatim. Nothing here composes a question.
+ *  - *nothing to suggest* — no chips and **no "Common on this unit" heading**,
+ *    because an empty heading is worse than an absent one. In their place, the
+ *    statement of what this unit's documents actually are, composed from the
+ *    verdict's own columns, and the invitation to ask anyway.
+ *
+ * A failed lookup is the third state too, not an error card (AC 5) — the
+ * precedent `requestResolveUnit` and `requestSuggestUnits` already set. There is
+ * nothing a technician on a roof can do about it, and the screen is still fully
+ * usable: the composer, both front doors and the change-unit control depend on
+ * none of this (AC 3).
  */
 function EmptyAsk({
   onPick,
   onIdentify,
   equipment,
+  documentIds,
   coverage,
 }: {
   onPick: (s: string) => void;
   onIdentify: (mode: 'camera' | 'manual') => void;
   equipment?: string | null;
-  coverage?: { status: string | null; docs: string[] } | null;
+  /** This session's retrieval scope, passed to the lookup and to nothing else. */
+  documentIds?: string[] | null;
+  coverage?: { status: string | null; docs: string[]; types?: string[] } | null;
 }) {
-  const suggestions = startersFor(equipment, coverage?.docs ?? []);
+  const [suggestions, setSuggestions] = useState<DocumentSuggestion[]>([]);
+  /** True until the first lookup for this scope has settled, either way. */
+  const [looking, setLooking] = useState(true);
+
+  /**
+   * Ask the corpus what it can answer about this unit.
+   *
+   * Keyed on the scope itself rather than on the equipment label, because the
+   * scope is what the suggestions are mined from — two labels for the same
+   * documents must not produce two lookups, and one label whose scope changed
+   * must produce a new one. `join` is the cheapest stable key for that and the
+   * order is the server's, so it is stable across renders.
+   *
+   * `requestUnitSuggestions` never throws and never rejects, so there is no
+   * catch here to write: every failure it has resolves to `[]`, which is the
+   * third state.
+   */
+  const scopeKey = (documentIds ?? []).join(',');
+  useEffect(() => {
+    let live = true;
+    const controller = new AbortController();
+    setLooking(true);
+    setSuggestions([]);
+    void requestUnitSuggestions(documentIds, controller.signal).then((rows) => {
+      if (!live) return;
+      setSuggestions(rows);
+      setLooking(false);
+    });
+    return () => {
+      live = false;
+      controller.abort();
+    };
+    // `scopeKey` and not `documentIds`: the array is a fresh identity on every
+    // render of the shell, so depending on it would re-ask on every keystroke in
+    // the composer. The string is the same scope, flattened, and the only other
+    // value read inside is `documentIds` itself.
+  }, [scopeKey]);
+
+  /**
+   * The documents we hold, for the statement that replaces the chips.
+   *
+   * `coverage.docs.length` and not `documentIds.length`, deliberately: it is the
+   * same number `CoverageLine` renders one line above, and a card that states
+   * two different counts about one unit is worse than one that states a slightly
+   * coarser one. `coverageStatement` returns `''` at zero, so a unit we hold
+   * nothing for gets `CoverageLine`'s existing sentence and no second one.
+   */
+  const statement = coverageStatement(coverage?.docs.length ?? 0, coverage?.types ?? []);
+  const nothingToSuggest = !looking && suggestions.length === 0;
 
   return (
     <View style={s.empty}>
@@ -731,6 +820,18 @@ function EmptyAsk({
             </ScalePressable>
           </View>
           <CoverageLine coverage={coverage} />
+          {/* ST-R16 AC 2 — the designed empty state. It sits inside the unit
+              card because it is a statement about *this unit*, and putting it
+              where the chips would have been would read as an apology for them.
+              Rendered only when there is something to state: at zero documents
+              `coverageStatement` returns '' and CoverageLine above has already
+              said so. */}
+          {nothingToSuggest && statement !== '' && (
+            <View style={s.holdings}>
+              <Text style={s.holdingsText}>{statement}</Text>
+              <Text style={s.holdingsInvitation}>{NOTHING_TO_SUGGEST_INVITATION}</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -757,21 +858,31 @@ function EmptyAsk({
         </View>
       )}
 
-      <View style={s.starters}>
-        <Text style={s.orAsk}>Common on this unit</Text>
-        {suggestions.map((sug) => (
-          <ScalePressable
-            key={sug}
-            onPress={() => onPick(sug)}
-            haptic="tap"
-            style={({ pressed }) => [s.starter, pressed && s.starterPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Ask about: ${sug}`}
-          >
-            <Text style={s.starterText}>{sug}</Text>
-          </ScalePressable>
-        ))}
-      </View>
+      {/* No chips and no heading while the lookup is in flight, and none at all
+          when it came back empty — AC 2 and AC 4. The heading lives inside this
+          guard rather than above it precisely so it cannot outlive the list it
+          introduces. */}
+      {suggestions.length > 0 && (
+        <View style={s.starters}>
+          <Text style={s.orAsk}>Common on this unit</Text>
+          {suggestions.map((sug) => (
+            <ScalePressable
+              key={`${sug.documentId}:${sug.page}:${sug.text}`}
+              onPress={() => onPick(sug.text)}
+              haptic="tap"
+              style={({ pressed }) => [s.starter, pressed && s.starterPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Ask about: ${sug.text}`}
+            >
+              {/* The server's own text, rendered whole. Nothing is composed,
+                  trimmed or re-worded here: a suggestion is a coverage claim,
+                  and the only body that proved this one is answerable is the
+                  one that mined and validated it (ST-R16 AC 6). */}
+              <Text style={s.starterText}>{sug.text}</Text>
+            </ScalePressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -848,6 +959,19 @@ const s = StyleSheet.create({
     borderColor: color.borderStrong,
   },
   changeUnitText: { ...type.chip, color: color.textPrimary },
+
+  /* ST-R16 — what we hold, when there is nothing pre-canned to offer.
+     No fill and no border of its own: it belongs to the unit card it sits in,
+     and giving it a card would make "we have nothing for you" the loudest thing
+     on the screen. A hairline separates it from the verdict line above. */
+  holdings: {
+    gap: space.xs,
+    paddingTop: space.md,
+    borderTopWidth: 1,
+    borderTopColor: color.accentBorder,
+  },
+  holdingsText: { ...type.caption, color: color.textPrimary },
+  holdingsInvitation: { ...type.caption, color: color.textSecondary },
 
   coverageRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   coverageYes: { ...type.caption, color: color.accent, flex: 1 },

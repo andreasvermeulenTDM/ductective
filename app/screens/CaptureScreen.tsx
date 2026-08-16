@@ -231,6 +231,9 @@ export function CaptureScreen({
         documentIds: verdict?.documentIds ?? null,
         status: verdict?.status ?? null,
         coverage: (verdict?.documents ?? []).map((d: UnitDocument) => d.coverage).filter(Boolean),
+        // ST-R16 — the manifest's own DocType strings, for the coverage
+        // statement shown when this unit's manuals support no suggestion.
+        docTypes: (verdict?.documents ?? []).map((d: UnitDocument) => d.doc_type).filter(Boolean),
       });
     } finally {
       setResolving(false);
@@ -317,6 +320,12 @@ export function CaptureScreen({
       documentIds: suggestion.documentIds,
       status: 'covered',
       coverage: [suggestion.family],
+      // No document rows come back on this path — `suggestUnits` returns a
+      // family and its scope, not the manuals behind it — so there are no
+      // doc_types to carry. Left empty rather than inferred: `coverageStatement`
+      // states the count alone when it cannot account for every document, which
+      // is the honest degradation. See ST-R16 in `.pipeline/04-frontend-round4.md`.
+      docTypes: [],
     });
   }
 
