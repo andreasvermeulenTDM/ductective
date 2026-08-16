@@ -260,9 +260,16 @@ async function appendMessage(
   seq: number,
   kind: Message['kind'],
   body: string,
-  citations: Omit<Citation, 'id'>[] = []
+  citations: Omit<Citation, 'id'>[] = [],
+  /**
+   * ST-R06 — the rendering shape, attached to the returned turn and to nothing
+   * else. It is **not** in the insert below and must not be: there is no column
+   * for it (OQ-R2), and adding one would be the `messages.kind` migration that
+   * decision exists to avoid while `sql/015` is unapplied.
+   */
+  shape?: Message['shape']
 ): Promise<Message> {
-  if (!persisting) return appendGuestMessage(sessionId, seq, kind, body, citations);
+  if (!persisting) return appendGuestMessage(sessionId, seq, kind, body, citations, shape);
 
   const { data: msg, error } = await (await db())
     .from('messages')
@@ -282,7 +289,7 @@ async function appendMessage(
 
   await (await db()).from('sessions').update({ updated_at: new Date().toISOString() }).eq('id', sessionId);
 
-  return { ...msg, citations: citations.map((c, i) => ({ ...c, id: `pending-${i}` })) };
+  return { ...msg, shape, citations: citations.map((c, i) => ({ ...c, id: `pending-${i}` })) };
 }
 
 /**
@@ -301,7 +308,8 @@ function appendGuestMessage(
   seq: number,
   kind: Message['kind'],
   body: string,
-  citations: Omit<Citation, 'id'>[] = []
+  citations: Omit<Citation, 'id'>[] = [],
+  shape?: Message['shape']
 ): Message {
   const message: Message = {
     id: guestId('msg'),
@@ -309,6 +317,7 @@ function appendGuestMessage(
     kind,
     body,
     seq,
+    shape,
     citations: citations.map((c, i) => ({ ...c, id: `pending-${i}` })),
   };
   const list = guestMessages.get(sessionId) ?? [];
@@ -360,7 +369,11 @@ export async function answerExisting(
   photos?: string[] | null
 ): Promise<Message> {
   const result = await generateReply(input, equipment, documentIds, cancel, photos);
-  return appendMessage(sessionId, replySeq, result.kind, result.body, result.citations);
+  // `result.meta?.shape` is passed through, not inspected: the store has no
+  // opinion about rendering and must not grow one, for the same reason it does
+  // not special-case `conversational` (messageUi.test.mjs AC 6). The mock path
+  // carries no `meta`, so `shape` is simply undefined there.
+  return appendMessage(sessionId, replySeq, result.kind, result.body, result.citations, result.meta?.shape);
 }
 
 /**
@@ -390,5 +403,8 @@ export async function generateReply(
     if (isLive) return requestDiagnosis(input, equipment, cancel, documentIds, photos);
   }
   const mock = mockReply(input);
-  return { ...mock, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
+  // `meta` is stated rather than omitted so the two branches have the same
+  // shape. A union where one arm silently lacks a field is how a caller ends up
+  // writing `?.` and never finding out which arm it is actually on.
+  return { ...mock, meta: undefined, citations: mock.citations.map((c, i) => ({ ...c, ordinal: i + 1 })) };
 }

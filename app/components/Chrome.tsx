@@ -30,6 +30,17 @@ import { RAIL_WIDTH } from '../theme/layout';
 import { GUEST_DISCLOSURE, SAVED_FROM_HERE, type CopyTone } from '../lib/accountCopy';
 
 /**
+ * The dismiss mark's drawn size (ST-R02).
+ *
+ * Named rather than inlined because it is used twice and the two uses have to
+ * agree: it is the glyph's ink *and* the number `touchSlop` compensates from to
+ * reach `MIN_TOUCH`. Written apart they drift, and the drift is invisible —
+ * the control still works, it is just smaller than the floor on one platform.
+ * 22 matches the other inline header glyphs in this file (`InlineNotice`).
+ */
+const GLYPH = 22;
+
+/**
  * Persistent, non-dismissible. While mockDiagnostics is the answer source, a user
  * must never be able to forget it — including future-you, six weeks from now,
  * demoing this to a technician.
@@ -293,6 +304,40 @@ export function InlineNotice({
  * teaches that the notice is an obstacle to get past, which is precisely the
  * reading ST-A06 AC 6 exists to prevent. The `{onDismiss && …}` guard below is
  * the whole mechanism and it is asserted statically by `accountUi.test.mjs`.
+ *
+ * ---------------------------------------------------------------------------
+ * ST-R02 — why the affordance is a glyph now, and why the rule did not move
+ * ---------------------------------------------------------------------------
+ *
+ * Round 3 shipped the control as the **word** "Got it", sitting in a header that
+ * already contains a red offline glyph and an uppercase heading. The owner's
+ * device note (`00-brief-round4.md` N1) is that it reads as another word in the
+ * paragraph rather than as something to press. So the affordance becomes the
+ * conventional dismiss mark — an `Ionicons` `close` — and nothing else changes.
+ *
+ * **The dismissal rule is untouched and that is the load-bearing part.** The
+ * control still exists only when `onDismiss` is supplied, `canDismiss` in
+ * `lib/guestNotice.ts` is byte-unchanged by this story, and the disclosure can
+ * therefore still be cleared but never skipped. `accountUi.test.mjs` proves the
+ * guard and `guestNoticeUi.test.mjs` proves the glyph; neither was relaxed for
+ * the other.
+ *
+ * Three constraints the glyph had to satisfy and one it deliberately does not:
+ *
+ *  - `Ionicons` is already imported here and draws every other glyph in this
+ *    file, so this costs **no new dependency** (brief hard constraint 5).
+ *  - The target is 48dp of real layout (`s.guestDismiss`), not `hitSlop` alone —
+ *    see the note at the guard.
+ *  - The colour is `color.textPrimary`, a token, and deliberately **not** any
+ *    `color.refusal*` role: red in this app means stop, and a red X on a notice
+ *    would read as "this is the dangerous thing" rather than "this closes it".
+ *    That pairing (textPrimary on refusalSurface) is already measured green in
+ *    `tests/lib/contrastMatrix.mjs` and carries its own row for the glyph.
+ *  - It does **not** get `GUEST_DISCLOSURE.dismiss` as visible text. That
+ *    constant stays in `accountCopy.ts` byte-for-byte (ST-R02 AC 9) — the
+ *    disclosure's wording is frozen and this story has no mandate to touch it —
+ *    it is simply no longer drawn. `dismissLabel` is what a screen reader hears,
+ *    which is the half a bare glyph would otherwise lose.
  */
 export function GuestNotice({
   onSignIn,
@@ -311,16 +356,17 @@ export function GuestNotice({
           // Real 48dp of layout, not `hitSlop`: react-native-web does not
           // implement hitSlop, so a slop-only target would silently be 20dp on
           // the platform this is most often reviewed on. Same reasoning as the
-          // citation chip (Citation.tsx `chipTouch`).
+          // citation chip (Citation.tsx `chipTouch`). The slop is kept as well,
+          // so the target is 48dp on both platforms rather than on one.
           <Pressable
             onPress={onDismiss}
-            hitSlop={touchSlop(20)}
+            hitSlop={touchSlop(GLYPH)}
             style={({ pressed }) => [s.guestDismiss, pressed && s.guestDismissPressed]}
             accessibilityRole="button"
             accessibilityLabel={GUEST_DISCLOSURE.dismissLabel}
             accessibilityHint="Clears this notice until you restart the app"
           >
-            <Text style={s.guestDismissText}>{GUEST_DISCLOSURE.dismiss}</Text>
+            <Ionicons name="close" size={GLYPH} color={color.textPrimary} />
           </Pressable>
         )}
       </View>
@@ -648,8 +694,11 @@ const s = StyleSheet.create({
   guestHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   guestLabel: { ...type.overline, color: color.refusalText, flex: 1 },
   guestBody: { ...type.caption, color: color.textPrimary },
-  /* The dismiss receipt. `minHeight`/`minWidth` reach the 48dp floor as real
-     layout; the label inside keeps the header's rhythm. */
+  /* The dismiss control. `minHeight`/`minWidth` reach the 48dp floor as real
+     layout, so the glyph inside can stay small enough not to compete with the
+     heading beside it (ST-R02 AC 2). `guestLabel` carries `flex: 1`, which is
+     what pins this to the trailing edge rather than letting it drift into the
+     icon-and-heading cluster (AC 4). */
   guestDismiss: {
     minHeight: MIN_TOUCH,
     minWidth: MIN_TOUCH,
@@ -659,7 +708,6 @@ const s = StyleSheet.create({
     borderRadius: radius.md,
   },
   guestDismissPressed: { backgroundColor: color.surfaceRaised },
-  guestDismissText: { ...type.chip, color: color.textPrimary },
 
   /* SavedFromHere — the mid-transcript boundary marker. */
   boundary: { gap: space.xs, marginBottom: space.xl },

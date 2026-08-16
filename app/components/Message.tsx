@@ -28,16 +28,27 @@ import { color, type, space, radius } from '../theme/tokens';
 import { CitationChip, UnresolvedCitationChip } from './Citation';
 import { partition } from '../lib/citations';
 import { parseAnswer } from '../lib/answerFormat';
-import type { Citation, MessageKind } from '../lib/supabase';
+import { parseReference, type ParsedReference } from '../lib/referenceFormat';
+import type { AnswerShape, Citation, MessageKind } from '../lib/supabase';
 
 type Props = {
   kind: MessageKind;
   body: string;
   citations?: Citation[];
+  /**
+   * ST-R06 / OQ-R2 — `meta.shape` off the wire, riding on `kind: 'answer'`.
+   *
+   * Transient by design: it is not a column, so a session reopened from history
+   * renders a reference answer as a plain cited answer. That cost is recorded in
+   * OQ-R2 and accepted — the alternative is a `messages.kind` migration, and
+   * `sql/015` is still unapplied, so a new kind would fail the insert for every
+   * signed-in technician.
+   */
+  shape?: AnswerShape;
   onCitationPress?: (c: Citation) => void;
 };
 
-export function Message({ kind, body, citations = [], onCitationPress }: Props) {
+export function Message({ kind, body, citations = [], shape, onCitationPress }: Props) {
   if (kind === 'user') return <UserTurn body={body} />;
   if (kind === 'refusal') return <RefusalCard body={body} />;
   if (kind === 'clarify') return <ClarifyTurn body={body} />;
@@ -57,6 +68,29 @@ export function Message({ kind, body, citations = [], onCitationPress }: Props) 
   // no-uncited-claims rule exists to stop.
   const { usable, broken } = partition(citations);
   if (usable.length === 0) return <UncitedDefect body={body} allBroken={broken} />;
+
+  // ST-R06 AC 4. This check sits **below** both citation nets on purpose, and
+  // the ordering is the whole guarantee: `meta.shape` rides on `kind: 'answer'`,
+  // so a reference answer that arrived with no usable citation has already been
+  // caught above and rendered as the defect it is. Hoisting the shape check over
+  // either net would give the model a kind that renders without a source, which
+  // is precisely the hole `02-user-stories-fixes.md` §2.2 closed for `conversational`.
+  if (shape === 'reference') {
+    const reference = parseReference(body);
+    // `items: []` means the body is not unambiguously data — see
+    // `referenceFormat.ts`. It falls through to the ordinary answer turn rather
+    // than rendering an empty spec sheet.
+    if (reference.items.length > 0) {
+      return (
+        <ReferenceAnswer
+          reference={reference}
+          citations={usable}
+          broken={broken}
+          onCitationPress={onCitationPress}
+        />
+      );
+    }
+  }
 
   return (
     <AnswerTurn
@@ -171,6 +205,134 @@ function AnswerTurn({
         <Text style={s.adviseOnlyText}>
           Advice only. Verify against the pages above before you act, and follow your
           own procedure for anything on the refrigerant side.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A reference answer — published data with its pages (ST-R06 / ST-R05).
+ *
+ * The user story is the design brief: *"a table of values with pages, not a
+ * numbered list headed CHECK IN THIS ORDER — because these are not steps and
+ * reading them as steps is how someone does them in order."* So this turn is
+ * deliberately **not**:
+ *
+ *  - an **answer**: no `CHECK IN THIS ORDER`, no step numbers, no numbered
+ *    anything. There is no ordinal in this component at all, which is what makes
+ *    "not a checklist" structural rather than stylistic.
+ *  - a **conversational turn**: it makes claims, so it carries chips, and it is
+ *    a card rather than bare prose.
+ *  - a **refusal**: nothing here uses a `color.refusal*` role, including the
+ *    hazard-adjacent note. See below — that one matters.
+ *
+ * **Each row is stacked, not columned.** ST-R06 AC 7 asks that a clearance stay
+ * readable at 200% font scale without the value wrapping away from its label; a
+ * two-column row is exactly where that breaks, and a spec like "Service
+ * clearance, condenser coil side" is long before any scaling. Label above,
+ * value below, both full width: nothing to wrap away from.
+ *
+ * ---------------------------------------------------------------------------
+ * Pairing a citation to a row, and refusing to guess
+ * ---------------------------------------------------------------------------
+ *
+ * ST-R05 AC 4 builds citations from the surviving spec items through the same
+ * mapping steps use, so item *i* and citation *i* correspond — a reference item
+ * carries exactly one `source`. That gives this shape the positional anchor
+ * `AnswerTurn` has never had, and per-row chips are the point: a spec sheet
+ * whose numbers share one undifferentiated chip row does not tell a technician
+ * which page a given value came from.
+ *
+ * But it is only true while the counts agree. If they do not — a dropped item,
+ * a contract drift, anything — the chips fall back to a single row beneath the
+ * values. **A citation attached to the wrong claim is worse than an uncited
+ * one** (CLAUDE.md), so the mismatch case declines to pair rather than pairing
+ * approximately.
+ *
+ * ---------------------------------------------------------------------------
+ * The hazard-adjacent note is a pointer, not a withholding
+ * ---------------------------------------------------------------------------
+ *
+ * ST-R05 AC 6 appends one **server constant** when a surviving spec touches the
+ * hazard vocabulary — a lug torque is still a lug torque. ST-R06 AC 5 requires
+ * it to be visibly distinct from the values and **not** styled as a refusal, and
+ * the reason is precise: a technician who reads it as a refusal will assume the
+ * values above were withheld, when they were given. So it is a steel footnote in
+ * secondary text with an information glyph — the same language `adviseOnly`
+ * already uses — and no red, no alert role, and no border weight of the refusal
+ * card anywhere near it.
+ */
+function ReferenceAnswer({
+  reference,
+  citations,
+  broken,
+  onCitationPress,
+}: {
+  reference: ParsedReference;
+  citations: Citation[];
+  broken: { citation: Citation; reason: string }[];
+  onCitationPress?: (c: Citation) => void;
+}) {
+  const { lead, items, note } = reference;
+  // See the note above: pair only when the correspondence is exact.
+  const perRow = citations.length === items.length && broken.length === 0;
+
+  return (
+    <View style={s.assistant}>
+      {lead ? <Text style={s.body}>{lead}</Text> : null}
+
+      <View style={s.reference}>
+        <Text style={s.referenceOverline}>FROM THE MANUAL</Text>
+        {items.map((item, i) => (
+          <View key={`${item.spec}-${i}`} style={s.referenceRow}>
+            <Text style={s.referenceSpec}>{item.spec}</Text>
+            <Text style={s.referenceValue}>{item.value}</Text>
+            {item.condition ? (
+              <Text style={s.referenceCondition}>{item.condition}</Text>
+            ) : null}
+            {perRow && (
+              <View style={s.referenceSource}>
+                <CitationChip
+                  citation={citations[i]}
+                  onPress={(x) => onCitationPress?.(x)}
+                />
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+
+      {/* The fallback path, and the broken ones. Broken chips sit alongside the
+          good ones rather than being dropped, exactly as in `AnswerTurn`:
+          discarding them would make the sheet look better sourced than it is. */}
+      {(!perRow || broken.length > 0) && (
+        <View style={s.citationRow}>
+          {!perRow && citations.map((c) => (
+            <CitationChip key={c.id} citation={c} onPress={(x) => onCitationPress?.(x)} />
+          ))}
+          {broken.map(({ citation, reason }) => (
+            <UnresolvedCitationChip
+              key={citation.id}
+              citation={citation}
+              reason={reason}
+              onPress={(x) => onCitationPress?.(x)}
+            />
+          ))}
+        </View>
+      )}
+
+      {note ? (
+        <View style={s.referenceNote}>
+          <Ionicons name="information-circle-outline" size={16} color={color.textSecondary} />
+          <Text style={s.referenceNoteText}>{note}</Text>
+        </View>
+      ) : null}
+
+      <View style={s.adviseOnly}>
+        <Text style={s.adviseOnlyText}>
+          Advice only. These are the manual's published values — verify them against
+          the pages above before you act.
         </Text>
       </View>
     </View>
@@ -318,6 +480,40 @@ const s = StyleSheet.create({
   readingText: { ...type.caption, color: color.textSecondary, flex: 1 },
 
   citationRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+
+  /* ST-R06 — the reference sheet.
+
+     No fill and no card: the rows are separated by hairlines instead, which is
+     what makes it read as a table of data rather than as another message
+     bubble. `stepNumber`'s accent pill is deliberately absent — there is no
+     ordinal in this turn at all — and so is any `color.refusal*` role. */
+  reference: { gap: space.md },
+  referenceOverline: { ...type.overline, color: color.textSecondary },
+  referenceRow: {
+    gap: space.xs,
+    paddingTop: space.md,
+    borderTopWidth: 1,
+    borderTopColor: color.border,
+  },
+  /* Label above value, both full width — see the 200%-font-scale note on the
+     component. The label is the quieter of the two: a technician on a roof is
+     scanning for the number. */
+  referenceSpec: { ...type.caption, color: color.textSecondary },
+  referenceValue: { ...type.bodyStrong, color: color.textPrimary },
+  referenceCondition: { ...type.caption, color: color.textSecondary },
+  referenceSource: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs },
+
+  /* The hazard-adjacent pointer (ST-R05 AC 6 / ST-R06 AC 5). Steel and quiet,
+     never red: read as a refusal it would imply the values above were withheld,
+     and they were not. Same visual family as `adviseOnly` and `reading`. */
+  referenceNote: {
+    flexDirection: 'row',
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: color.surface,
+  },
+  referenceNoteText: { ...type.caption, color: color.textSecondary, flex: 1 },
 
   adviseOnly: {
     flexDirection: 'row',

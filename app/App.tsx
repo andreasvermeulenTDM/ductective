@@ -95,11 +95,15 @@ export default function App() {
   const [documentIds, setDocumentIds] = useState<string[] | null>(null);
   /**
    * The confirmed unit's coverage verdict — whether we hold documentation for it,
-   * and what those manuals cover. Drives the coverage line and the unit-aware
-   * suggestions. Null when unknown (a reopened session, or a lookup that failed),
-   * which renders as "not checked" rather than as either answer.
+   * what those manuals cover, and what kinds of document they are. Drives the
+   * coverage line, and (ST-R16) the statement of what we hold that replaces the
+   * chips when a unit's manuals support no validated suggestion. Null when
+   * unknown (a reopened session, or a lookup that failed), which renders as
+   * "not checked" rather than as either answer.
    */
-  const [coverage, setCoverage] = useState<{ status: string | null; docs: string[] } | null>(null);
+  const [coverage, setCoverage] = useState<
+    { status: string | null; docs: string[]; types: string[] } | null
+  >(null);
   /** A question typed at the gate, waiting for a unit to be grounded against. */
   const [carried, setCarried] = useState<string | null>(null);
   const { isTablet } = useLayout();
@@ -272,7 +276,11 @@ export default function App() {
         if (unit) {
           setEquipment(unit.equipment);
           setDocumentIds(unit.documentIds);
-          setCoverage({ status: unit.status ?? null, docs: unit.coverage ?? [] });
+          setCoverage({
+            status: unit.status ?? null,
+            docs: unit.coverage ?? [],
+            types: unit.docTypes ?? [],
+          });
         }
         setCapture(null);
       }}

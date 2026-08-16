@@ -129,7 +129,27 @@ export const SCENES = [
         file: 'app/screens/ChatScreen.tsx',
         fn: 'EmptyAsk',
         why: 'the empty state that repeats the unit entry (ChatScreen.tsx:662)',
-        state: { equipment: true, 'repeat.suggestions': 4 },
+        // ST-R16 turned one unconditional chip list into three states, so the
+        // scene now has to say which one it is measuring. It measures the
+        // **suggestions** state with a full four chips — the same shape and the
+        // same count the taxonomy always drew — because that is the comparison
+        // ST-F18's baseline exists to make. The other two states are strictly
+        // lighter: `looking` draws no chip block at all, and the empty state
+        // trades four chips for two lines inside the unit card. Declaring the
+        // heaviest one keeps the baseline a ceiling rather than an average.
+        state: {
+          equipment: true,
+          'suggestions.length': 4,
+          'repeat.suggestions': 4,
+          // The two are mutually exclusive by construction (`nothingToSuggest`
+          // is `!looking && suggestions.length === 0`), so the scene that has
+          // chips cannot also have the statement. Both terms of the chained
+          // guard are declared, because the counter resolves each one and
+          // refuses to guess either — including the one a short-circuit would
+          // never reach.
+          nothingToSuggest: false,
+          "statement !== ''": false,
+        },
       },
       {
         label: 'CoverageLine',
@@ -163,5 +183,5 @@ export const FENCED_COPY = [
   { name: 'NO_DOCUMENTATION', file: 'lib/diagnose.mjs', keys: null },
   { name: 'UNIT_REQUIRED', file: 'lib/diagnose.mjs', keys: null },
   { name: 'refusalBody', file: 'lib/safety.mjs', keys: null },
-  { name: 'CoverageLine verdicts', file: 'app/screens/ChatScreen.tsx', keys: null, lines: [787, 797, 806] },
+  { name: 'CoverageLine verdicts', file: 'app/screens/ChatScreen.tsx', keys: null, lines: [903, 913, 922] },
 ];
