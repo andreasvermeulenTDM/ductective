@@ -21,6 +21,11 @@ import {
   worthSuggesting,
   type UnitSuggestion,
 } from './suggest';
+import {
+  UNIT_SUGGESTIONS_TIMEOUT_MS,
+  postUnitSuggestions,
+  type UnitQuestionSuggestion,
+} from './starters';
 
 export type DiagnoseCitation = {
   source_document: string;
@@ -46,6 +51,33 @@ export type DiagnoseReply = {
   kind: 'answer' | 'clarify' | 'refusal' | 'conversational';
   body: string;
   citations: DiagnoseCitation[];
+  /**
+   * Optional diagnostics about the answer. Everything here is advisory to the
+   * renderer — nothing in it may substitute for `citations`.
+   */
+  meta?: {
+    /**
+     * ST-R05 (N2) — `'reference'` means this answer is a list of published
+     * specifications rather than ranked diagnostic steps: `spec — value
+     * (condition)` lines, each with its own citation.
+     *
+     * **It rides on `kind: 'answer'` deliberately** (OQ-R2). A reference answer
+     * IS an answer — cited, validated, and degradable to no-documentation — so
+     * `Message.tsx`'s uncited-defect net must stay in front of it, and reusing
+     * the kind is what guarantees that. Render the shape *inside* the answer
+     * branch, never as a branch of its own that could bypass the empty-citations
+     * check.
+     *
+     * Absent on every other response. A reopened session re-renders a reference
+     * answer as a plain cited answer, which is the accepted cost of not minting
+     * a `messages.kind` value.
+     */
+    shape?: 'reference';
+    /** F2 / ST-R08 — which server-authored branch produced a conversational reply. */
+    intent?: 'acknowledgement' | 'greeting' | 'farewell' | 'capability' | 'installation_scope' | 'presence';
+    /** ST-R01 (D2) — true when the server honestly had nothing, not when it answered with nothing. */
+    noDocumentation?: boolean;
+  };
 };
 
 /**
@@ -215,7 +247,19 @@ export async function requestDiagnosis(
       throw new DiagnoseError(502, 'Malformed response from the diagnostic core');
     }
 
-    return { kind: json.kind, body: json.body, citations: json.citations };
+    // `meta` is passed through rather than dropped, but only the three fields the
+    // renderer is allowed to key off. Anything else the server carries — usage,
+    // budget, latency — is instrumentation and has no business in the UI.
+    return {
+      kind: json.kind,
+      body: json.body,
+      citations: json.citations,
+      meta: {
+        ...(json.meta?.shape === 'reference' ? { shape: 'reference' as const } : {}),
+        ...(typeof json.meta?.intent === 'string' ? { intent: json.meta.intent } : {}),
+        noDocumentation: json.meta?.noDocumentation === true,
+      },
+    };
   } catch (e) {
     // A cancel and a timeout both surface as AbortError; only one of them is a
     // failure, and telling a technician their own cancel "failed" is noise.
@@ -318,6 +362,44 @@ export async function requestSuggestUnits(
 
   try {
     return await postSuggestUnits(fetch, BASE, query, controller.signal, serverHeaders());
+  } finally {
+    clearTimeout(timer);
+    cancel?.removeEventListener('abort', onCancel);
+  }
+}
+
+/**
+ * The questions this unit's own manuals can answer — `POST /unit-suggestions` (N4).
+ *
+ * Returns `[]` for every failure there is: no server configured, no scope,
+ * server unreachable, non-200, malformed body, timeout, abort, and the
+ * `sql/018`-not-applied case (which the server already turns into an empty
+ * list). **It never throws**, on the precedent `requestSuggestUnits` and
+ * `requestResolveUnit` both set: a suggestion lookup that fails is not something
+ * a technician can act on, and an error card where a chip should be makes the
+ * screen worse than the plain one it replaced.
+ *
+ * `[]` is also a perfectly ordinary success. A unit whose manuals support no
+ * pre-canned question honestly has none, and ST-R16's empty state — the coverage
+ * statement instead of chips — is the designed outcome, not a failure.
+ *
+ * The suggestions are the server's, whole. The app renders `text` verbatim and
+ * sends it verbatim as the symptom, with the session's existing `documentIds`.
+ * It must never compose a question or re-derive the scope.
+ */
+export async function requestUnitSuggestions(
+  documentIds: string[] | null | undefined,
+  cancel?: AbortSignal
+): Promise<UnitQuestionSuggestion[]> {
+  if (!BASE || !documentIds?.length) return [];
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UNIT_SUGGESTIONS_TIMEOUT_MS);
+  const onCancel = () => controller.abort();
+  cancel?.addEventListener('abort', onCancel);
+
+  try {
+    return await postUnitSuggestions(fetch, BASE, documentIds, controller.signal, serverHeaders());
   } finally {
     clearTimeout(timer);
     cancel?.removeEventListener('abort', onCancel);

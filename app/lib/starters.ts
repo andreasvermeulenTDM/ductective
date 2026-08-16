@@ -1,111 +1,148 @@
 /**
- * starters.ts — the suggested symptoms on an empty session, chosen for the unit.
+ * starters.ts — the wire contract for `POST /unit-suggestions` (N4 / ST-R15).
  *
- * The old list was four hardcoded strings written when the corpus was two rooftop
- * families. On a Goodman furnace it offered "High head pressure on a Precedent",
- * which is worse than offering nothing: it suggests the app has not registered what
- * the technician is standing in front of.
+ * ## What this file used to be, and why none of it survived
  *
- * Two rules shape this list, and the second one is easy to get wrong:
+ * It held `BY_CLASS` — four hardcoded symptom strings per equipment class — and
+ * `classifyEquipment`, which picked a class from the resolved documents' coverage
+ * text. Its own comment claimed *"Always four, always answerable"*. The first
+ * half was true. **The second half was asserted and false**, and it is the direct
+ * cause of the four dead turns in the 16 Aug 2026 device session: on a Bosch IDS
+ * the taxonomy offered generic heat-pump faults while that unit's corpus is
+ * mostly installation manuals and a gateway troubleshooting guide, so every tap
+ * returned no-documentation.
  *
- *  1. **Match the equipment class**, read from the coverage strings of the documents
- *     the unit actually resolved to — the same manifest text the server matched on,
- *     so the suggestion and the retrieval scope cannot disagree. The typed equipment
- *     label is the fallback when no verdict exists (manual entry offline).
+ * A suggestion is a **coverage claim** (`00-brief-round4.md` hard constraint 2).
+ * A list of them written down in the client is a coverage claim that cannot go
+ * stale, because it never knew the inventory in the first place. So the list is
+ * gone — `BY_CLASS`, `CLASS_PATTERNS` and the class classifier are **deleted**,
+ * not deprecated — and what replaces it is a parser for a server response whose
+ * every row was mined from that unit's own manuals, gated by `classifyHazard`,
+ * and proved by running the same retrieval that will answer it.
  *
- *  2. **Never suggest something the safety gate will refuse.** `lib/safety.mjs`
- *     refuses gas/combustion, refrigerant-handling and live-electrical *procedure*,
- *     and three of the top-15 faults (F11 ignition, F12 rollout, F14 charge
- *     verification) sit squarely there. Offering one as a one-tap suggestion means
- *     the app invites a question and then declines it — training technicians that
- *     the suggestions are decoration. Every entry below is an interpretive symptom,
- *     which is exactly what the system is good at.
+ * `startersFor` survives as a named seam returning nothing, for the one reason
+ * given at its declaration below. ST-R16 removes it.
  *
- * Wording is symptom-first and unit-agnostic: the unit is already established by the
- * gate, so repeating it in the chip ("...on a Precedent") is noise that also goes
- * stale the moment the unit changes.
+ * The rule this file now keeps is `app/lib/suggest.ts`'s, for the same reason:
+ * **a malformed row is discarded, never repaired.** A half-parsed suggestion
+ * would put a string in front of a technician as a one-tap question with no
+ * evidence behind it, which is exactly what was just removed.
+ *
+ * No React Native import, so `node --test` can run it — the split `suggest.ts`,
+ * `identify.ts` and `citations.ts` already use.
  */
 
-/** Equipment classes we tailor for. `general` is the honest fallback, not a failure. */
-export type EquipmentClass =
-  | 'rooftop' | 'furnace' | 'heatpump' | 'airhandler' | 'ductless' | 'boiler' | 'general';
+/** Which kind of question this is. Mirrors `document_suggestions.category`. */
+export type SuggestionCategory = 'fault' | 'reference' | 'sequence' | 'commissioning';
 
-/**
- * Ordered most-specific first: a packaged rooftop *is* also a heat pump sometimes,
- * and "rooftop" is the more useful frame when both match.
- */
-const CLASS_PATTERNS: [EquipmentClass, RegExp][] = [
-  ['rooftop', /rooftop|packaged|rtu|precedent|weathermaker|48\/?50|intellipak|airfinity|voyager/i],
-  ['ductless', /ductless|mini-?split|vrf|vrv|cassette|wall-?mount|slim duct/i],
-  ['boiler', /boiler|hydronic|combi/i],
-  ['furnace', /furnace/i],
-  ['airhandler', /air handler|air handling|fan coil|blower/i],
-  ['heatpump', /heat pump|heatpump/i],
-];
-
-/** Symptom suggestions per class. All interpretive — none trips the safety gate. */
-const BY_CLASS: Record<EquipmentClass, string[]> = {
-  rooftop: [
-    'Not cooling — compressor won\'t start',
-    'Low suction pressure',
-    'High head pressure',
-    'Economizer not modulating',
-  ],
-  furnace: [
-    'Blower runs constantly and won\'t shut off',
-    'Control board is flashing an error code',
-    'Low airflow across the heat exchanger',
-    'Unit short cycles on the thermostat',
-  ],
-  heatpump: [
-    'Not heating — stuck in defrost',
-    'Reversing valve not changing over',
-    'Low suction pressure',
-    'Unit short cycles',
-  ],
-  airhandler: [
-    'Low airflow / high static pressure',
-    'Supply fan won\'t start',
-    'Evaporator coil icing up',
-    'Blower speed doesn\'t match the nameplate',
-  ],
-  ductless: [
-    'Indoor unit blinking an error code',
-    'Not cooling on one zone',
-    'Communication fault between indoor and outdoor',
-    'Unit short cycles',
-  ],
-  boiler: [
-    'Circulator isn\'t running',
-    'Control is showing a lockout code',
-    'Not reaching setpoint',
-    'Short cycling on the aquastat',
-  ],
-  general: [
-    'Not cooling',
-    'Unit is short cycling',
-    'Low airflow',
-    'Control board is showing an error code',
-  ],
+/** One row of `{suggestions}`. Shapes `lib/suggestions.mjs`'s output. */
+export type UnitQuestionSuggestion = {
+  /**
+   * The question, ready to render and ready to send **verbatim** as the symptom.
+   * Server-composed from a fixed template; the app never builds one of its own.
+   */
+  text: string;
+  category: SuggestionCategory;
+  /** The document it was mined from — always inside the unit's own scope. */
+  documentId: string;
+  /** The page it was mined from, 1-based. */
+  page: number;
+  /** The citable document name, for a UI that wants to say where it came from. */
+  source_document: string | null;
 };
 
-/**
- * Classify from the resolved documents' coverage text, falling back to the typed
- * equipment label. Returns `general` rather than guessing when nothing matches —
- * a wrong class is worse than a neutral one.
- */
-export function classifyEquipment(equipment?: string | null, coverage: string[] = []): EquipmentClass {
-  // Coverage first: it is the manifest's own words about what the manual covers,
-  // where the label is whatever the plate or the technician said.
-  const haystacks = [coverage.join(' '), equipment ?? ''];
-  for (const hay of haystacks) {
-    if (!hay.trim()) continue;
-    for (const [cls, re] of CLASS_PATTERNS) if (re.test(hay)) return cls;
-  }
-  return 'general';
+const CATEGORIES: readonly string[] = ['fault', 'reference', 'sequence', 'commissioning'];
+
+function isSuggestion(row: unknown): row is UnitQuestionSuggestion {
+  if (!row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  return (
+    typeof r.text === 'string' && r.text.trim().length > 0 &&
+    typeof r.category === 'string' && CATEGORIES.includes(r.category) &&
+    typeof r.documentId === 'string' && r.documentId.length > 0 &&
+    typeof r.page === 'number' && Number.isInteger(r.page) && r.page >= 1
+  );
 }
 
-/** The suggestions to show for this unit. Always four, always answerable. */
-export function startersFor(equipment?: string | null, coverage: string[] = []): string[] {
-  return BY_CLASS[classifyEquipment(equipment, coverage)];
+/**
+ * Parse `{suggestions: [...]}`.
+ *
+ * Anything unexpected becomes `[]` or a shorter list — never a throw and never a
+ * partially-populated row. There is no error outcome to render: an absent
+ * suggestion list is indistinguishable, to the technician, from a unit whose
+ * manuals had nothing pre-canned to offer, and neither is something they can act
+ * on. `parseSuggestResponse` in `suggest.ts` sets exactly this precedent.
+ */
+export function parseSuggestionsResponse(json: unknown): UnitQuestionSuggestion[] {
+  if (!json || typeof json !== 'object') return [];
+  const raw = (json as Record<string, unknown>).suggestions;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isSuggestion).map((s) => ({
+    text: s.text,
+    category: s.category,
+    documentId: s.documentId,
+    page: s.page,
+    source_document: typeof s.source_document === 'string' ? s.source_document : null,
+  }));
+}
+
+/**
+ * **DEPRECATED — a seam, and Frontend deletes it. Do not call this.**
+ *
+ * `ST-R15 AC 10` deletes `startersFor` outright, and everything it stood on
+ * (`BY_CLASS`, `CLASS_PATTERNS`, the class classifier) **is** deleted above: the
+ * hardcoded coverage claim is gone from this tree and cannot come back.
+ *
+ * What survives is the name, returning **the empty list, always**. It exists for
+ * exactly one reason: `app/screens/ChatScreen.tsx:17` still imports it, that file
+ * belongs to ST-R16 (Frontend, running in parallel), and shipping a red `tsc` on
+ * a branch the owner may be running on a phone is not a trade worth making.
+ * Returning `[]` degrades `EmptyAsk` to the state ST-R16 is building anyway —
+ * no chips — which is also the correct state while `sql/018` is unapplied.
+ *
+ * **ST-R16 removes the import and then removes this function.** Until it does,
+ * this is the one place in the app that could have offered an unproven
+ * suggestion, and it offers none.
+ */
+export function startersFor(_equipment?: string | null, _coverage?: string[]): string[] {
+  return [];
+}
+
+/**
+ * Short on purpose. These decorate an empty session; a chip that arrives after
+ * the technician has already typed is worse than one that never came, and
+ * `requestUnitSuggestions` resolves to `[]` rather than showing an error.
+ */
+export const UNIT_SUGGESTIONS_TIMEOUT_MS = 4_000;
+
+/** Ceiling the server already applies (OQ-R7); restated so the UI can reserve space. */
+export const MAX_UNIT_SUGGESTIONS = 4;
+
+/**
+ * `POST /unit-suggestions`, as a pure function over an injected fetch.
+ *
+ * Resolves to `[]` for **every** failure there is: no scope, non-200, malformed
+ * body, timeout, abort, transport error, and the `sql/018`-not-applied case the
+ * server turns into an empty list. It never throws.
+ */
+export async function postUnitSuggestions(
+  fetchFn: (input: string, init?: RequestInit) => Promise<Response>,
+  baseUrl: string,
+  documentIds: string[],
+  signal?: AbortSignal,
+  headers: Record<string, string> = { 'Content-Type': 'application/json' }
+): Promise<UnitQuestionSuggestion[]> {
+  if (!Array.isArray(documentIds) || documentIds.length === 0) return [];
+  try {
+    const res = await fetchFn(`${baseUrl}/unit-suggestions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ documentIds }),
+      signal,
+    });
+    if (!res.ok) return [];
+    return parseSuggestionsResponse(await res.json().catch(() => null));
+  } catch {
+    return [];
+  }
 }

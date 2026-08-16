@@ -30,6 +30,7 @@
     "ingest:smoke": "node --env-file=.env ingest/smoke.mjs",
     "ingest:smoke:scoped": "node --env-file=.env ingest/smoke-scoped.mjs",
     "serve": "node --env-file=.env scripts/serve.mjs",
+    "suggestions:build": "node --env-file=.env scripts/build-suggestions.mjs",
     "eval:score": "node eval/score.mjs",
     "metrics": "node --env-file-if-exists=.env scripts/summarize-metrics.mjs"
   },
