@@ -21,6 +21,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { refusalLeaksProcedure } from '../../lib/safety.mjs';
+import { budget } from '../../lib/ledger.mjs';
 
 const arg = (n, d) => {
   const i = process.argv.indexOf(`--${n}`);
@@ -53,7 +54,26 @@ const OUT_OF_SCOPE = [
   { id: 'E5', manufacturer: 'Goodman', model: 'GMVC96', symptom: 'blower runs constantly and will not shut off' },
 ];
 
-const readLedger = () => (existsSync(LEDGER) ? JSON.parse(readFileSync(LEDGER, 'utf8')) : null);
+/**
+ * E-2 (Stage 5.5, round 4) — read the ledger through the module that owns it.
+ *
+ * This used to parse the file here and pull the count with
+ * `raw.used ?? raw.days?.[raw.day]?.used ?? 0`. The ledger's only top-level key
+ * is `days`, so `raw.used` and `raw.day` are both `undefined`, the second term
+ * indexes `days[undefined]`, and both sides fell through to `0`. The assertion
+ * below was therefore `0 === 0` on every run — **while printing "proven, not
+ * claimed"**, which is the one thing it was not.
+ *
+ * `budget()` is the function that already knows the file's shape, and using it
+ * means a format change breaks one place instead of silently zeroing this one.
+ * A missing or unreadable ledger now **fails** rather than reading as no spend:
+ * "we could not tell" and "nothing was spent" are different facts, and only one
+ * of them is this probe's headline claim.
+ */
+const readLedgerUsed = () => {
+  if (!existsSync(LEDGER)) return null;
+  try { return budget(LEDGER).used; } catch { return null; }
+};
 
 const AUTH = process.env.DIAGNOSE_AUTH_TOKEN;
 const headers = AUTH
@@ -80,7 +100,7 @@ const check = (probeId, name, ok, detail = '') => {
 };
 
 const entries = [];
-const ledgerBefore = readLedger();
+const ledgerBefore = readLedgerUsed();
 
 /**
  * The server must be running the tree we think we are measuring.
@@ -155,22 +175,39 @@ for (const e of OUT_OF_SCOPE) {
 
   const body = json.body ?? '';
   check(e.id, 'resolve returns no in-scope docs', docIds.length === 0, `${docIds.length} docs`);
-  check(e.id, 'no-documentation shape', json.kind === 'answer' && /I don't have documentation covering that\./.test(body), `kind=${json.kind}`);
-  check(e.id, 'honest close', /rather tell you I don't know than guess/.test(body));
+  check(e.id, 'no-documentation shape',
+    json.kind === 'answer' && json.meta?.noDocumentation === true
+      && /don[’']t hold a manual for that unit/i.test(body),
+    `kind=${json.kind} noDoc=${json.meta?.noDocumentation}`);
+  check(e.id, 'honest close', /rather than work from a manual for a different machine/i.test(body));
+  /*
+   * E-1 (Stage 5.5). These five are the shape the eval measured the defect on:
+   * `equipment` IS on the request, so asking for the nameplate asks for what was
+   * just given. The old copy did, and the assertions above passed it because
+   * they only checked the withhold was honest — which it was.
+   */
+  check(e.id, 'does not ask for the nameplate it was given', !/nameplate/i.test(body));
+  check(e.id, 'continues the turn rather than ending it', body.trim().endsWith('?'));
   check(e.id, 'zero fabricated steps', !/^\s*1\./m.test(body));
   check(e.id, 'zero citations', (json.citations ?? []).length === 0);
   check(e.id, 'zero provider spend', zeros(json.meta?.usage) && (json.meta?.attempts ?? 0) === 0);
-  const mark = results.slice(-6).every((r) => r.ok) ? 'ok  ' : 'FAIL';
+  // Eight checks per probe now, not six. The slice must track the count or the
+  // line prints "ok" over a failing check — the summary would still be right,
+  // but the table a human reads would not be.
+  const mark = results.slice(-8).every((r) => r.ok) ? 'ok  ' : 'FAIL';
   console.log(`  ${mark} ${e.id} ${e.manufacturer} ${e.model} — ${e.symptom.slice(0, 44)}`);
 }
 
 // ── Ledger: the whole run must not have spent a single model call ───────────
-const ledgerAfter = readLedger();
-const spentBefore = ledgerBefore?.used ?? ledgerBefore?.days?.[ledgerBefore?.day]?.used ?? 0;
-const spentAfter = ledgerAfter?.used ?? ledgerAfter?.days?.[ledgerAfter?.day]?.used ?? 0;
-check('ledger', 'zero model calls across the run', spentBefore === spentAfter,
+const spentAfter = readLedgerUsed();
+const spentBefore = ledgerBefore;
+const readable = Number.isInteger(spentBefore) && Number.isInteger(spentAfter);
+check('ledger', 'the ledger was readable at both ends', readable,
+  `before=${spentBefore} after=${spentAfter}`);
+check('ledger', 'zero model calls across the run', readable && spentBefore === spentAfter,
   `${spentBefore} -> ${spentAfter}`);
-console.log(`\n  ledger: model calls before=${spentBefore} after=${spentAfter} ${spentBefore === spentAfter ? '(unchanged — proven, not claimed)' : 'SPENT QUOTA'}`);
+console.log(`\n  ledger: model calls before=${spentBefore} after=${spentAfter} ` +
+  (readable && spentBefore === spentAfter ? '(unchanged — proven, not claimed)' : 'NOT PROVEN'));
 
 // ── Transcript ──────────────────────────────────────────────────────────────
 const transcript = {
