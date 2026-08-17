@@ -167,6 +167,46 @@ design.
 
 ---
 
+## OPEN · The manufacturer list offers publishers as things you might own (filed 17 Aug 2026)
+
+Surfaced while closing E-1, and **pre-existing** — E-1's new body did not create it,
+it gave it a second place to be read.
+
+Both `capabilityBody`'s no-scope branch and the new `unresolvedUnitBody` say:
+
+> "I answer from the manufacturers' own manuals, and right now that means Carrier,
+> Daikin Applied, Bosch, Trane, Goodman / Amana, **US EPA, US Dept of Veterans
+> Affairs**, Daikin and 4 more."
+
+**Not a coverage-honesty violation, and the code is not wrong.** Those documents are
+genuinely in the corpus, the names are lifted from `documents.manufacturer`, and the
+eval's AC 7 check passes because they *are* in `data/manifest.csv` — hard constraint 2
+is satisfied. `coverage.mjs` did exactly what it is supposed to do.
+
+**It is wrong in substance.** A technician cannot own a US EPA rooftop unit. The
+sentence appears at the two worst moments for sounding confused: when they ask what
+we can do, and when we have just told them we hold nothing for their unit.
+
+Two other defects visible in the same sentence: **"Daikin Applied" and "Daikin" are
+listed separately** (the manifest carries both spellings), and the cap counts them as
+two of its eight.
+
+**The fix is a data question, not a code one, which is why this is filed and not
+done.** `data/manifest.csv` uses one `Manufacturer` column for two roles — the company
+that built the machine, and the body that published the document. Separating them
+means either a new column (`Publisher`, or a `role`) or a decision that regulatory and
+guidance documents are not offered in an equipment list at all. Both are the owner's
+call, and `CLAUDE.md` forbids guessing.
+
+**Do not fix it with a literal exclusion list in `coverage.mjs`.** That file has no
+manufacturer literal in it by design and `coverage.test.mjs` greps the source against
+every manifest manufacturer to keep it that way — an exclusion list would be a written
+-down list of corpus contents, which is the defect round 4 existed to remove.
+
+Owner if taken: Knowledge (manifest schema), then a one-line filter in the composer.
+
+---
+
 # Accounts run (ST-A**) — filed 10 Aug 2026 by Stage 3
 
 Six items, each with the risk of not doing it stated. Two are tagged
