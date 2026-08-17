@@ -1,0 +1,106 @@
+{
+  "format": "ductective-citation-audit/1",
+  "story": "ST-R19 AC 2",
+  "generatedAt": "2026-08-17T16:52:44.044Z",
+  "unit": {
+    "manufacturer": "Trane",
+    "model": "YSC072E3"
+  },
+  "scope": [
+    "doc_772ee4e060342593"
+  ],
+  "quotaSpent": 1,
+  "audited": [
+    {
+      "probe": {
+        "id": "P3",
+        "text": "what is the manifold pressure specification for natural gas",
+        "why": "the most safety-adjacent reference value in the set"
+      },
+      "response": {
+        "kind": "answer",
+        "body": "Manifold pressure for single stage heaters — 3.3-inch W.C.\nManifold pressure for two stage heaters - HIGH FIRE — 3.5-inch W.C. (HIGH FIRE)\nManifold pressure for two stage heaters - LOW FIRE — 1.8-inch W.C. (LOW FIRE)\nManifold pressure for Low NOx Gas furnace option — Not applicable / not utilized as an adjustment or checking parameter (Low NOx Gas furnace option)\n\nSome of these figures belong to work that is governed by certification training, company procedure and the manufacturer’s published sequence — those govern the work itself, whatever the numbers say.",
+        "citations": [
+          {
+            "source_document": "RT-SVX21AD-EN_Rooftop-IOM",
+            "page": 36,
+            "claim": "Manifold pressure for single stage heaters — 3.3-inch W.C.",
+            "ordinal": 1,
+            "chunk_id": "c761c64a-20c9-4365-9040-3d090ad139a1",
+            "snippet": "• Drip leg Installed in the gas piping near the unit.\n• Minimum gas supply pressure should be 4.5-inch W.C.\n• Maximum gas supply pressure must not exceed 14.0-inch\nW.C.\n• Manifold pressure for single stage heaters should be set to\n3.3-inch W.C.\n• Manifold pressure for two stage heaters should be set to\n3.5-inch W.C. on HIGH FIRE and 1.8-inch W.C. on LOW\nFIRE.\nNote: Manifold pressure not applicable for units with Low\nNox Gas furnace option. Manifold pressure is not\nutilized as an adjustment/checking parameter for\nthis system.\n• Flue Exhaust clear of any obstruction.\nRT-SVX21AD-EN",
+            "verified": "exact"
+          },
+          {
+            "source_document": "RT-SVX21AD-EN_Rooftop-IOM",
+            "page": 36,
+            "claim": "Manifold pressure for two stage heaters - HIGH FIRE — 3.5-inch W.C.",
+            "ordinal": 2,
+            "chunk_id": "c761c64a-20c9-4365-9040-3d090ad139a1",
+            "snippet": "• Drip leg Installed in the gas piping near the unit.\n• Minimum gas supply pressure should be 4.5-inch W.C.\n• Maximum gas supply pressure must not exceed 14.0-inch\nW.C.\n• Manifold pressure for single stage heaters should be set to\n3.3-inch W.C.\n• Manifold pressure for two stage heaters should be set to\n3.5-inch W.C. on HIGH FIRE and 1.8-inch W.C. on LOW\nFIRE.\nNote: Manifold pressure not applicable for units with Low\nNox Gas furnace option. Manifold pressure is not\nutilized as an adjustment/checking parameter for\nthis system.\n• Flue Exhaust clear of any obstruction.\nRT-SVX21AD-EN",
+            "verified": "exact"
+          },
+          {
+            "source_document": "RT-SVX21AD-EN_Rooftop-IOM",
+            "page": 36,
+            "claim": "Manifold pressure for two stage heaters - LOW FIRE — 1.8-inch W.C.",
+            "ordinal": 3,
+            "chunk_id": "c761c64a-20c9-4365-9040-3d090ad139a1",
+            "snippet": "• Drip leg Installed in the gas piping near the unit.\n• Minimum gas supply pressure should be 4.5-inch W.C.\n• Maximum gas supply pressure must not exceed 14.0-inch\nW.C.\n• Manifold pressure for single stage heaters should be set to\n3.3-inch W.C.\n• Manifold pressure for two stage heaters should be set to\n3.5-inch W.C. on HIGH FIRE and 1.8-inch W.C. on LOW\nFIRE.\nNote: Manifold pressure not applicable for units with Low\nNox Gas furnace option. Manifold pressure is not\nutilized as an adjustment/checking parameter for\nthis system.\n• Flue Exhaust clear of any obstruction.\nRT-SVX21AD-EN",
+            "verified": "exact"
+          },
+          {
+            "source_document": "RT-SVX21AD-EN_Rooftop-IOM",
+            "page": 36,
+            "claim": "Manifold pressure for Low NOx Gas furnace option — Not applicable / not utilized as an adjustment or checking parameter",
+            "ordinal": 4,
+            "chunk_id": "c761c64a-20c9-4365-9040-3d090ad139a1",
+            "snippet": "• Drip leg Installed in the gas piping near the unit.\n• Minimum gas supply pressure should be 4.5-inch W.C.\n• Maximum gas supply pressure must not exceed 14.0-inch\nW.C.\n• Manifold pressure for single stage heaters should be set to\n3.3-inch W.C.\n• Manifold pressure for two stage heaters should be set to\n3.5-inch W.C. on HIGH FIRE and 1.8-inch W.C. on LOW\nFIRE.\nNote: Manifold pressure not applicable for units with Low\nNox Gas furnace option. Manifold pressure is not\nutilized as an adjustment/checking parameter for\nthis system.\n• Flue Exhaust clear of any obstruction.\nRT-SVX21AD-EN",
+            "verified": "exact"
+          }
+        ],
+        "meta": {
+          "retrieved": 8,
+          "dropped": 0,
+          "noDocumentation": false,
+          "shape": "reference",
+          "scopedTo": 1,
+          "mode": "vector",
+          "model": "gemini-3.6-flash",
+          "modelFallback": false,
+          "usage": {
+            "inputTokens": 4287,
+            "outputTokens": 232,
+            "totalTokens": 5717,
+            "cachedContentTokenCount": 0,
+            "embedTokens": 8
+          },
+          "attempts": 1,
+          "finishReason": "STOP",
+          "latencyMs": 8489,
+          "latency": {
+            "retrievalMs": 569,
+            "generationMs": 7864
+          },
+          "budget": {
+            "day": "2026-08-17",
+            "used": 17,
+            "limit": 20,
+            "remaining": 3
+          }
+        }
+      },
+      "chunks": [
+        {
+          "id": "c761c64a-20c9-4365-9040-3d090ad139a1",
+          "page_number": 36,
+          "text": "• Drip leg Installed in the gas piping near the unit.\n• Minimum gas supply pressure should be 4.5-inch W.C.\n• Maximum gas supply pressure must not exceed 14.0-inch\nW.C.\n• Manifold pressure for single stage heaters should be set to\n3.3-inch W.C.\n• Manifold pressure for two stage heaters should be set to\n3.5-inch W.C. on HIGH FIRE and 1.8-inch W.C. on LOW\nFIRE.\nNote: Manifold pressure not applicable for units with Low\nNox Gas furnace option. Manifold pressure is not\nutilized as an adjustment/checking parameter for\nthis system.\n• Flue Exhaust clear of any obstruction.\nRT-SVX21AD-EN",
+          "document_id": "doc_772ee4e060342593",
+          "documents": {
+            "label": "RT-SVX21AD-EN_Rooftop-IOM"
+          }
+        }
+      ],
+      "verdict": "AUDITED — support judgment is the reader's"
+    }
+  ]
+}
