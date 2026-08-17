@@ -1,0 +1,6 @@
+{"at":"2026-08-17T16:26:03.496Z","unit":"Bosch IDS Ultra","text":"What does the manual say about error Code: A11: Refrigerant leakage error?","category":"fault","kind":"answer","noDocumentation":false,"citations":3,"wellFormed":true,"inScope":true}
+{"at":"2026-08-17T16:26:03.496Z","unit":"Bosch IDS Ultra","text":"What does the manual say about error Code: 1L52: Compressor locked-rotor Protection?","category":"fault","kind":"answer","noDocumentation":false,"citations":4,"wellFormed":true,"inScope":true}
+{"at":"2026-08-17T16:26:03.496Z","unit":"Bosch IDS Ultra","text":"What does the manual specify for refrigerant Charge and Room Area Limitations?","category":"reference","kind":"answer","noDocumentation":false,"citations":13,"wellFormed":true,"inScope":true}
+{"at":"2026-08-17T16:26:03.496Z","unit":"Bosch IDS Ultra","text":"What does the manual specify for filter Installation Dimensions?","category":"reference","kind":"answer","noDocumentation":false,"citations":30,"wellFormed":true,"inScope":true}
+{"at":"2026-08-17T16:26:03.496Z","unit":"Bosch IDS Ultra","negativeControl":true,"noDocumentation":true}
+{"at":"2026-08-17T16:26:03.496Z","unit":"Trane YSC072E3","negativeControl":true,"noDocumentation":true}
