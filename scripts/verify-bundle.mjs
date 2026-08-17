@@ -24,6 +24,8 @@ import { envLiterals, scanText, SERVER_ONLY } from '../lib/secrets.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
 const OUT = join(APP, 'dist');
+/** Expo's own CLI entry — see the spawn below for why this is not `npx`. */
+const EXPO_CLI = join(APP, 'node_modules', 'expo', 'bin', 'cli');
 const reuse = process.argv.includes('--reuse');
 
 /** Text formats a secret could survive in. Binaries and fonts are skipped. */
@@ -47,14 +49,40 @@ if (!reuse) {
   // failing. Neither is a result worth having.
   if (existsSync(OUT)) rmSync(OUT, { recursive: true, force: true });
 
+  // Run the Expo CLI's own entry under this Node, rather than going through
+  // `npx`. Two failed approaches are recorded so neither is tried again:
+  //
+  //   `shell: true`   — triggers DEP0190 and concatenates args unescaped.
+  //   `npx.cmd`       — since Node 18.20.2 / 20.12.2 (the CVE-2024-27980 fix)
+  //                     spawning a `.cmd` without a shell throws **EINVAL**.
+  //                     `spawnSync` then returns `status: null`, which the old
+  //                     `status !== 0` test read as a failed build. On Windows
+  //                     this check could therefore never run at all: it reported
+  //                     "fix the build first" against a bundle that exports
+  //                     cleanly, and it never once scanned a byte.
+  //
+  // `expo/bin/cli` is plain JS with a `#!/usr/bin/env node` shebang, so invoking
+  // it with `process.execPath` is the same program without the shell, the `.cmd`
+  // shim, or a platform branch.
+  if (!existsSync(EXPO_CLI)) {
+    console.error(`Expo CLI absent at ${relative(ROOT, EXPO_CLI)} — run \`npm --prefix app install\`.`);
+    process.exit(1);
+  }
+
   console.log('Exporting the web bundle (expo export --platform web)…');
-  // npx.cmd rather than `shell: true` — passing args through a shell triggers
-  // DEP0190 and concatenates them unescaped, which is a poor trade for a path.
-  const build = spawnSync(process.platform === 'win32' ? 'npx.cmd' : 'npx',
-    ['expo', 'export', '--platform', 'web', '--output-dir', 'dist'],
+  const build = spawnSync(process.execPath,
+    [EXPO_CLI, 'export', '--platform', 'web', '--output-dir', 'dist'],
     { cwd: APP, stdio: 'inherit' });
+
+  // A spawn that never started is not a failed build, and saying so sent the
+  // last reader to debug the app instead of this file.
+  if (build.error) {
+    console.error(`\nCould not start the Expo CLI: ${build.error.code ?? ''} ${build.error.message}`);
+    console.error('This is a harness failure, not a bundle failure — the app build was never attempted.');
+    process.exit(1);
+  }
   if (build.status !== 0) {
-    console.error('\nExport failed — nothing to scan. Fix the build first.');
+    console.error(`\nExport failed (exit ${build.status}) — nothing to scan. Fix the build first.`);
     process.exit(1);
   }
 }
