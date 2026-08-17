@@ -127,6 +127,46 @@ inspection of the retrieval, not on assumption.
 
 ---
 
+## OPEN · A probe MISS measures the corpus, not retrieval — do not read it as a defect (filed 17 Aug 2026)
+
+Filed because this was **investigated as a retrieval bug and was not one**, and the
+next person to read a MISS rate will start down the same path.
+
+ST-R07's first run over the wire (Trane YSC072E3, 1 document in scope) missed 3 of
+4 reference sides — P1 lug torque, P2 line-set sizing, P4 MCA/MOCP. The initial
+hypothesis was the retrieval weakness the round-4 brief measured (~0.62 similarity,
+§7.8). **Measured, and the hypothesis was wrong:**
+
+| Checked | Result |
+|---|---|
+| `chunks` for `MCA`, `MOCP`, `Minimum Circuit Ampacity`, `Maximum Overcurrent` | **0 rows each** |
+| `chunks` for `ampacity`, `overcurrent` | **0 each** |
+| The parsed cache — all 82 pages, 262,325 chars — same terms | **0 each** |
+| The one `electrical data` hit (p12) | an *inspection instruction* to check the nameplate, not a table |
+
+So nothing was lost in chunking or parsing: this IOM points the installer at the
+nameplate and does not reproduce the electrical table. P2 is unanswerable by
+construction — a **packaged** rooftop unit has no line set. The system withheld
+rather than inventing, which is the designed behaviour, and there is no defect here.
+
+**The generalisable point, which is the reason this is filed at all:**
+`expect:'answer'` in `installation-boundary-probes.mjs` is a claim about the *gate*
+letting a question through, never a claim that a given unit's manuals hold the
+datum. The probe records these as MISS (exit 2, never a pass) precisely so the
+distinction survives. **A MISS rate is a statement about corpus coverage.**
+
+**What would make it a retrieval story**, stated now so the trigger is objective
+rather than a judgement call later: the *same* reference questions missing on a unit
+whose manuals **demonstrably do** carry the table — i.e. a `chunks` grep for the term
+returns rows and `/diagnose` still returns `noDocumentation:true`. That is the check
+to run before opening one; it costs no model quota.
+
+Not a Phase 1 gap either way. Electrical data for these units lives on the nameplate
+and in the product catalog, and the corpus is installation and service literature by
+design.
+
+---
+
 # Accounts run (ST-A**) — filed 10 Aug 2026 by Stage 3
 
 Six items, each with the risk of not doing it stated. Two are tagged
