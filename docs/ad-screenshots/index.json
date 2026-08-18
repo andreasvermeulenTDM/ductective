@@ -1,0 +1,33 @@
+{
+  "unit": "Trane YSC072E3",
+  "question": "what is the manifold pressure specification for natural gas",
+  "viewport": "393x852@3x",
+  "captured": [
+    {
+      "name": "01-unit-gate",
+      "caption": "Every answer is tied to the machine in front of you, so the app asks which one before it takes a question.",
+      "file": "01-unit-gate.png"
+    },
+    {
+      "name": "02-suggestions",
+      "caption": "Suggestions mined from that unit’s own manuals — each one validated as answerable before it is offered.",
+      "file": "02-suggestions.png"
+    },
+    {
+      "name": "03-cited-answer",
+      "caption": "A cited answer: the figure, and a source chip per claim naming the document and page it came from.",
+      "file": "03-cited-answer.png"
+    },
+    {
+      "name": "04-source-passage",
+      "caption": "Tapping a citation opens the passage it came from, without losing the answer behind it.",
+      "file": "04-source-passage.png"
+    },
+    {
+      "name": "05-safety-refusal",
+      "caption": "It advises; it never talks you through gas, live electrical or refrigerant work. The refusal has no dismiss and no way past it.",
+      "file": "05-safety-refusal.png"
+    }
+  ],
+  "missing": []
+}
