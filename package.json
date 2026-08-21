@@ -32,7 +32,8 @@
     "serve": "node --env-file=.env scripts/serve.mjs",
     "suggestions:build": "node --env-file=.env scripts/build-suggestions.mjs",
     "eval:score": "node eval/score.mjs",
-    "metrics": "node --env-file-if-exists=.env scripts/summarize-metrics.mjs"
+    "metrics": "node --env-file-if-exists=.env scripts/summarize-metrics.mjs",
+    "verify:retrieval-distinct": "node --env-file=.env scripts/verify-retrieval-distinct.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
