@@ -1267,7 +1267,7 @@ live corpus today and exits non-zero.
 #### ST-R13 — The Bosch pair resolved, through machinery that already exists
 
 **User story:** As a technician asking a broad Bosch question, I want eight
-distinct sources in the top eight, not the same page twice.
+distinct sources in the top eight, not the same text twice.
 
 **Owner:** Knowledge · **Dependencies:** ST-R12 · **Priority:** Critical
 
@@ -1289,8 +1289,32 @@ distinct sources in the top eight, not the same page twice.
    to.
 4. **[M]** **The measured defect is measured again.** The brief's own case — a
    broad Bosch retrieval returning the same text in two of eight slots — is
-   re-run and the report shows eight distinct `(document_id, page)` pairs.
-   Recorded as a before/after in `.pipeline/025-*.md`.
+   re-run by `npm run verify:retrieval-distinct`, which pins the query so the
+   number is reproducible rather than one reader's. It exits 0 only when, over a
+   scoped top-8:
+   - **every retrieved chunk carries distinct text** — the defect itself, stated
+     in the terms the brief measured it in; and
+   - **no retrieved chunk belongs to a document retired as a duplicate** — the
+     mechanism, checked separately so a pass cannot come from the query drifting
+     away from the retired document rather than from the retirement working.
+
+   The distinct-`(document_id, page)` count is **printed and not asserted**, and
+   the reason is worth keeping: chunking is *sub-page*, so two different chunks
+   can legitimately share a page and `(document_id, page)` was never a distinct
+   key. **This is a correction, and it is a correction in one direction only.**
+   The metric this replaces was `[M]` and failed at 7 of 8 on 17 Aug 2026 while
+   the property it existed to protect held at 8 of 8 distinct texts — see
+   `05-test-report-round4.md` §4, which reported the FAIL rather than swapping in
+   the passing number, and routed the restatement here as T-4.
+
+   **What is deliberately not claimed:** requiring eight distinct *pages* would
+   be a retrieval-diversity requirement. The brief never asked for one, no stage
+   has measured whether the corpus can meet it, and adopting it here by accident
+   — because a hastily chosen key happened to imply it — is how a requirement
+   nobody agreed to becomes load-bearing. If diversity is wanted, it belongs in a
+   brief, with a measurement.
+
+   Recorded as a before/after in `.pipeline/025-knowledge-round4.md`.
 5. **[M]** `npm run verify:duplicates` exits **0** afterwards.
 6. **[M]** No chunk row is deleted and no `citations.chunk_id` is orphaned
    (§1d). Asserted by comparing chunk counts before and after.
